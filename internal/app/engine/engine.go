@@ -17,6 +17,7 @@ import (
 	"github.com/kainhuck/signalix/internal/app/oms"
 	"github.com/kainhuck/signalix/internal/app/projection"
 	"github.com/kainhuck/signalix/internal/app/strategy"
+	"github.com/kainhuck/signalix/internal/config"
 	"github.com/kainhuck/signalix/internal/domain/risk"
 	"github.com/kainhuck/signalix/internal/models"
 	"github.com/kainhuck/signalix/internal/ports"
@@ -75,6 +76,15 @@ type Engine struct {
 
 	strategyIntervals  map[string]string
 	strategyIntervalMu sync.RWMutex
+
+	// 策略自动重启（EH-1）
+	restartCfg       config.RestartSettings
+	crashTracker     *crashTracker
+	restartAttempt   map[string]int
+	restartMu        sync.Mutex
+	pendingRestart   map[string]time.Time
+	pendingRestartMu sync.Mutex
+	restartWg        sync.WaitGroup
 }
 
 // NewEngine 创建策略引擎；可通过 EngineOption 覆盖风控等默认行为。
@@ -113,6 +123,10 @@ func NewEngine(strategyDir string, exchange ports.Exchange, build BuildParams, o
 		loader:          loader,
 		router:          router,
 		defaultInterval: build.DefaultInterval,
+		restartCfg:      build.Restart,
+		crashTracker:    newCrashTracker(),
+		restartAttempt:  make(map[string]int),
+		pendingRestart:  make(map[string]time.Time),
 		decisionEngine: decision.NewDecisionEngine(proj,
 			decision.WithDefaultSizeDivisor(divisor),
 			decision.WithExchange(exchange),
@@ -447,6 +461,8 @@ func (e *Engine) Stop() error {
 	// 取消 context
 	e.cancel()
 
+	e.restartWg.Wait()
+
 	// 等待所有 goroutine 结束
 	e.wg.Wait()
 
@@ -476,8 +492,14 @@ func (e *Engine) Stop() error {
 	return nil
 }
 
-// StartStrategy 启动策略
+// StartStrategy 启动策略（手动路径：重置自动重启退避计数）。
 func (e *Engine) StartStrategy(st *strategy.Strategy) error {
+	e.resetRestartAttempt(st.Name)
+	return e.launchStrategy(st)
+}
+
+// launchStrategy 启动或重启策略进程（不重置退避计数，供自动重启使用）。
+func (e *Engine) launchStrategy(st *strategy.Strategy) error {
 	e.processMu.Lock()
 	defer e.processMu.Unlock()
 
@@ -810,10 +832,14 @@ func (e *Engine) monitorHeartbeat(sp strategy.StrategyRuntime) {
 		case <-ticker.C:
 			lastHeartbeat := sp.GetLastHeartbeat()
 
+			// 稳定运行：窗口内无崩溃则清零退避计数
+			if e.crashCountInWindow(sp.Name()) == 0 {
+				e.resetRestartAttempt(sp.Name())
+			}
+
 			// 检查心跳超时（30秒）
 			if time.Since(lastHeartbeat) > 30*time.Second {
 				logger.ErrorContext(e.ctx, "Heartbeat timeout, marking as crashed", logger.String("strategy", sp.Name()))
-				sp.RecordCrash()
 				e.handleProcessExit(sp)
 				return
 			}
@@ -823,25 +849,50 @@ func (e *Engine) monitorHeartbeat(sp strategy.StrategyRuntime) {
 
 // handleProcessExit 处理进程退出
 func (e *Engine) handleProcessExit(sp strategy.StrategyRuntime) {
-	logger.ErrorContext(e.ctx, "Strategy process exited", logger.String("strategy", sp.Name()))
+	name := sp.Name()
 
-	// 从 map 中移除
 	e.processMu.Lock()
-	delete(e.strategyProcess, sp.Name())
-	_ = e.router.UnsubscribeAll(sp.Name())
+	_, stillRegistered := e.strategyProcess[name]
+	if stillRegistered {
+		delete(e.strategyProcess, name)
+		_ = e.router.UnsubscribeAll(name)
+	}
 	e.processMu.Unlock()
 
-	// 记录崩溃
-	sp.RecordCrash()
-
-	// TODO: 根据配置决定是否自动重启
-	// 如果最近崩溃次数过多，不重启
-	if sp.GetCrashCount() >= 3 {
-		logger.ErrorContext(e.ctx, "Too many crashes, not restarting", logger.String("strategy", sp.Name()))
+	if !stillRegistered {
 		return
 	}
 
-	// TODO: 实现自动重启逻辑
+	crashCount := e.recordStrategyCrash(name)
+
+	logger.ErrorContext(e.ctx, "Strategy process exited",
+		logger.String("strategy", name),
+		logger.Int("crash_count", crashCount),
+		logger.Duration("window", e.restartCfg.CrashWindow))
+
+	if e.ctx.Err() != nil {
+		return
+	}
+	if !e.restartCfg.Enabled {
+		return
+	}
+	if e.killSwitchActive() {
+		return
+	}
+	if crashCount >= e.restartCfg.MaxCrashes {
+		logger.ErrorContext(e.ctx, "Strategy restart circuit open, not restarting",
+			logger.String("strategy", name),
+			logger.Int("crash_count", crashCount),
+			logger.Int("max_crashes", e.restartCfg.MaxCrashes))
+		return
+	}
+
+	st, ok := e.GetStrategy(name)
+	if !ok || st == nil || !st.Enabled {
+		return
+	}
+
+	e.scheduleRestart(name, st)
 }
 
 // ListStrategies 列出所有运行中的策略
@@ -867,10 +918,14 @@ func (e *Engine) GetStrategyStatus(name string) (map[string]interface{}, error) 
 	}
 
 	return map[string]interface{}{
-		"name":           sp.Name(),
-		"running":        sp.IsRunning(),
-		"last_heartbeat": sp.GetLastHeartbeat(),
-		"crash_count":    sp.GetCrashCount(),
+		"name":                  sp.Name(),
+		"running":               sp.IsRunning(),
+		"last_heartbeat":        sp.GetLastHeartbeat(),
+		"crash_count":           sp.GetCrashCount(),
+		"crash_count_in_window": e.crashCountInWindow(name),
+		"auto_restart_enabled":  e.restartCfg.Enabled,
+		"restart_backoff_sec":   e.pendingRestartSeconds(name),
+		"circuit_open":          e.circuitOpen(name),
 	}, nil
 }
 

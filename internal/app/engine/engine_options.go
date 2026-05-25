@@ -18,6 +18,7 @@ type BuildParams struct {
 	DecisionDivisor   int
 	OMSMaxRetries     int
 	DefaultInterval   string
+	Restart           config.RestartSettings
 }
 
 // BuildParamsFromConfig 从全局配置提取构建参数。
@@ -27,6 +28,7 @@ func BuildParamsFromConfig(c *config.Config) BuildParams {
 			ProjectionRefresh: 10 * time.Second,
 			DecisionDivisor:   10,
 			OMSMaxRetries:     3,
+			Restart:           config.DefaultRestartSettings(),
 		}
 	}
 	return BuildParams{
@@ -35,6 +37,7 @@ func BuildParamsFromConfig(c *config.Config) BuildParams {
 		DecisionDivisor:   c.Decision.DefaultSizeDivisor,
 		OMSMaxRetries:     c.Exchange.MaxRetries,
 		DefaultInterval:   c.Strategies.DefaultInterval,
+		Restart:           c.RestartSettings(),
 	}
 }
 

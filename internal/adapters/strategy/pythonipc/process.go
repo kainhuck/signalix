@@ -223,7 +223,28 @@ func (sp *StrategyProcess) RecordCrash() {
 	sp.crashes = append(sp.crashes, time.Now())
 }
 
-// GetCrashCount 获取崩溃次数。
+// PruneCrashes 剔除滑动窗口外的崩溃记录。
+func (sp *StrategyProcess) PruneCrashes(window time.Duration) {
+	sp.mu.Lock()
+	defer sp.mu.Unlock()
+	sp.crashes = pruneLocalCrashTimes(sp.crashes, window, time.Now())
+}
+
+func pruneLocalCrashTimes(times []time.Time, window time.Duration, now time.Time) []time.Time {
+	if window <= 0 || len(times) == 0 {
+		return times
+	}
+	cutoff := now.Add(-window)
+	out := times[:0]
+	for _, t := range times {
+		if !t.Before(cutoff) {
+			out = append(out, t)
+		}
+	}
+	return out
+}
+
+// GetCrashCount 返回当前保留的崩溃次数（应先 PruneCrashes 或使用 Engine 侧计数）。
 func (sp *StrategyProcess) GetCrashCount() int {
 	sp.mu.Lock()
 	defer sp.mu.Unlock()

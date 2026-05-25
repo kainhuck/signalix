@@ -37,6 +37,16 @@ dir = "strategies"
 # 策略 config.yaml 未写 interval 时的兜底（留空则必须在各策略顶层配置 interval）
 # default_interval = "1m"
 
+[strategies.restart]
+# 策略进程异常退出后是否自动重启
+enabled = true
+# 滑动窗口内最大崩溃次数，超过则熔断直至窗口滑出或手动 StartStrategy
+max_crashes = 3
+crash_window = "5m"
+initial_backoff = "3s"
+max_backoff = "60s"
+backoff_multiplier = 2
+
 # ------------------------------------------------------------------------------
 # 交易所（当前仅 gateio 适配器）
 # ------------------------------------------------------------------------------

@@ -30,6 +30,7 @@ func (r *recordingStrategyRuntime) Stop() error                                 
 func (r *recordingStrategyRuntime) UpdateHeartbeat()                                 {}
 func (r *recordingStrategyRuntime) GetLastHeartbeat() time.Time                      { return time.Now() }
 func (r *recordingStrategyRuntime) RecordCrash()                                     {}
+func (r *recordingStrategyRuntime) PruneCrashes(time.Duration)                       {}
 func (r *recordingStrategyRuntime) GetCrashCount() int                               { return 0 }
 func (r *recordingStrategyRuntime) IsRunning() bool                                  { return true }
 func (r *recordingStrategyRuntime) SendRPCResponse(string, interface{}, error) error { return nil }

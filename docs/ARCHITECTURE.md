@@ -101,7 +101,7 @@ sdk/python/           # 策略 SDK
 
 - `pythonipc`：进程、`SendInit` / `SendTick` / `SendKline` / `SendHistory`、stdout 读循环
 - Python SDK：Reader + Worker 双线程，支持 `on_kline` 内同步 RPC
-- 心跳监控；崩溃计数（引擎侧自动重启待完善）
+- 心跳监控；崩溃计数与 **可配置自动重启**（`[strategies.restart]`，见 EH-1）
 
 ### 4.3 Risk Evaluator
 
@@ -217,7 +217,7 @@ flowchart LR
 
 | 主题 | 当前状态 | 方向 |
 |------|----------|------|
-| 策略自动重启 | 检测崩溃，未自动拉起 | 配置化 backoff + 熔断 |
+| 策略自动重启 | 已实现 | `[strategies.restart]`：backoff + 滑动窗口熔断 |
 | 风控扩展字段 | 配置已有，规则未全接入 | leverage、日亏、Kill Switch |
 | `get_market` RPC | 未实现 | 读 tickerCache |
 | HTTP 网关 | 无 | 独立服务，REST → gRPC |

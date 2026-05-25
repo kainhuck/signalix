@@ -37,6 +37,7 @@ type Config struct {
 	GRPC     GRPCConfig
 
 	projectionRefresh time.Duration
+	restartSettings   RestartSettings
 }
 
 type LogConfig struct {
@@ -49,8 +50,41 @@ type LogConfig struct {
 }
 
 type StrategiesConfig struct {
-	Dir             string `mapstructure:"dir"`
-	DefaultInterval string `mapstructure:"default_interval"`
+	Dir             string           `mapstructure:"dir"`
+	DefaultInterval string           `mapstructure:"default_interval"`
+	Restart         RestartConfigRaw `mapstructure:"restart"`
+}
+
+// RestartConfigRaw TOML 原始重启配置（duration 为字符串）。
+type RestartConfigRaw struct {
+	Enabled           bool   `mapstructure:"enabled"`
+	MaxCrashes        int    `mapstructure:"max_crashes"`
+	CrashWindow       string `mapstructure:"crash_window"`
+	InitialBackoff    string `mapstructure:"initial_backoff"`
+	MaxBackoff        string `mapstructure:"max_backoff"`
+	BackoffMultiplier int    `mapstructure:"backoff_multiplier"`
+}
+
+// RestartSettings 解析后的策略自动重启配置。
+type RestartSettings struct {
+	Enabled           bool
+	MaxCrashes        int
+	CrashWindow       time.Duration
+	InitialBackoff    time.Duration
+	MaxBackoff        time.Duration
+	BackoffMultiplier int
+}
+
+// DefaultRestartSettings 与 TECHNICAL_SPEC EH-1 默认值一致。
+func DefaultRestartSettings() RestartSettings {
+	return RestartSettings{
+		Enabled:           true,
+		MaxCrashes:        3,
+		CrashWindow:       5 * time.Minute,
+		InitialBackoff:    3 * time.Second,
+		MaxBackoff:        60 * time.Second,
+		BackoffMultiplier: 2,
+	}
 }
 
 type ExchangeConfig struct {
@@ -164,6 +198,16 @@ func Load() (*Config, error) {
 		return nil, fmt.Errorf("projection.refresh_interval: %w", err)
 	}
 
+	restart, err := parseRestartSettings(raw.Strategies.Restart)
+	if err != nil {
+		return nil, err
+	}
+	if !v.IsSet("strategies.restart.enabled") {
+		restart.Enabled = DefaultRestartSettings().Enabled
+	} else {
+		restart.Enabled = raw.Strategies.Restart.Enabled
+	}
+
 	cfg := &Config{
 		WorkDir:           workDir,
 		ConfigPath:        configPath,
@@ -178,6 +222,7 @@ func Load() (*Config, error) {
 		Decision:          raw.Decision,
 		GRPC:              normalizeGRPC(raw.GRPC),
 		projectionRefresh: refresh,
+		restartSettings:   restart,
 	}
 	cfg.Log.File = logFile
 
@@ -193,6 +238,48 @@ func (c *Config) ProjectionRefreshInterval() time.Duration {
 		return 10 * time.Second
 	}
 	return c.projectionRefresh
+}
+
+// RestartSettings 返回解析后的策略自动重启配置。
+func (c *Config) RestartSettings() RestartSettings {
+	if c == nil {
+		return DefaultRestartSettings()
+	}
+	return c.restartSettings
+}
+
+func parseRestartSettings(raw RestartConfigRaw) (RestartSettings, error) {
+	def := DefaultRestartSettings()
+	out := def
+	if raw.MaxCrashes > 0 {
+		out.MaxCrashes = raw.MaxCrashes
+	}
+	if raw.BackoffMultiplier > 0 {
+		out.BackoffMultiplier = raw.BackoffMultiplier
+	}
+
+	if s := strings.TrimSpace(raw.CrashWindow); s != "" {
+		d, err := time.ParseDuration(s)
+		if err != nil {
+			return RestartSettings{}, fmt.Errorf("strategies.restart.crash_window: %w", err)
+		}
+		out.CrashWindow = d
+	}
+	if s := strings.TrimSpace(raw.InitialBackoff); s != "" {
+		d, err := time.ParseDuration(s)
+		if err != nil {
+			return RestartSettings{}, fmt.Errorf("strategies.restart.initial_backoff: %w", err)
+		}
+		out.InitialBackoff = d
+	}
+	if s := strings.TrimSpace(raw.MaxBackoff); s != "" {
+		d, err := time.ParseDuration(s)
+		if err != nil {
+			return RestartSettings{}, fmt.Errorf("strategies.restart.max_backoff: %w", err)
+		}
+		out.MaxBackoff = d
+	}
+	return out, nil
 }
 
 func (c *Config) validate() error {
@@ -212,6 +299,19 @@ func (c *Config) validate() error {
 	}
 	if c.Decision.DefaultSizeDivisor <= 0 {
 		return fmt.Errorf("decision.default_size_divisor must be positive")
+	}
+	rs := c.RestartSettings()
+	if rs.MaxCrashes <= 0 {
+		return fmt.Errorf("strategies.restart.max_crashes must be positive")
+	}
+	if rs.CrashWindow <= 0 {
+		return fmt.Errorf("strategies.restart.crash_window must be positive")
+	}
+	if rs.Enabled && rs.InitialBackoff < 0 {
+		return fmt.Errorf("strategies.restart.initial_backoff must be non-negative")
+	}
+	if rs.MaxBackoff > 0 && rs.MaxBackoff < rs.InitialBackoff {
+		return fmt.Errorf("strategies.restart.max_backoff must be >= initial_backoff")
 	}
 	return nil
 }
@@ -245,6 +345,12 @@ func setDefaults(v *viper.Viper) {
 	v.SetDefault("log.compress", true)
 
 	v.SetDefault("strategies.dir", StrategiesRelDir)
+	v.SetDefault("strategies.restart.enabled", true)
+	v.SetDefault("strategies.restart.max_crashes", 3)
+	v.SetDefault("strategies.restart.crash_window", "5m")
+	v.SetDefault("strategies.restart.initial_backoff", "3s")
+	v.SetDefault("strategies.restart.max_backoff", "60s")
+	v.SetDefault("strategies.restart.backoff_multiplier", 2)
 
 	v.SetDefault("exchange.name", "gateio")
 	v.SetDefault("exchange.paper", true)

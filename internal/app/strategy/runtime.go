@@ -23,6 +23,7 @@ type StrategyRuntime interface {
 
 	UpdateHeartbeat()
 	GetLastHeartbeat() time.Time
+	PruneCrashes(window time.Duration)
 	RecordCrash()
 	GetCrashCount() int
 	IsRunning() bool

@@ -155,13 +155,14 @@ signalix/
 These are partially stubbed in config or docs — read [config.example.toml](config.example.toml) before relying on them:
 
 - Some risk fields (`max_daily_loss`, `max_leverage`, etc.) are in config but not fully enforced yet
-- Engine-side auto-restart after strategy crashes
 - HTTP gateway (UI layer, separate from this repo)
 - Exchange REST `rate_limit` config is not wired to a limiter yet
 
+Configurable auto-restart after strategy crashes: see `[strategies.restart]` in [config.example.toml](config.example.toml).
+
 ## Roadmap
 
-- Live-trading hardening: auto-restart, full risk rules, kill switch
+- Live-trading hardening: full risk rules, kill switch
 - HTTP gateway (OpenAPI + auth, backed by engine gRPC)
 - More exchanges, contract metadata cache, backtest / paper mode
 
