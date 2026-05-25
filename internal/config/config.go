@@ -316,7 +316,7 @@ func (c *Config) validate() error {
 	return nil
 }
 
-// RiskRules 将 risk 段转为 domain 规则（仅已实现的字段生效）。
+// RiskRules 将 risk 段转为 domain 规则。
 func (c *Config) RiskRules() risk.Rules {
 	if c == nil {
 		return risk.DefaultRules()
@@ -334,6 +334,19 @@ func (c *Config) RiskRules() risk.Rules {
 	if r.MaxPositions > 0 {
 		out.MaxPositions = r.MaxPositions
 	}
+	if r.MaxPositionSize > 0 {
+		out.MaxPositionSize = decimal.NewFromFloat(r.MaxPositionSize)
+	}
+	if r.MaxDailyLoss > 0 {
+		out.MaxDailyLoss = decimal.NewFromFloat(r.MaxDailyLoss)
+	}
+	if r.MaxDrawdown > 0 {
+		out.MaxDrawdown = decimal.NewFromFloat(r.MaxDrawdown)
+	}
+	if r.MaxLeverage > 0 {
+		out.MaxLeverage = r.MaxLeverage
+	}
+	out.EnablePositionLock = r.EnablePositionLock
 	return out
 }
 

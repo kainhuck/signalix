@@ -16,6 +16,7 @@ import (
 	"github.com/kainhuck/signalix/internal/app/market"
 	"github.com/kainhuck/signalix/internal/app/oms"
 	"github.com/kainhuck/signalix/internal/app/projection"
+	apprisk "github.com/kainhuck/signalix/internal/app/risk"
 	"github.com/kainhuck/signalix/internal/app/strategy"
 	"github.com/kainhuck/signalix/internal/config"
 	"github.com/kainhuck/signalix/internal/domain/risk"
@@ -85,6 +86,8 @@ type Engine struct {
 	pendingRestart   map[string]time.Time
 	pendingRestartMu sync.Mutex
 	restartWg        sync.WaitGroup
+
+	equityTracker *apprisk.EquityTracker
 }
 
 // NewEngine 创建策略引擎；可通过 EngineOption 覆盖风控等默认行为。
@@ -114,7 +117,11 @@ func NewEngine(strategyDir string, exchange ports.Exchange, build BuildParams, o
 	}
 
 	loader := strategy.NewStrategyLoader(ctx, strategyDir)
-	proj := projection.NewAccountProjection(exchange, projection.WithRefreshInterval(build.ProjectionRefresh))
+	equityTracker := apprisk.NewEquityTracker()
+	proj := projection.NewAccountProjection(exchange,
+		projection.WithRefreshInterval(build.ProjectionRefresh),
+		projection.WithEquityHook(equityTracker.OnEquityUpdate),
+	)
 	router := market.NewMarketRouter(exchange, market.WithBufferSize(marketBuf))
 
 	e := &Engine{
@@ -127,6 +134,7 @@ func NewEngine(strategyDir string, exchange ports.Exchange, build BuildParams, o
 		crashTracker:    newCrashTracker(),
 		restartAttempt:  make(map[string]int),
 		pendingRestart:  make(map[string]time.Time),
+		equityTracker:   equityTracker,
 		decisionEngine: decision.NewDecisionEngine(proj,
 			decision.WithDefaultSizeDivisor(divisor),
 			decision.WithExchange(exchange),
@@ -234,6 +242,10 @@ func (e *Engine) Start() error {
 
 	if err := e.accountProjection.Start(e.ctx); err != nil {
 		logger.ErrorContext(e.ctx, "account projection start failed", logger.Any("error", err))
+	} else if e.equityTracker != nil {
+		if eq, err := e.accountProjection.AccountEquity(); err == nil {
+			e.equityTracker.Init(eq, time.Now())
+		}
 	}
 
 	// 启动所有启用的策略（在 projection 与 OMS 就绪顺序之后，与阶段 6 对账/冷启动一致）
@@ -369,20 +381,15 @@ func (e *Engine) dispatchSignal() {
 				continue
 			}
 
-			posCount := -1
-			if e.accountProjection != nil {
-				if n, err := e.accountProjection.OpenPositionCount(); err == nil {
-					posCount = n
-				}
+			// EH-3: Kill Switch 检查插入点（风控之前）
+
+			riskCtx, err := e.buildRiskContext(e.ctx, signal.StrategyName, signal.Signal, order)
+			if err != nil {
+				logger.ErrorContext(e.ctx, "failed to build risk context", logger.Any("error", err))
+				continue
 			}
 
-			v, err := e.riskEvaluator.Evaluate(e.ctx, &ports.RiskContext{
-				StrategyName: signal.StrategyName,
-				Signal:       signal.Signal,
-				Order:        order,
-				OpenOrders:   e.executionEngine.NonFinalOrderCount(),
-				Positions:    posCount,
-			})
+			v, err := e.riskEvaluator.Evaluate(e.ctx, riskCtx)
 			if err != nil {
 				logger.ErrorContext(e.ctx, "risk evaluation failed", logger.Any("error", err))
 				continue

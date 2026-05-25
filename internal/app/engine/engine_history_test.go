@@ -4,6 +4,7 @@ import (
 	"context"
 	"testing"
 
+	"github.com/kainhuck/signalix/internal/app/market"
 	"github.com/kainhuck/signalix/internal/app/strategy"
 	"github.com/kainhuck/signalix/internal/models"
 	"github.com/kainhuck/signalix/pkg/exchange/perp"
@@ -81,6 +82,7 @@ func TestWarmupHistorySendHistory(t *testing.T) {
 	e := &Engine{
 		ctx:      context.Background(),
 		exchange: ex,
+		router:   market.NewMarketRouter(ex),
 	}
 	st := &strategy.Strategy{
 		StrategyConfig: strategy.StrategyConfig{

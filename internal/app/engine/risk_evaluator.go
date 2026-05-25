@@ -25,23 +25,29 @@ func (s *StaticRiskEvaluator) Evaluate(ctx context.Context, rc *ports.RiskContex
 		return risk.Allow(), nil
 	}
 	in := risk.Input{
-		Rules:               s.Rules,
-		OrderSize:           rc.Order.Size,
-		SignalOpensExposure: signalOpensExposure(rc.Signal),
-		OpenOrderCount:      rc.OpenOrders,
-		OpenPositionCount:   rc.Positions,
+		Rules:                    s.Rules,
+		OrderSize:                rc.Order.Size,
+		SignalOpensExposure:      risk.OpensExposure(rc.Signal),
+		OpenOrderCount:           rc.OpenOrders,
+		OpenPositionCount:        rc.Positions,
+		ProjectionReady:          rc.ProjectionReady,
+		NotionalAvailable:        rc.NotionalAvailable,
+		OpensExposure:            rc.OpensExposure,
+		IncreasingExposure:       rc.IncreasingExposure,
+		OrderNotionalUSDT:        rc.OrderNotionalUSDT,
+		PositionNotionalUSDT:     rc.PositionNotionalUSDT,
+		PostPositionNotionalUSDT: rc.PostPositionNotionalUSDT,
+		TotalExposureUSDT:        rc.TotalExposureUSDT,
+		PostTotalExposureUSDT:    rc.PostTotalExposureUSDT,
+		AccountEquityUSDT:        rc.AccountEquityUSDT,
+		DailyLossUSDT:            rc.DailyLossUSDT,
+		DrawdownRatio:            rc.DrawdownRatio,
+		PostLeverage:             rc.PostLeverage,
+		NotionalUSDTPerContract:  rc.NotionalUSDTPerContract,
 	}
 	return risk.Evaluate(in), nil
 }
 
 func signalOpensExposure(sig *models.Signal) bool {
-	if sig == nil {
-		return true
-	}
-	switch sig.Direction {
-	case models.DirectionLong, models.DirectionShort:
-		return true
-	default:
-		return false
-	}
+	return risk.OpensExposure(sig)
 }

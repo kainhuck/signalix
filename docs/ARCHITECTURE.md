@@ -107,8 +107,7 @@ sdk/python/           # 策略 SDK
 
 - `dispatchSignal` 中 Decision 之后、OMS 之前
 - `internal/domain/risk.Evaluate` + `StaticRiskEvaluator`
-- 已实现：单笔上限、最大挂单数、最大持仓合约数
-- 配置已存在但未接入：日亏、回撤、杠杆等（见 README「已知限制」）
+- 已实现：单笔上限、最大挂单数、最大持仓合约数、锁仓、日亏、回撤、杠杆、单合约名义上限
 
 ### 4.4 Decision Service
 

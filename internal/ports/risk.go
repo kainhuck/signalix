@@ -5,6 +5,7 @@ import (
 
 	"github.com/kainhuck/signalix/internal/domain/risk"
 	"github.com/kainhuck/signalix/internal/models"
+	"github.com/shopspring/decimal"
 )
 
 // RiskContext 单笔订单过风控时的只读上下文（由 Engine 组装）。
@@ -13,10 +14,24 @@ type RiskContext struct {
 	Signal       *models.Signal
 	Order        *models.Order
 
-	// OpenOrders：当前 OMS 内未终态订单数（不含本笔尚未入表）。
 	OpenOrders int
-	// Positions：账户投影中有仓位的合约条数；-1 表示未知（投影未就绪等）。
-	Positions int
+	Positions  int
+
+	ProjectionReady    bool
+	NotionalAvailable  bool
+	OpensExposure      bool
+	IncreasingExposure bool
+
+	OrderNotionalUSDT        decimal.Decimal
+	PositionNotionalUSDT     decimal.Decimal
+	PostPositionNotionalUSDT decimal.Decimal
+	TotalExposureUSDT        decimal.Decimal
+	PostTotalExposureUSDT    decimal.Decimal
+	AccountEquityUSDT        decimal.Decimal
+	DailyLossUSDT            decimal.Decimal
+	DrawdownRatio            decimal.Decimal
+	PostLeverage             decimal.Decimal
+	NotionalUSDTPerContract  decimal.Decimal
 }
 
 // RiskEvaluator 风控评估端口（实现可为静态规则、gRPC 远程等）。

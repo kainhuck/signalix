@@ -77,7 +77,13 @@ private_ws = true
 
 # ------------------------------------------------------------------------------
 # 风控（对应 internal/domain/risk + engine StaticRiskEvaluator）
-# 注：带「预留」标记的字段写入配置，实现接入后可生效
+# max_order_size：合约张数上限（Reduce）
+# max_position_size：单合约持仓 USDT 名义价值上限（Reduce）
+# max_daily_loss：当日亏损 USDT 绝对值上限（Reject 开仓）
+# max_drawdown：会话峰值回撤比例 0~1（Reject 开仓）
+# max_leverage：成交后账户杠杆倍数上限（Reject 开仓）
+# enable_position_lock：true 时禁止一切新开仓（Flat 放行）
+# 日亏边界：UTC 自然日；零值表示不限制
 # ------------------------------------------------------------------------------
 [risk]
 enable_risk_control = true
@@ -85,7 +91,6 @@ max_order_size = 100000.0
 max_open_orders = 50
 max_positions = 20
 
-# 预留（当前 Evaluate 未使用，与旧 config.example.yaml 对齐）
 max_position_size = 1000000.0
 max_daily_loss = 10000.0
 max_drawdown = 0.2

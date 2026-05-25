@@ -22,8 +22,11 @@ func TestStaticRiskEvaluator_Reduce(t *testing.T) {
 			Symbol: "BTC/USDT",
 			Size:   "10",
 		},
-		OpenOrders: 0,
-		Positions:  0,
+		OpenOrders:        0,
+		Positions:         0,
+		ProjectionReady:   true,
+		OpensExposure:     true,
+		AccountEquityUSDT: decimal.NewFromInt(100000),
 	})
 	if err != nil {
 		t.Fatal(err)

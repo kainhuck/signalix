@@ -10,6 +10,7 @@ import (
 
 	"github.com/kainhuck/signalix/internal/ports"
 	"github.com/kainhuck/signalix/pkg/exchange/perp"
+	"github.com/shopspring/decimal"
 )
 
 // DefaultProjectionRefreshInterval REST 校准周期（一期常量）。
@@ -27,6 +28,7 @@ type AccountProjection struct {
 	revision        uint64
 	ready           bool
 	refreshInterval time.Duration
+	equityHook      EquityHook
 
 	runWg    sync.WaitGroup
 	stopOnce sync.Once
@@ -73,6 +75,60 @@ func (p *AccountProjection) Stop() {
 	p.stopOnce.Do(func() {
 		p.runWg.Wait()
 	})
+}
+
+// AccountEquity 返回当前 USDT 总权益。
+func (p *AccountProjection) AccountEquity() (decimal.Decimal, error) {
+	p.mu.RLock()
+	defer p.mu.RUnlock()
+	if !p.ready || p.balance == nil {
+		return decimal.Zero, ErrProjectionNotReady
+	}
+	total, err := decimal.NewFromString(strings.TrimSpace(p.balance.Total))
+	if err != nil {
+		return decimal.Zero, err
+	}
+	return total, nil
+}
+
+// PositionForContract 返回指定合约持仓；无仓返回 (nil, nil)。
+func (p *AccountProjection) PositionForContract(contract perp.Contract) (*perp.PositionSnapshot, error) {
+	p.mu.RLock()
+	defer p.mu.RUnlock()
+	if !p.ready {
+		return nil, ErrProjectionNotReady
+	}
+	pv, ok := p.positions[contract]
+	if !ok || pv == nil {
+		return nil, nil
+	}
+	cp := *pv
+	return &cp, nil
+}
+
+// AllPositions 返回当前持仓快照副本。
+func (p *AccountProjection) AllPositions() ([]*perp.PositionSnapshot, error) {
+	p.mu.RLock()
+	defer p.mu.RUnlock()
+	if !p.ready {
+		return nil, ErrProjectionNotReady
+	}
+	out := make([]*perp.PositionSnapshot, 0, len(p.positions))
+	for _, pv := range p.positions {
+		if pv == nil {
+			continue
+		}
+		cp := *pv
+		out = append(out, &cp)
+	}
+	return out, nil
+}
+
+// IsReady 投影是否已完成至少一次成功 refresh。
+func (p *AccountProjection) IsReady() bool {
+	p.mu.RLock()
+	defer p.mu.RUnlock()
+	return p.ready
 }
 
 // Snapshot 返回当前合约下的余额与持仓快照（无仓时 position 为 nil）及 revision；仅 RLock。
@@ -152,6 +208,18 @@ func (p *AccountProjection) applyBalanceUpdate(ev *perp.UserEvent) {
 		p.balance.UpdatedAt = snap.UpdatedAt
 	}
 	p.revision++
+	p.notifyEquityLocked(time.Now())
+}
+
+func (p *AccountProjection) notifyEquityLocked(now time.Time) {
+	if p.equityHook == nil || p.balance == nil {
+		return
+	}
+	eq, err := decimal.NewFromString(strings.TrimSpace(p.balance.Total))
+	if err != nil {
+		return
+	}
+	p.equityHook(eq, now)
 }
 
 func positionSizeIsZero(size string) bool {
@@ -187,6 +255,8 @@ func (p *AccountProjection) refresh(ctx context.Context) error {
 	p.positions = m
 	p.revision++
 	p.ready = true
+	now := time.Now()
+	p.notifyEquityLocked(now)
 	p.mu.Unlock()
 	return nil
 }
