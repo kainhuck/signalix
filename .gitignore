@@ -1,0 +1,65 @@
+# Binaries
+/signalix
+*.exe
+*.exe~
+*.dll
+*.so
+*.dylib
+
+# Test binary
+*.test
+
+# Output of the go coverage tool
+*.out
+
+# Go workspace file
+go.work
+
+# Dependency directories
+vendor/
+
+# IDE
+.idea/
+.vscode/
+*.swp
+*.swo
+*~
+
+# OS
+.DS_Store
+Thumbs.db
+
+# Application
+*.db
+*.db-shm
+*.db-wal
+*.log
+
+# Config (contains sensitive data)
+config.toml
+.signalix/
+
+# Python
+__pycache__/
+*.py[cod]
+*$py.class
+*.so
+.Python
+venv/
+env/
+ENV/
+sdk/python/signalix.egg-info/
+sdk/python/tests/
+
+# Private development notes (local only)
+progress/
+TODO
+
+# Temporary files
+tmp/
+temp/
+
+bin/
+signalix.db
+
+test/

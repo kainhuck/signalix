@@ -1,0 +1,127 @@
+# Signalix 全局配置示例
+#
+# 部署约定（实现后将按此约定加载，无需其它环境变量）：
+#   SIGNALIX_WORK_DIR   工作目录，默认 ~/.signalix
+#   配置文件路径         $SIGNALIX_WORK_DIR/config.toml
+#   SQLite 数据库路径    $SIGNALIX_WORK_DIR/data/signalix.db  （固定，不可在 TOML 中覆盖）
+#
+# 首次使用：
+#   mkdir -p ~/.signalix/data ~/.signalix/strategies
+#   cp config.example.toml ~/.signalix/config.toml
+#   # 编辑 api_key / api_secret / user_id 等
+#   # 将策略目录放到 ~/.signalix/strategies/<name>/{strategy.py,config.yaml}
+#
+# 策略级配置仍为各策略子目录下的 config.yaml（与全局 config.toml 分离）。
+
+
+# ------------------------------------------------------------------------------
+# 日志（对应 pkg/logger）
+# ------------------------------------------------------------------------------
+[log]
+# debug | info | warn | error
+log_level = "info"
+
+# 可选：文件轮转（留空则仅 stdout）
+# file = ""
+# max_size_mb = 100
+# max_backups = 5
+# max_age_days = 30
+# compress = true
+
+# ------------------------------------------------------------------------------
+# 策略根目录（扫描子目录，每策略需 strategy.py + config.yaml）
+# 相对路径基于 SIGNALIX_WORK_DIR；也可写绝对路径
+# ------------------------------------------------------------------------------
+[strategies]
+dir = "strategies"
+# 策略 config.yaml 未写 interval 时的兜底（留空则必须在各策略顶层配置 interval）
+# default_interval = "1m"
+
+# ------------------------------------------------------------------------------
+# 交易所（当前仅 gateio 适配器）
+# ------------------------------------------------------------------------------
+[exchange]
+name = "gateio"
+api_key = ""
+api_secret = ""
+# 是否使用 Gate 合约测试网（原 main 中 WithPaper(true)）
+paper = true
+# 私有 WS futures.orders 所需数字用户 ID（原 main 硬编码）
+user_id = ""
+# 结算币种，默认 usdt
+settle = "usdt"
+# 覆盖 REST 根路径（留空则 paper=true 时用官方测试网默认地址）
+# rest_base_path = "https://api-testnet.gateapi.io/api/v4"
+rate_limit = 10
+max_retries = 3
+# 公共 WS 事件通道容量
+public_ws_buffer = 512
+# 私有 WS 事件通道容量
+private_ws_buffer = 256
+
+
+[exchange.connect]
+rest = true
+public_ws = true
+private_ws = true
+
+# ------------------------------------------------------------------------------
+# 风控（对应 internal/domain/risk + engine StaticRiskEvaluator）
+# 注：带「预留」标记的字段写入配置，实现接入后可生效
+# ------------------------------------------------------------------------------
+[risk]
+enable_risk_control = true
+max_order_size = 100000.0
+max_open_orders = 50
+max_positions = 20
+
+# 预留（当前 Evaluate 未使用，与旧 config.example.yaml 对齐）
+max_position_size = 1000000.0
+max_daily_loss = 10000.0
+max_drawdown = 0.2
+max_leverage = 10
+enable_position_lock = false
+
+# ------------------------------------------------------------------------------
+# SQLite（路径固定为 $SIGNALIX_WORK_DIR/data/signalix.db）
+# 以下仅连接池/行为参数；path 不在此配置
+# ------------------------------------------------------------------------------
+[database]
+max_open_conns = 1
+# max_idle_conns = 5
+# conn_max_lifetime = "1h"
+
+# ------------------------------------------------------------------------------
+# 引擎内部通道缓冲（原代码硬编码，配置化后由 engine/market/oms 读取）
+# ------------------------------------------------------------------------------
+[channels]
+signal = 100
+order = 100
+main_order = 100
+market = 1000
+oms_order_update = 100
+oms_cmd = 100
+
+# ------------------------------------------------------------------------------
+# 账户投影
+# ------------------------------------------------------------------------------
+[projection]
+refresh_interval = "10s"
+
+# ------------------------------------------------------------------------------
+# 决策引擎
+# ------------------------------------------------------------------------------
+[decision]
+# 无显式 size 时：可用余额 / default_size_divisor
+default_size_divisor = 10
+
+# ------------------------------------------------------------------------------
+# gRPC 控制面（原 SIGNALIX_GRPC_* 环境变量）
+# ------------------------------------------------------------------------------
+[grpc]
+enabled = true
+addr = "127.0.0.1:50051"
+# 非空则要求 metadata: authorization: Bearer <token>
+token = ""
+# true 时允许绑定 0.0.0.0 或非 loopback（不安全）
+insecure_bind_all = false

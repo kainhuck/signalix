@@ -1,0 +1,12 @@
+name: example_trend
+enabled: true
+symbols:
+  - BTC/USDT
+  - ETH/USDT
+interval: "1m"
+history_bars: 100
+subscribe_ticker: false
+parameters:
+  ma_fast: 10
+  ma_slow: 30
+  position_pct: "0.1"   # 开仓使用 10% 可用余额（Percent 模式 value 为 0~1）

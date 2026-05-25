@@ -1,0 +1,119 @@
+syntax = "proto3";
+
+package signalix.engine.v1;
+
+option go_package = "github.com/kainhuck/signalix/api/gen/go/signalix/engine/v1;enginev1";
+
+// Engine 控制面与只读查询（单 service，注释分组）。
+
+// --- Control ---
+service Engine {
+  rpc Ping(PingRequest) returns (PingReply);
+
+  rpc GetEngineInfo(GetEngineInfoRequest) returns (GetEngineInfoReply);
+
+  // ListStrategies 返回 catalog（Discover 结果），含未运行条目。
+  rpc ListStrategies(ListStrategiesRequest) returns (ListStrategiesReply);
+
+  rpc StartStrategy(StartStrategyRequest) returns (StartStrategyReply);
+
+  rpc StopStrategy(StopStrategyRequest) returns (StopStrategyReply);
+
+  // ReloadStrategies 仅重新扫描目录并刷新内存 catalog，不自动启停已运行进程。
+  rpc ReloadStrategies(ReloadStrategiesRequest) returns (ReloadStrategiesReply);
+
+  // --- Query ---
+  rpc GetOrder(GetOrderRequest) returns (GetOrderReply);
+
+  rpc ListOpenOrders(ListOpenOrdersRequest) returns (ListOpenOrdersReply);
+
+  rpc CancelOrder(CancelOrderRequest) returns (CancelOrderReply);
+
+  // --- Stream ---
+  rpc SubscribeOrderEvents(SubscribeOrderEventsRequest) returns (stream Order);
+}
+
+message PingRequest {}
+
+message PingReply {
+  string pong = 1;
+  int64 server_time_unix_ms = 2;
+}
+
+message GetEngineInfoRequest {}
+
+message GetEngineInfoReply {
+  string version = 1;
+  string strategies_dir = 2;
+  string go_version = 3;
+}
+
+message ListStrategiesRequest {}
+
+message StrategySummary {
+  string name = 1;
+  bool enabled = 2;
+  repeated string symbols = 3;
+}
+
+message ListStrategiesReply {
+  repeated StrategySummary strategies = 1;
+}
+
+message StartStrategyRequest {
+  string name = 1;
+}
+
+message StartStrategyReply {}
+
+message StopStrategyRequest {
+  string name = 1;
+}
+
+message StopStrategyReply {}
+
+message ReloadStrategiesRequest {}
+
+message ReloadStrategiesReply {
+  int32 catalog_count = 1;
+}
+
+message GetOrderRequest {
+  string order_id = 1;
+}
+
+message GetOrderReply {
+  Order order = 1;
+}
+
+message ListOpenOrdersRequest {
+  int32 limit = 1; // <=0 时使用默认 500
+}
+
+message ListOpenOrdersReply {
+  repeated Order orders = 1;
+}
+
+message CancelOrderRequest {
+  string order_id = 1;
+}
+
+message CancelOrderReply {}
+
+message SubscribeOrderEventsRequest {}
+
+message Order {
+  string id = 1;
+  string exchange_id = 2;
+  string symbol = 3;
+  string side = 4;
+  string order_type = 5;
+  string size = 6;
+  string filled_size = 7;
+  string status = 8;
+  string price = 9;
+  string stop_price = 10;
+  string strategy_name = 11;
+  int64 created_at_unix_ms = 12;
+  int64 updated_at_unix_ms = 13;
+}
