@@ -88,8 +88,36 @@ ln -s "$(pwd)/sdk/python/example" ~/.signalix/strategies/example
 ```bash
 go run ./cmd/signalixd
 # 或
-make build && ./bin/signalix
+make build && ./bin/signalixd
 ```
+
+### Signalix CLI
+
+本地运维 CLI（`cmd/signalix/`）经 gRPC 连接 `signalixd`：
+
+```bash
+make build-cli
+# 或
+go install ./cmd/signalix
+
+mkdir -p ~/.signalix
+cp config.example.cli.toml ~/.signalix/cli.toml
+export SIGNALIX_GRPC_ADDR=127.0.0.1:50051   # 或使用 --addr
+
+signalix ping
+signalix strategy list
+signalix balance
+signalix order watch
+signalix market ticker BTC/USDT
+signalix kill-switch status
+signalix strategy template list
+signalix strategy create my_strategy
+
+# Shell 补全（bash）
+source <(signalix completion bash)
+```
+
+完整命令树见 `signalix --help`。默认输出为 **table**；可用 `--output json|yaml` 获取机器可读格式。
 
 启用 gRPC（在 `config.toml` 中 `[grpc] enabled = true`）：
 

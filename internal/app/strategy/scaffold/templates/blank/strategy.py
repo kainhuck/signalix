@@ -10,8 +10,14 @@ class BlankStrategy(Strategy):
     def on_init(self, ctx: Context) -> None:
         ctx.info("BlankStrategy init")
 
+    def on_tick(self, ctx: Context, tick) -> Optional[None]:
+        return None
+
     def on_kline(self, ctx: Context, kline: KlineData) -> Optional[None]:
         return None
+
+    def on_stop(self, ctx: Context) -> None:
+        ctx.info("BlankStrategy stopped")
 
 
 if __name__ == "__main__":

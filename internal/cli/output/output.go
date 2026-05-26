@@ -218,6 +218,48 @@ func (p *Printer) PrintReloadResult(count int32) error {
 	}
 }
 
+func (p *Printer) PrintTemplateList(reply *enginev1.ListTemplatesReply) error {
+	switch p.format {
+	case JSON, YAML:
+		return p.printStructured(reply)
+	case Table:
+		templates := append([]*enginev1.StrategyTemplate(nil), reply.GetTemplates()...)
+		sort.Slice(templates, func(i, j int) bool {
+			return templates[i].GetId() < templates[j].GetId()
+		})
+		tbl := tablewriter.NewWriter(p.w)
+		tbl.SetHeader([]string{"id", "description", "default_symbols", "default_interval"})
+		tbl.SetBorder(true)
+		for _, t := range templates {
+			tbl.Append([]string{
+				t.GetId(),
+				t.GetDescription(),
+				strings.Join(t.GetDefaultSymbols(), ","),
+				t.GetDefaultInterval(),
+			})
+		}
+		tbl.Render()
+		return nil
+	default:
+		return fmt.Errorf("unknown format")
+	}
+}
+
+func (p *Printer) PrintCreateStrategy(reply *enginev1.CreateStrategyReply) error {
+	switch p.format {
+	case JSON, YAML:
+		return p.printStructured(reply)
+	case Table:
+		return p.printKeyValue([][2]string{
+			{"name", reply.GetName()},
+			{"path", reply.GetPath()},
+			{"catalog_count", fmt.Sprintf("%d", reply.GetCatalogCount())},
+		})
+	default:
+		return fmt.Errorf("unknown format")
+	}
+}
+
 func (p *Printer) PrintBalance(reply *enginev1.GetBalanceReply) error {
 	switch p.format {
 	case JSON, YAML:

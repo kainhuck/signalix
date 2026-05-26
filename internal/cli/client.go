@@ -77,6 +77,8 @@ func FormatGRPCError(addr string, timeout time.Duration, err error) error {
 		return fmt.Errorf("%s", msg)
 	case codes.InvalidArgument:
 		return fmt.Errorf("%s", msg)
+	case codes.AlreadyExists:
+		return fmt.Errorf("%s", msg)
 	case codes.Internal:
 		lower := strings.ToLower(msg)
 		if strings.Contains(lower, "start strategy") {
