@@ -165,3 +165,8 @@ func (sl *StrategyLoader) validateConfig(config StrategyConfig) error {
 
 	return nil
 }
+
+// ValidateConfig 校验策略配置（与 Discover 相同规则）。
+func ValidateConfig(config StrategyConfig) error {
+	return (&StrategyLoader{}).validateConfig(config)
+}

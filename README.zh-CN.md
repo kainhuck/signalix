@@ -120,6 +120,11 @@ grpcurl -plaintext -d '{"symbol":"BTC/USDT","interval":"5m","limit":50}' \
 grpcurl -plaintext -d '{}' \
   localhost:50051 signalix.engine.v1.Engine/ListTickers
 
+# 策略脚手架（GR-5）
+grpcurl -plaintext -d '{}' localhost:50051 signalix.engine.v1.Engine/ListTemplates
+grpcurl -plaintext -d '{"name":"my_trend","template_id":"trend","symbols":["ETH/USDT"]}' \
+  localhost:50051 signalix.engine.v1.Engine/CreateStrategy
+
 # Kill Switch（EH-3）
 grpcurl -plaintext -d '{"reason":"manual drill"}' \
   localhost:50051 signalix.engine.v1.Engine/ActivateKillSwitch

@@ -1,0 +1,8 @@
+name: blank_placeholder
+enabled: false
+symbols:
+  - BTC/USDT
+interval: "5m"
+history_bars: 0
+subscribe_ticker: false
+parameters: {}

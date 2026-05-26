@@ -132,6 +132,49 @@ func (s *EngineService) ReloadStrategies(ctx context.Context, _ *enginev1.Reload
 	return &enginev1.ReloadStrategiesReply{CatalogCount: int32(n)}, nil
 }
 
+func (s *EngineService) ListTemplates(ctx context.Context, _ *enginev1.ListTemplatesRequest) (*enginev1.ListTemplatesReply, error) {
+	_ = ctx
+	list, err := s.eng.ListStrategyTemplates()
+	if err != nil {
+		return nil, status.Errorf(codes.Internal, "list templates: %v", err)
+	}
+	out := make([]*enginev1.StrategyTemplate, 0, len(list))
+	for _, m := range list {
+		out = append(out, templateMetaToProto(m))
+	}
+	return &enginev1.ListTemplatesReply{Templates: out}, nil
+}
+
+func (s *EngineService) CreateStrategy(ctx context.Context, req *enginev1.CreateStrategyRequest) (*enginev1.CreateStrategyReply, error) {
+	if err := requireRunning(s.eng); err != nil {
+		return nil, err
+	}
+	name := strings.TrimSpace(req.GetName())
+	if name == "" {
+		return nil, status.Error(codes.InvalidArgument, "empty name")
+	}
+	templateID := strings.TrimSpace(req.GetTemplateId())
+	if templateID == "" {
+		return nil, status.Error(codes.InvalidArgument, "empty template_id")
+	}
+	opts := createStrategyOptionsFromProto(req)
+	opts.Name = name
+	opts.TemplateID = templateID
+	path, n, err := s.eng.CreateStrategyScaffold(opts)
+	if err != nil {
+		return nil, mapScaffoldErr(err)
+	}
+	logger.InfoContext(ctx, "grpc CreateStrategy",
+		logger.String("name", name),
+		logger.String("template", templateID),
+		logger.String("path", path))
+	return &enginev1.CreateStrategyReply{
+		Name:         name,
+		Path:         path,
+		CatalogCount: int32(n),
+	}, nil
+}
+
 func (s *EngineService) GetBalance(ctx context.Context, _ *enginev1.GetBalanceRequest) (*enginev1.GetBalanceReply, error) {
 	if err := requireRunning(s.eng); err != nil {
 		return nil, err

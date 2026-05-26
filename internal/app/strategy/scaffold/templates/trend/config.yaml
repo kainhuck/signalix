@@ -1,0 +1,11 @@
+name: trend_placeholder
+enabled: false
+symbols:
+  - BTC/USDT
+interval: "5m"
+history_bars: 100
+subscribe_ticker: false
+parameters:
+  ma_fast: 10
+  ma_slow: 30
+  position_pct: "0.1"

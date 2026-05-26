@@ -192,6 +192,7 @@ flowchart LR
 - **Account**：`GetBalance` / `GetPosition` / `ListPositions`（`AccountProjection` 只读快照）
 - **Strategy**：`ListStrategies`（catalog + 运行时字段，不要求 engine running）、`GetStrategyStatus`（单策略快照，要求 running）
 - **Market**：`GetTicker` / `GetKlines` / `ListTickers`（`MarketRouter` 缓存/缓冲只读；v1 无 REST 回源）
+- **Scaffold**：`ListTemplates` / `CreateStrategy`（内置模版写 `{strategies_dir}` + 自动 reload catalog）
 - **Emergency**：`ActivateKillSwitch` / `DeactivateKillSwitch` / `GetKillSwitchStatus`（EH-3；内存态，重启后默认 OFF）
 - **未实现 / 推迟**：行情 REST 回源、Unix socket
 

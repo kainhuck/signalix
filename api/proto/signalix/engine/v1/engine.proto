@@ -2,6 +2,8 @@ syntax = "proto3";
 
 package signalix.engine.v1;
 
+import "google/protobuf/struct.proto";
+
 option go_package = "github.com/kainhuck/signalix/api/gen/go/signalix/engine/v1;enginev1";
 
 // Engine 控制面与只读查询（单 service，注释分组）。
@@ -26,6 +28,9 @@ service Engine {
 
   // ReloadStrategies 仅重新扫描目录并刷新内存 catalog，不自动启停已运行进程。
   rpc ReloadStrategies(ReloadStrategiesRequest) returns (ReloadStrategiesReply);
+
+  rpc ListTemplates(ListTemplatesRequest) returns (ListTemplatesReply);
+  rpc CreateStrategy(CreateStrategyRequest) returns (CreateStrategyReply);
 
   // --- Query ---
   rpc GetBalance(GetBalanceRequest) returns (GetBalanceReply);
@@ -140,6 +145,36 @@ message ReloadStrategiesRequest {}
 
 message ReloadStrategiesReply {
   int32 catalog_count = 1;
+}
+
+message StrategyTemplate {
+  string id = 1;
+  string description = 2;
+  repeated string default_symbols = 3;
+  string default_interval = 4;
+}
+
+message ListTemplatesRequest {}
+
+message ListTemplatesReply {
+  repeated StrategyTemplate templates = 1;
+}
+
+message CreateStrategyRequest {
+  string name = 1;
+  string template_id = 2;
+  repeated string symbols = 3;
+  optional string interval = 4;
+  optional int32 history_bars = 5;
+  optional bool subscribe_ticker = 6;
+  optional bool enabled = 7;
+  google.protobuf.Struct parameters = 8;
+}
+
+message CreateStrategyReply {
+  string name = 1;
+  string path = 2;
+  int32 catalog_count = 3;
 }
 
 message Balance {

@@ -27,6 +27,8 @@ const (
 	Engine_StartStrategy_FullMethodName        = "/signalix.engine.v1.Engine/StartStrategy"
 	Engine_StopStrategy_FullMethodName         = "/signalix.engine.v1.Engine/StopStrategy"
 	Engine_ReloadStrategies_FullMethodName     = "/signalix.engine.v1.Engine/ReloadStrategies"
+	Engine_ListTemplates_FullMethodName        = "/signalix.engine.v1.Engine/ListTemplates"
+	Engine_CreateStrategy_FullMethodName       = "/signalix.engine.v1.Engine/CreateStrategy"
 	Engine_GetBalance_FullMethodName           = "/signalix.engine.v1.Engine/GetBalance"
 	Engine_GetPosition_FullMethodName          = "/signalix.engine.v1.Engine/GetPosition"
 	Engine_ListPositions_FullMethodName        = "/signalix.engine.v1.Engine/ListPositions"
@@ -59,6 +61,8 @@ type EngineClient interface {
 	StopStrategy(ctx context.Context, in *StopStrategyRequest, opts ...grpc.CallOption) (*StopStrategyReply, error)
 	// ReloadStrategies 仅重新扫描目录并刷新内存 catalog，不自动启停已运行进程。
 	ReloadStrategies(ctx context.Context, in *ReloadStrategiesRequest, opts ...grpc.CallOption) (*ReloadStrategiesReply, error)
+	ListTemplates(ctx context.Context, in *ListTemplatesRequest, opts ...grpc.CallOption) (*ListTemplatesReply, error)
+	CreateStrategy(ctx context.Context, in *CreateStrategyRequest, opts ...grpc.CallOption) (*CreateStrategyReply, error)
 	// --- Query ---
 	GetBalance(ctx context.Context, in *GetBalanceRequest, opts ...grpc.CallOption) (*GetBalanceReply, error)
 	GetPosition(ctx context.Context, in *GetPositionRequest, opts ...grpc.CallOption) (*GetPositionReply, error)
@@ -159,6 +163,26 @@ func (c *engineClient) ReloadStrategies(ctx context.Context, in *ReloadStrategie
 	cOpts := append([]grpc.CallOption{grpc.StaticMethod()}, opts...)
 	out := new(ReloadStrategiesReply)
 	err := c.cc.Invoke(ctx, Engine_ReloadStrategies_FullMethodName, in, out, cOpts...)
+	if err != nil {
+		return nil, err
+	}
+	return out, nil
+}
+
+func (c *engineClient) ListTemplates(ctx context.Context, in *ListTemplatesRequest, opts ...grpc.CallOption) (*ListTemplatesReply, error) {
+	cOpts := append([]grpc.CallOption{grpc.StaticMethod()}, opts...)
+	out := new(ListTemplatesReply)
+	err := c.cc.Invoke(ctx, Engine_ListTemplates_FullMethodName, in, out, cOpts...)
+	if err != nil {
+		return nil, err
+	}
+	return out, nil
+}
+
+func (c *engineClient) CreateStrategy(ctx context.Context, in *CreateStrategyRequest, opts ...grpc.CallOption) (*CreateStrategyReply, error) {
+	cOpts := append([]grpc.CallOption{grpc.StaticMethod()}, opts...)
+	out := new(CreateStrategyReply)
+	err := c.cc.Invoke(ctx, Engine_CreateStrategy_FullMethodName, in, out, cOpts...)
 	if err != nil {
 		return nil, err
 	}
@@ -321,6 +345,8 @@ type EngineServer interface {
 	StopStrategy(context.Context, *StopStrategyRequest) (*StopStrategyReply, error)
 	// ReloadStrategies 仅重新扫描目录并刷新内存 catalog，不自动启停已运行进程。
 	ReloadStrategies(context.Context, *ReloadStrategiesRequest) (*ReloadStrategiesReply, error)
+	ListTemplates(context.Context, *ListTemplatesRequest) (*ListTemplatesReply, error)
+	CreateStrategy(context.Context, *CreateStrategyRequest) (*CreateStrategyReply, error)
 	// --- Query ---
 	GetBalance(context.Context, *GetBalanceRequest) (*GetBalanceReply, error)
 	GetPosition(context.Context, *GetPositionRequest) (*GetPositionReply, error)
@@ -370,6 +396,12 @@ func (UnimplementedEngineServer) StopStrategy(context.Context, *StopStrategyRequ
 }
 func (UnimplementedEngineServer) ReloadStrategies(context.Context, *ReloadStrategiesRequest) (*ReloadStrategiesReply, error) {
 	return nil, status.Errorf(codes.Unimplemented, "method ReloadStrategies not implemented")
+}
+func (UnimplementedEngineServer) ListTemplates(context.Context, *ListTemplatesRequest) (*ListTemplatesReply, error) {
+	return nil, status.Errorf(codes.Unimplemented, "method ListTemplates not implemented")
+}
+func (UnimplementedEngineServer) CreateStrategy(context.Context, *CreateStrategyRequest) (*CreateStrategyReply, error) {
+	return nil, status.Errorf(codes.Unimplemented, "method CreateStrategy not implemented")
 }
 func (UnimplementedEngineServer) GetBalance(context.Context, *GetBalanceRequest) (*GetBalanceReply, error) {
 	return nil, status.Errorf(codes.Unimplemented, "method GetBalance not implemented")
@@ -571,6 +603,42 @@ func _Engine_ReloadStrategies_Handler(srv interface{}, ctx context.Context, dec 
 	}
 	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
 		return srv.(EngineServer).ReloadStrategies(ctx, req.(*ReloadStrategiesRequest))
+	}
+	return interceptor(ctx, in, info, handler)
+}
+
+func _Engine_ListTemplates_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+	in := new(ListTemplatesRequest)
+	if err := dec(in); err != nil {
+		return nil, err
+	}
+	if interceptor == nil {
+		return srv.(EngineServer).ListTemplates(ctx, in)
+	}
+	info := &grpc.UnaryServerInfo{
+		Server:     srv,
+		FullMethod: Engine_ListTemplates_FullMethodName,
+	}
+	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
+		return srv.(EngineServer).ListTemplates(ctx, req.(*ListTemplatesRequest))
+	}
+	return interceptor(ctx, in, info, handler)
+}
+
+func _Engine_CreateStrategy_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+	in := new(CreateStrategyRequest)
+	if err := dec(in); err != nil {
+		return nil, err
+	}
+	if interceptor == nil {
+		return srv.(EngineServer).CreateStrategy(ctx, in)
+	}
+	info := &grpc.UnaryServerInfo{
+		Server:     srv,
+		FullMethod: Engine_CreateStrategy_FullMethodName,
+	}
+	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
+		return srv.(EngineServer).CreateStrategy(ctx, req.(*CreateStrategyRequest))
 	}
 	return interceptor(ctx, in, info, handler)
 }
@@ -840,6 +908,14 @@ var Engine_ServiceDesc = grpc.ServiceDesc{
 		{
 			MethodName: "ReloadStrategies",
 			Handler:    _Engine_ReloadStrategies_Handler,
+		},
+		{
+			MethodName: "ListTemplates",
+			Handler:    _Engine_ListTemplates_Handler,
+		},
+		{
+			MethodName: "CreateStrategy",
+			Handler:    _Engine_CreateStrategy_Handler,
 		},
 		{
 			MethodName: "GetBalance",
