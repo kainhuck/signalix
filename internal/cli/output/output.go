@@ -218,6 +218,216 @@ func (p *Printer) PrintReloadResult(count int32) error {
 	}
 }
 
+func (p *Printer) PrintBalance(reply *enginev1.GetBalanceReply) error {
+	switch p.format {
+	case JSON, YAML:
+		return p.printStructured(reply)
+	case Table:
+		b := reply.GetBalance()
+		if b == nil {
+			return p.printKeyValue([][2]string{{"balance", "(none)"}})
+		}
+		return p.printKeyValue([][2]string{
+			{"currency", b.GetCurrency()},
+			{"total", b.GetTotal()},
+			{"available", b.GetAvailable()},
+			{"frozen", b.GetFrozen()},
+			{"updated_at", formatUnixMs(b.GetUpdatedAtUnixMs())},
+		})
+	default:
+		return fmt.Errorf("unknown format")
+	}
+}
+
+func (p *Printer) PrintPosition(reply *enginev1.GetPositionReply) error {
+	switch p.format {
+	case JSON, YAML:
+		return p.printStructured(reply)
+	case Table:
+		pos := reply.GetPosition()
+		if pos == nil {
+			return p.printKeyValue([][2]string{{"position", "(none)"}})
+		}
+		return p.printKeyValue([][2]string{
+			{"symbol", pos.GetSymbol()},
+			{"side", pos.GetSide()},
+			{"size", pos.GetSize()},
+			{"entry_price", pos.GetEntryPrice()},
+			{"mark_price", pos.GetMarkPrice()},
+			{"unrealized_pnl", pos.GetUnrealizedPnl()},
+			{"leverage", fmt.Sprintf("%d", pos.GetLeverage())},
+			{"updated_at", formatUnixMs(pos.GetUpdatedAtUnixMs())},
+		})
+	default:
+		return fmt.Errorf("unknown format")
+	}
+}
+
+func (p *Printer) PrintPositionList(reply *enginev1.ListPositionsReply) error {
+	switch p.format {
+	case JSON, YAML:
+		return p.printStructured(reply)
+	case Table:
+		positions := append([]*enginev1.Position(nil), reply.GetPositions()...)
+		sort.Slice(positions, func(i, j int) bool {
+			return positions[i].GetSymbol() < positions[j].GetSymbol()
+		})
+		tbl := tablewriter.NewWriter(p.w)
+		tbl.SetHeader([]string{"symbol", "side", "size", "entry_price", "mark_price", "unrealized_pnl", "leverage"})
+		tbl.SetBorder(true)
+		for _, pos := range positions {
+			tbl.Append([]string{
+				pos.GetSymbol(),
+				pos.GetSide(),
+				pos.GetSize(),
+				pos.GetEntryPrice(),
+				pos.GetMarkPrice(),
+				pos.GetUnrealizedPnl(),
+				fmt.Sprintf("%d", pos.GetLeverage()),
+			})
+		}
+		tbl.Render()
+		return nil
+	default:
+		return fmt.Errorf("unknown format")
+	}
+}
+
+func (p *Printer) PrintOrder(reply *enginev1.GetOrderReply) error {
+	switch p.format {
+	case JSON, YAML:
+		return p.printStructured(reply)
+	case Table:
+		o := reply.GetOrder()
+		if o == nil {
+			return fmt.Errorf("empty order")
+		}
+		return p.printKeyValue(orderKeyValues(o))
+	default:
+		return fmt.Errorf("unknown format")
+	}
+}
+
+func (p *Printer) PrintOrderList(reply *enginev1.ListOpenOrdersReply) error {
+	switch p.format {
+	case JSON, YAML:
+		return p.printStructured(reply)
+	case Table:
+		orders := append([]*enginev1.Order(nil), reply.GetOrders()...)
+		sort.Slice(orders, func(i, j int) bool {
+			return orders[i].GetUpdatedAtUnixMs() > orders[j].GetUpdatedAtUnixMs()
+		})
+		tbl := tablewriter.NewWriter(p.w)
+		tbl.SetHeader([]string{"id", "symbol", "side", "status", "size", "filled_size", "strategy_name", "updated_at"})
+		tbl.SetBorder(true)
+		for _, o := range orders {
+			tbl.Append([]string{
+				o.GetId(),
+				o.GetSymbol(),
+				o.GetSide(),
+				o.GetStatus(),
+				o.GetSize(),
+				o.GetFilledSize(),
+				o.GetStrategyName(),
+				formatUnixMs(o.GetUpdatedAtUnixMs()),
+			})
+		}
+		tbl.Render()
+		return nil
+	default:
+		return fmt.Errorf("unknown format")
+	}
+}
+
+func (p *Printer) PrintOrderCancel(orderID string) error {
+	switch p.format {
+	case JSON, YAML:
+		doc := map[string]string{"order_id": orderID, "action": "cancelled"}
+		if p.format == JSON {
+			b, err := json.MarshalIndent(doc, "", "  ")
+			if err != nil {
+				return err
+			}
+			b = append(b, '\n')
+			_, err = p.w.Write(b)
+			return err
+		}
+		enc := yaml.NewEncoder(p.w)
+		enc.SetIndent(2)
+		defer enc.Close()
+		return enc.Encode(doc)
+	case Table:
+		return p.printKeyValue([][2]string{
+			{"action", "cancelled"},
+			{"order_id", orderID},
+		})
+	default:
+		return fmt.Errorf("unknown format")
+	}
+}
+
+// UsesOrderWatchNDJSON reports whether order watch emits NDJSON lines.
+func (p *Printer) UsesOrderWatchNDJSON() bool {
+	return p.format == JSON || p.format == YAML
+}
+
+func (p *Printer) PrintOrderEventHeader() error {
+	if p.format != Table {
+		return nil
+	}
+	_, err := fmt.Fprintln(p.w, strings.Join([]string{
+		"id", "symbol", "side", "status", "size", "filled_size", "updated_at",
+	}, "\t"))
+	return err
+}
+
+func (p *Printer) PrintOrderEvent(order *enginev1.Order) error {
+	if order == nil {
+		return nil
+	}
+	if p.UsesOrderWatchNDJSON() {
+		return p.printOrderNDJSON(order)
+	}
+	_, err := fmt.Fprintln(p.w, strings.Join([]string{
+		order.GetId(),
+		order.GetSymbol(),
+		order.GetSide(),
+		order.GetStatus(),
+		order.GetSize(),
+		order.GetFilledSize(),
+		formatUnixMs(order.GetUpdatedAtUnixMs()),
+	}, "\t"))
+	return err
+}
+
+func (p *Printer) printOrderNDJSON(order *enginev1.Order) error {
+	b, err := protoMarshal.Marshal(order)
+	if err != nil {
+		return err
+	}
+	b = append(b, '\n')
+	_, err = p.w.Write(b)
+	return err
+}
+
+func orderKeyValues(o *enginev1.Order) [][2]string {
+	return [][2]string{
+		{"id", o.GetId()},
+		{"exchange_id", o.GetExchangeId()},
+		{"symbol", o.GetSymbol()},
+		{"side", o.GetSide()},
+		{"order_type", o.GetOrderType()},
+		{"size", o.GetSize()},
+		{"filled_size", o.GetFilledSize()},
+		{"status", o.GetStatus()},
+		{"price", o.GetPrice()},
+		{"stop_price", o.GetStopPrice()},
+		{"strategy_name", o.GetStrategyName()},
+		{"created_at", formatUnixMs(o.GetCreatedAtUnixMs())},
+		{"updated_at", formatUnixMs(o.GetUpdatedAtUnixMs())},
+	}
+}
+
 func (p *Printer) printStructured(msg proto.Message) error {
 	switch p.format {
 	case JSON:

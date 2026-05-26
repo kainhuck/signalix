@@ -2,7 +2,9 @@ package cli
 
 import (
 	"context"
+	"errors"
 	"fmt"
+	"io"
 	"strings"
 	"time"
 
@@ -60,6 +62,9 @@ func FormatGRPCError(addr string, timeout time.Duration, err error) error {
 		if strings.Contains(strings.ToLower(msg), "engine not running") {
 			return fmt.Errorf("引擎未运行，请先启动 signalixd: %s", msg)
 		}
+		if strings.Contains(strings.ToLower(msg), "projection not ready") {
+			return fmt.Errorf("account projection not ready: wait for `signalix health` account_projection=PASS (%s)", msg)
+		}
 		return fmt.Errorf("%s", msg)
 	case codes.NotFound:
 		lower := strings.ToLower(msg)
@@ -79,6 +84,20 @@ func FormatGRPCError(addr string, timeout time.Duration, err error) error {
 	default:
 		return fmt.Errorf("rpc error: %s %s", st.Code(), msg)
 	}
+}
+
+// FormatStreamError maps streaming errors; context cancellation returns nil.
+func FormatStreamError(addr string, ctx context.Context, err error) error {
+	if err == nil {
+		return nil
+	}
+	if errors.Is(err, context.Canceled) || ctx.Err() != nil {
+		return nil
+	}
+	if errors.Is(err, io.EOF) {
+		return nil
+	}
+	return FormatGRPCError(addr, 0, err)
 }
 
 func authUnaryInterceptor(token string) grpc.UnaryClientInterceptor {

@@ -1,7 +1,9 @@
 package cli_test
 
 import (
+	"context"
 	"errors"
+	"strings"
 	"testing"
 	"time"
 
@@ -57,6 +59,22 @@ func TestFormatGRPCError_startInternal(t *testing.T) {
 	err := cli.FormatGRPCError("127.0.0.1:50051", time.Second, status.Error(codes.Internal, "start strategy: boom"))
 	if err == nil || err.Error() != "failed to start strategy: boom" {
 		t.Fatalf("got %v", err)
+	}
+}
+
+func TestFormatGRPCError_projectionNotReady(t *testing.T) {
+	err := cli.FormatGRPCError("127.0.0.1:50051", time.Second, status.Error(codes.FailedPrecondition, "account projection not ready"))
+	if err == nil || !strings.Contains(err.Error(), "account projection not ready") {
+		t.Fatalf("got %v", err)
+	}
+}
+
+func TestFormatStreamError_canceled(t *testing.T) {
+	ctx, cancel := context.WithCancel(context.Background())
+	cancel()
+	err := cli.FormatStreamError("127.0.0.1:50051", ctx, context.Canceled)
+	if err != nil {
+		t.Fatalf("expected nil, got %v", err)
 	}
 }
 
