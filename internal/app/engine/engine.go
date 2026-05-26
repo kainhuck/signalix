@@ -249,6 +249,10 @@ func (e *Engine) Start() error {
 		return err
 	}
 
+	if e.store != nil {
+		e.accountProjection.SetRefreshHook(e.persistAccountSnapshot)
+	}
+
 	if err := e.accountProjection.Start(e.ctx); err != nil {
 		logger.ErrorContext(e.ctx, "account projection start failed", logger.Any("error", err))
 	} else if e.equityTracker != nil {

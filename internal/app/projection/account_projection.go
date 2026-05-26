@@ -3,6 +3,7 @@ package projection
 import (
 	"context"
 	"errors"
+	"sort"
 	"strconv"
 	"strings"
 	"sync"
@@ -29,6 +30,7 @@ type AccountProjection struct {
 	ready           bool
 	refreshInterval time.Duration
 	equityHook      EquityHook
+	refreshHook     RefreshHook
 
 	runWg    sync.WaitGroup
 	stopOnce sync.Once
@@ -122,6 +124,16 @@ func (p *AccountProjection) AllPositions() ([]*perp.PositionSnapshot, error) {
 		out = append(out, &cp)
 	}
 	return out, nil
+}
+
+// SetRefreshHook 运行时设置 REST refresh 成功钩子。
+func (p *AccountProjection) SetRefreshHook(h RefreshHook) {
+	if p == nil {
+		return
+	}
+	p.mu.Lock()
+	p.refreshHook = h
+	p.mu.Unlock()
 }
 
 // IsReady 投影是否已完成至少一次成功 refresh。
@@ -250,6 +262,12 @@ func (p *AccountProjection) refresh(ctx context.Context) error {
 	}
 	bc := *bal
 
+	var hook RefreshHook
+	var hookBalance perp.BalanceView
+	var hookPositions []*perp.PositionSnapshot
+	var hookRevision uint64
+	var hookAt time.Time
+
 	p.mu.Lock()
 	p.balance = &bc
 	p.positions = m
@@ -257,6 +275,38 @@ func (p *AccountProjection) refresh(ctx context.Context) error {
 	p.ready = true
 	now := time.Now()
 	p.notifyEquityLocked(now)
+	if p.refreshHook != nil {
+		hookBalance = bc
+		hookPositions = snapshotPositionsCopy(m)
+		hookRevision = p.revision
+		hookAt = now.UTC()
+		hook = p.refreshHook
+	}
 	p.mu.Unlock()
+
+	if hook != nil {
+		hook(&hookBalance, hookPositions, hookRevision, hookAt)
+	}
 	return nil
+}
+
+func snapshotPositionsCopy(m map[perp.Contract]*perp.PositionSnapshot) []*perp.PositionSnapshot {
+	if len(m) == 0 {
+		return []*perp.PositionSnapshot{}
+	}
+	keys := make([]string, 0, len(m))
+	for c := range m {
+		keys = append(keys, string(c))
+	}
+	sort.Strings(keys)
+	out := make([]*perp.PositionSnapshot, 0, len(keys))
+	for _, k := range keys {
+		pv := m[perp.Contract(k)]
+		if pv == nil {
+			continue
+		}
+		c := *pv
+		out = append(out, &c)
+	}
+	return out
 }

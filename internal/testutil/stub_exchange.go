@@ -14,6 +14,8 @@ type StubExchange struct {
 	Mu sync.Mutex
 
 	BalanceAvailable string
+	BalanceErr       error
+	PositionsErr     error
 	PositionSnapshot *perp.PositionSnapshot
 	PositionErr      error
 	PositionsList    []*perp.PositionSnapshot
@@ -89,6 +91,9 @@ func (s *StubExchange) GetOrder(ctx context.Context, contract perp.Contract, ord
 func (s *StubExchange) Positions(ctx context.Context) ([]*perp.PositionSnapshot, error) {
 	s.Mu.Lock()
 	defer s.Mu.Unlock()
+	if s.PositionsErr != nil {
+		return nil, s.PositionsErr
+	}
 	if len(s.PositionsList) > 0 {
 		out := make([]*perp.PositionSnapshot, 0, len(s.PositionsList))
 		for _, pv := range s.PositionsList {
@@ -115,7 +120,11 @@ func (s *StubExchange) Position(ctx context.Context, contract perp.Contract) (*p
 func (s *StubExchange) Balance(ctx context.Context) (*perp.BalanceView, error) {
 	s.Mu.Lock()
 	avail := s.BalanceAvailable
+	err := s.BalanceErr
 	s.Mu.Unlock()
+	if err != nil {
+		return nil, err
+	}
 	if avail == "" {
 		avail = "0"
 	}
