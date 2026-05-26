@@ -67,6 +67,7 @@ func NewRoot() *cobra.Command {
 	root.AddCommand(newStrategyCmd())
 	root.AddCommand(newBalanceCmd())
 	root.AddCommand(newPositionCmd())
+	root.AddCommand(newAccountCmd())
 	root.AddCommand(newOrderCmd())
 	root.AddCommand(newMarketCmd())
 	root.AddCommand(newKillSwitchCmd())

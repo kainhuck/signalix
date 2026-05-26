@@ -37,3 +37,33 @@ func watchOrderEvents(ctx context.Context, client enginev1.EngineClient, pr *out
 		}
 	}
 }
+
+func watchStrategyLogs(ctx context.Context, client enginev1.EngineClient, req *enginev1.SubscribeStrategyLogsRequest, pr *output.Printer, header bool) error {
+	stream, err := client.SubscribeStrategyLogs(ctx, req)
+	if err != nil {
+		return formatRPCError(err)
+	}
+
+	if header && !pr.UsesStrategyLogWatchNDJSON() {
+		if err := pr.PrintStrategyLogEventHeader(); err != nil {
+			return err
+		}
+	}
+
+	for {
+		if ctx.Err() != nil {
+			return nil
+		}
+
+		log, err := stream.Recv()
+		if err != nil {
+			if mapped := cli.FormatStreamError(runtime.settings.Addr, ctx, err); mapped != nil {
+				return mapped
+			}
+			return nil
+		}
+		if err := pr.PrintStrategyLogEvent(log); err != nil {
+			return err
+		}
+	}
+}

@@ -69,6 +69,16 @@ func TestFormatGRPCError_projectionNotReady(t *testing.T) {
 	}
 }
 
+func TestFormatGRPCError_persistenceNotConfigured(t *testing.T) {
+	err := cli.FormatGRPCError("127.0.0.1:50051", time.Second, status.Error(codes.FailedPrecondition, "persistence store not configured"))
+	if err == nil {
+		t.Fatal("expected error")
+	}
+	if !strings.Contains(err.Error(), "persistence not configured") {
+		t.Fatalf("got %q", err.Error())
+	}
+}
+
 func TestFormatStreamError_canceled(t *testing.T) {
 	ctx, cancel := context.WithCancel(context.Background())
 	cancel()

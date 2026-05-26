@@ -65,6 +65,9 @@ func FormatGRPCError(addr string, timeout time.Duration, err error) error {
 		if strings.Contains(strings.ToLower(msg), "projection not ready") {
 			return fmt.Errorf("account projection not ready: wait for `signalix health` account_projection=PASS (%s)", msg)
 		}
+		if strings.Contains(strings.ToLower(msg), "persistence store not configured") {
+			return fmt.Errorf("persistence not configured: signalixd 未启用 database / PersistenceStore (%s)", msg)
+		}
 		return fmt.Errorf("%s", msg)
 	case codes.NotFound:
 		lower := strings.ToLower(msg)

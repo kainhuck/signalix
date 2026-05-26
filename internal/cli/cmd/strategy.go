@@ -20,6 +20,7 @@ func newStrategyCmd() *cobra.Command {
 	cmd.AddCommand(newStrategyReloadCmd())
 	cmd.AddCommand(newStrategyTemplateCmd())
 	cmd.AddCommand(newStrategyCreateCmd())
+	cmd.AddCommand(newStrategyLogsCmd())
 
 	return cmd
 }
