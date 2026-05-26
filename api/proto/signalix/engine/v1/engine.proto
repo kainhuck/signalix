@@ -26,6 +26,10 @@ service Engine {
   rpc ReloadStrategies(ReloadStrategiesRequest) returns (ReloadStrategiesReply);
 
   // --- Query ---
+  rpc GetBalance(GetBalanceRequest) returns (GetBalanceReply);
+  rpc GetPosition(GetPositionRequest) returns (GetPositionReply);
+  rpc ListPositions(ListPositionsRequest) returns (ListPositionsReply);
+
   rpc GetOrder(GetOrderRequest) returns (GetOrderReply);
 
   rpc ListOpenOrders(ListOpenOrdersRequest) returns (ListOpenOrdersReply);
@@ -115,6 +119,45 @@ message ReloadStrategiesRequest {}
 
 message ReloadStrategiesReply {
   int32 catalog_count = 1;
+}
+
+message Balance {
+  string currency = 1;
+  string total = 2;
+  string available = 3;
+  string frozen = 4;
+  int64 updated_at_unix_ms = 5;
+}
+
+message Position {
+  string symbol = 1;
+  string side = 2;
+  string size = 3;
+  string entry_price = 4;
+  string mark_price = 5;
+  string unrealized_pnl = 6;
+  int32 leverage = 7;
+  int64 updated_at_unix_ms = 8;
+}
+
+message GetBalanceRequest {}
+
+message GetBalanceReply {
+  Balance balance = 1;
+}
+
+message GetPositionRequest {
+  string symbol = 1;
+}
+
+message GetPositionReply {
+  Position position = 1;
+}
+
+message ListPositionsRequest {}
+
+message ListPositionsReply {
+  repeated Position positions = 1;
 }
 
 message GetOrderRequest {

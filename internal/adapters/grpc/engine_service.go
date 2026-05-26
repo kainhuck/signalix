@@ -9,6 +9,7 @@ import (
 	enginev1 "github.com/kainhuck/signalix/api/gen/go/signalix/engine/v1"
 	"github.com/kainhuck/signalix/internal/app/engine"
 	"github.com/kainhuck/signalix/internal/models"
+	"github.com/kainhuck/signalix/pkg/exchange/perp"
 	"github.com/kainhuck/signalix/pkg/logger"
 	"google.golang.org/grpc"
 	"google.golang.org/grpc/codes"
@@ -120,6 +121,50 @@ func (s *EngineService) ReloadStrategies(ctx context.Context, _ *enginev1.Reload
 	}
 	logger.InfoContext(ctx, "grpc ReloadStrategies", logger.Int("catalog_count", n))
 	return &enginev1.ReloadStrategiesReply{CatalogCount: int32(n)}, nil
+}
+
+func (s *EngineService) GetBalance(ctx context.Context, _ *enginev1.GetBalanceRequest) (*enginev1.GetBalanceReply, error) {
+	if err := requireRunning(s.eng); err != nil {
+		return nil, err
+	}
+	bal, err := s.eng.BalanceSnapshot()
+	if err != nil {
+		return nil, mapProjectionErr(err)
+	}
+	return &enginev1.GetBalanceReply{Balance: balanceToProto(bal)}, nil
+}
+
+func (s *EngineService) GetPosition(ctx context.Context, req *enginev1.GetPositionRequest) (*enginev1.GetPositionReply, error) {
+	if err := requireRunning(s.eng); err != nil {
+		return nil, err
+	}
+	symbol := strings.TrimSpace(req.GetSymbol())
+	if symbol == "" {
+		return nil, status.Error(codes.InvalidArgument, "empty symbol")
+	}
+	pos, err := s.eng.PositionSnapshot(perp.Contract(symbol))
+	if err != nil {
+		return nil, mapProjectionErr(err)
+	}
+	if pos == nil {
+		return &enginev1.GetPositionReply{}, nil
+	}
+	return &enginev1.GetPositionReply{Position: positionToProto(pos)}, nil
+}
+
+func (s *EngineService) ListPositions(ctx context.Context, _ *enginev1.ListPositionsRequest) (*enginev1.ListPositionsReply, error) {
+	if err := requireRunning(s.eng); err != nil {
+		return nil, err
+	}
+	list, err := s.eng.AllPositionsSnapshot()
+	if err != nil {
+		return nil, mapProjectionErr(err)
+	}
+	out := make([]*enginev1.Position, 0, len(list))
+	for _, p := range list {
+		out = append(out, positionToProto(p))
+	}
+	return &enginev1.ListPositionsReply{Positions: out}, nil
 }
 
 func (s *EngineService) GetOrder(ctx context.Context, req *enginev1.GetOrderRequest) (*enginev1.GetOrderReply, error) {

@@ -166,7 +166,8 @@ Signalix 是一个 **本地化量化交易引擎**：Go 负责行情、路由、
 | System | 健康、版本 | gRPC `Ping` / `GetHealth` / GetEngineInfo |
 | Strategies | 启停、列表 | StartStrategy / ListStrategies |
 | Orders | 查单、撤单 | GetOrder / CancelOrder / 事件流 |
-| Positions | 持仓汇总 | AccountProjection |
+| Positions | 持仓汇总 | `GetPosition` / `ListPositions` |
+| Account | 余额 | `GetBalance` |
 | Emergency | Kill Switch | 已实现 |
 
 ---

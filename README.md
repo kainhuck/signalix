@@ -101,6 +101,12 @@ grpcurl -plaintext -d '{}' localhost:50051 signalix.engine.v1.Engine/GetHealth
 grpcurl -plaintext -d '{"skip_exchange_ping":true}' \
   localhost:50051 signalix.engine.v1.Engine/GetHealth
 
+# Account read-only
+grpcurl -plaintext -d '{}' localhost:50051 signalix.engine.v1.Engine/GetBalance
+grpcurl -plaintext -d '{"symbol":"BTC/USDT"}' \
+  localhost:50051 signalix.engine.v1.Engine/GetPosition
+grpcurl -plaintext -d '{}' localhost:50051 signalix.engine.v1.Engine/ListPositions
+
 # Kill Switch
 grpcurl -plaintext -d '{"reason":"manual drill"}' \
   localhost:50051 signalix.engine.v1.Engine/ActivateKillSwitch

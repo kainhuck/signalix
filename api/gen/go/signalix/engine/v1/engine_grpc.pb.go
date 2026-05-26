@@ -26,6 +26,9 @@ const (
 	Engine_StartStrategy_FullMethodName        = "/signalix.engine.v1.Engine/StartStrategy"
 	Engine_StopStrategy_FullMethodName         = "/signalix.engine.v1.Engine/StopStrategy"
 	Engine_ReloadStrategies_FullMethodName     = "/signalix.engine.v1.Engine/ReloadStrategies"
+	Engine_GetBalance_FullMethodName           = "/signalix.engine.v1.Engine/GetBalance"
+	Engine_GetPosition_FullMethodName          = "/signalix.engine.v1.Engine/GetPosition"
+	Engine_ListPositions_FullMethodName        = "/signalix.engine.v1.Engine/ListPositions"
 	Engine_GetOrder_FullMethodName             = "/signalix.engine.v1.Engine/GetOrder"
 	Engine_ListOpenOrders_FullMethodName       = "/signalix.engine.v1.Engine/ListOpenOrders"
 	Engine_CancelOrder_FullMethodName          = "/signalix.engine.v1.Engine/CancelOrder"
@@ -52,6 +55,9 @@ type EngineClient interface {
 	// ReloadStrategies 仅重新扫描目录并刷新内存 catalog，不自动启停已运行进程。
 	ReloadStrategies(ctx context.Context, in *ReloadStrategiesRequest, opts ...grpc.CallOption) (*ReloadStrategiesReply, error)
 	// --- Query ---
+	GetBalance(ctx context.Context, in *GetBalanceRequest, opts ...grpc.CallOption) (*GetBalanceReply, error)
+	GetPosition(ctx context.Context, in *GetPositionRequest, opts ...grpc.CallOption) (*GetPositionReply, error)
+	ListPositions(ctx context.Context, in *ListPositionsRequest, opts ...grpc.CallOption) (*ListPositionsReply, error)
 	GetOrder(ctx context.Context, in *GetOrderRequest, opts ...grpc.CallOption) (*GetOrderReply, error)
 	ListOpenOrders(ctx context.Context, in *ListOpenOrdersRequest, opts ...grpc.CallOption) (*ListOpenOrdersReply, error)
 	CancelOrder(ctx context.Context, in *CancelOrderRequest, opts ...grpc.CallOption) (*CancelOrderReply, error)
@@ -135,6 +141,36 @@ func (c *engineClient) ReloadStrategies(ctx context.Context, in *ReloadStrategie
 	cOpts := append([]grpc.CallOption{grpc.StaticMethod()}, opts...)
 	out := new(ReloadStrategiesReply)
 	err := c.cc.Invoke(ctx, Engine_ReloadStrategies_FullMethodName, in, out, cOpts...)
+	if err != nil {
+		return nil, err
+	}
+	return out, nil
+}
+
+func (c *engineClient) GetBalance(ctx context.Context, in *GetBalanceRequest, opts ...grpc.CallOption) (*GetBalanceReply, error) {
+	cOpts := append([]grpc.CallOption{grpc.StaticMethod()}, opts...)
+	out := new(GetBalanceReply)
+	err := c.cc.Invoke(ctx, Engine_GetBalance_FullMethodName, in, out, cOpts...)
+	if err != nil {
+		return nil, err
+	}
+	return out, nil
+}
+
+func (c *engineClient) GetPosition(ctx context.Context, in *GetPositionRequest, opts ...grpc.CallOption) (*GetPositionReply, error) {
+	cOpts := append([]grpc.CallOption{grpc.StaticMethod()}, opts...)
+	out := new(GetPositionReply)
+	err := c.cc.Invoke(ctx, Engine_GetPosition_FullMethodName, in, out, cOpts...)
+	if err != nil {
+		return nil, err
+	}
+	return out, nil
+}
+
+func (c *engineClient) ListPositions(ctx context.Context, in *ListPositionsRequest, opts ...grpc.CallOption) (*ListPositionsReply, error) {
+	cOpts := append([]grpc.CallOption{grpc.StaticMethod()}, opts...)
+	out := new(ListPositionsReply)
+	err := c.cc.Invoke(ctx, Engine_ListPositions_FullMethodName, in, out, cOpts...)
 	if err != nil {
 		return nil, err
 	}
@@ -237,6 +273,9 @@ type EngineServer interface {
 	// ReloadStrategies 仅重新扫描目录并刷新内存 catalog，不自动启停已运行进程。
 	ReloadStrategies(context.Context, *ReloadStrategiesRequest) (*ReloadStrategiesReply, error)
 	// --- Query ---
+	GetBalance(context.Context, *GetBalanceRequest) (*GetBalanceReply, error)
+	GetPosition(context.Context, *GetPositionRequest) (*GetPositionReply, error)
+	ListPositions(context.Context, *ListPositionsRequest) (*ListPositionsReply, error)
 	GetOrder(context.Context, *GetOrderRequest) (*GetOrderReply, error)
 	ListOpenOrders(context.Context, *ListOpenOrdersRequest) (*ListOpenOrdersReply, error)
 	CancelOrder(context.Context, *CancelOrderRequest) (*CancelOrderReply, error)
@@ -276,6 +315,15 @@ func (UnimplementedEngineServer) StopStrategy(context.Context, *StopStrategyRequ
 }
 func (UnimplementedEngineServer) ReloadStrategies(context.Context, *ReloadStrategiesRequest) (*ReloadStrategiesReply, error) {
 	return nil, status.Errorf(codes.Unimplemented, "method ReloadStrategies not implemented")
+}
+func (UnimplementedEngineServer) GetBalance(context.Context, *GetBalanceRequest) (*GetBalanceReply, error) {
+	return nil, status.Errorf(codes.Unimplemented, "method GetBalance not implemented")
+}
+func (UnimplementedEngineServer) GetPosition(context.Context, *GetPositionRequest) (*GetPositionReply, error) {
+	return nil, status.Errorf(codes.Unimplemented, "method GetPosition not implemented")
+}
+func (UnimplementedEngineServer) ListPositions(context.Context, *ListPositionsRequest) (*ListPositionsReply, error) {
+	return nil, status.Errorf(codes.Unimplemented, "method ListPositions not implemented")
 }
 func (UnimplementedEngineServer) GetOrder(context.Context, *GetOrderRequest) (*GetOrderReply, error) {
 	return nil, status.Errorf(codes.Unimplemented, "method GetOrder not implemented")
@@ -445,6 +493,60 @@ func _Engine_ReloadStrategies_Handler(srv interface{}, ctx context.Context, dec 
 	return interceptor(ctx, in, info, handler)
 }
 
+func _Engine_GetBalance_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+	in := new(GetBalanceRequest)
+	if err := dec(in); err != nil {
+		return nil, err
+	}
+	if interceptor == nil {
+		return srv.(EngineServer).GetBalance(ctx, in)
+	}
+	info := &grpc.UnaryServerInfo{
+		Server:     srv,
+		FullMethod: Engine_GetBalance_FullMethodName,
+	}
+	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
+		return srv.(EngineServer).GetBalance(ctx, req.(*GetBalanceRequest))
+	}
+	return interceptor(ctx, in, info, handler)
+}
+
+func _Engine_GetPosition_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+	in := new(GetPositionRequest)
+	if err := dec(in); err != nil {
+		return nil, err
+	}
+	if interceptor == nil {
+		return srv.(EngineServer).GetPosition(ctx, in)
+	}
+	info := &grpc.UnaryServerInfo{
+		Server:     srv,
+		FullMethod: Engine_GetPosition_FullMethodName,
+	}
+	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
+		return srv.(EngineServer).GetPosition(ctx, req.(*GetPositionRequest))
+	}
+	return interceptor(ctx, in, info, handler)
+}
+
+func _Engine_ListPositions_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+	in := new(ListPositionsRequest)
+	if err := dec(in); err != nil {
+		return nil, err
+	}
+	if interceptor == nil {
+		return srv.(EngineServer).ListPositions(ctx, in)
+	}
+	info := &grpc.UnaryServerInfo{
+		Server:     srv,
+		FullMethod: Engine_ListPositions_FullMethodName,
+	}
+	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
+		return srv.(EngineServer).ListPositions(ctx, req.(*ListPositionsRequest))
+	}
+	return interceptor(ctx, in, info, handler)
+}
+
 func _Engine_GetOrder_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
 	in := new(GetOrderRequest)
 	if err := dec(in); err != nil {
@@ -598,6 +700,18 @@ var Engine_ServiceDesc = grpc.ServiceDesc{
 		{
 			MethodName: "ReloadStrategies",
 			Handler:    _Engine_ReloadStrategies_Handler,
+		},
+		{
+			MethodName: "GetBalance",
+			Handler:    _Engine_GetBalance_Handler,
+		},
+		{
+			MethodName: "GetPosition",
+			Handler:    _Engine_GetPosition_Handler,
+		},
+		{
+			MethodName: "ListPositions",
+			Handler:    _Engine_ListPositions_Handler,
 		},
 		{
 			MethodName: "GetOrder",
