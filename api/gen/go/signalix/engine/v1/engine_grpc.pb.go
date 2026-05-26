@@ -30,6 +30,9 @@ const (
 	Engine_GetBalance_FullMethodName           = "/signalix.engine.v1.Engine/GetBalance"
 	Engine_GetPosition_FullMethodName          = "/signalix.engine.v1.Engine/GetPosition"
 	Engine_ListPositions_FullMethodName        = "/signalix.engine.v1.Engine/ListPositions"
+	Engine_GetTicker_FullMethodName            = "/signalix.engine.v1.Engine/GetTicker"
+	Engine_GetKlines_FullMethodName            = "/signalix.engine.v1.Engine/GetKlines"
+	Engine_ListTickers_FullMethodName          = "/signalix.engine.v1.Engine/ListTickers"
 	Engine_GetOrder_FullMethodName             = "/signalix.engine.v1.Engine/GetOrder"
 	Engine_ListOpenOrders_FullMethodName       = "/signalix.engine.v1.Engine/ListOpenOrders"
 	Engine_CancelOrder_FullMethodName          = "/signalix.engine.v1.Engine/CancelOrder"
@@ -60,6 +63,9 @@ type EngineClient interface {
 	GetBalance(ctx context.Context, in *GetBalanceRequest, opts ...grpc.CallOption) (*GetBalanceReply, error)
 	GetPosition(ctx context.Context, in *GetPositionRequest, opts ...grpc.CallOption) (*GetPositionReply, error)
 	ListPositions(ctx context.Context, in *ListPositionsRequest, opts ...grpc.CallOption) (*ListPositionsReply, error)
+	GetTicker(ctx context.Context, in *GetTickerRequest, opts ...grpc.CallOption) (*GetTickerReply, error)
+	GetKlines(ctx context.Context, in *GetKlinesRequest, opts ...grpc.CallOption) (*GetKlinesReply, error)
+	ListTickers(ctx context.Context, in *ListTickersRequest, opts ...grpc.CallOption) (*ListTickersReply, error)
 	GetOrder(ctx context.Context, in *GetOrderRequest, opts ...grpc.CallOption) (*GetOrderReply, error)
 	ListOpenOrders(ctx context.Context, in *ListOpenOrdersRequest, opts ...grpc.CallOption) (*ListOpenOrdersReply, error)
 	CancelOrder(ctx context.Context, in *CancelOrderRequest, opts ...grpc.CallOption) (*CancelOrderReply, error)
@@ -189,6 +195,36 @@ func (c *engineClient) ListPositions(ctx context.Context, in *ListPositionsReque
 	return out, nil
 }
 
+func (c *engineClient) GetTicker(ctx context.Context, in *GetTickerRequest, opts ...grpc.CallOption) (*GetTickerReply, error) {
+	cOpts := append([]grpc.CallOption{grpc.StaticMethod()}, opts...)
+	out := new(GetTickerReply)
+	err := c.cc.Invoke(ctx, Engine_GetTicker_FullMethodName, in, out, cOpts...)
+	if err != nil {
+		return nil, err
+	}
+	return out, nil
+}
+
+func (c *engineClient) GetKlines(ctx context.Context, in *GetKlinesRequest, opts ...grpc.CallOption) (*GetKlinesReply, error) {
+	cOpts := append([]grpc.CallOption{grpc.StaticMethod()}, opts...)
+	out := new(GetKlinesReply)
+	err := c.cc.Invoke(ctx, Engine_GetKlines_FullMethodName, in, out, cOpts...)
+	if err != nil {
+		return nil, err
+	}
+	return out, nil
+}
+
+func (c *engineClient) ListTickers(ctx context.Context, in *ListTickersRequest, opts ...grpc.CallOption) (*ListTickersReply, error) {
+	cOpts := append([]grpc.CallOption{grpc.StaticMethod()}, opts...)
+	out := new(ListTickersReply)
+	err := c.cc.Invoke(ctx, Engine_ListTickers_FullMethodName, in, out, cOpts...)
+	if err != nil {
+		return nil, err
+	}
+	return out, nil
+}
+
 func (c *engineClient) GetOrder(ctx context.Context, in *GetOrderRequest, opts ...grpc.CallOption) (*GetOrderReply, error) {
 	cOpts := append([]grpc.CallOption{grpc.StaticMethod()}, opts...)
 	out := new(GetOrderReply)
@@ -289,6 +325,9 @@ type EngineServer interface {
 	GetBalance(context.Context, *GetBalanceRequest) (*GetBalanceReply, error)
 	GetPosition(context.Context, *GetPositionRequest) (*GetPositionReply, error)
 	ListPositions(context.Context, *ListPositionsRequest) (*ListPositionsReply, error)
+	GetTicker(context.Context, *GetTickerRequest) (*GetTickerReply, error)
+	GetKlines(context.Context, *GetKlinesRequest) (*GetKlinesReply, error)
+	ListTickers(context.Context, *ListTickersRequest) (*ListTickersReply, error)
 	GetOrder(context.Context, *GetOrderRequest) (*GetOrderReply, error)
 	ListOpenOrders(context.Context, *ListOpenOrdersRequest) (*ListOpenOrdersReply, error)
 	CancelOrder(context.Context, *CancelOrderRequest) (*CancelOrderReply, error)
@@ -340,6 +379,15 @@ func (UnimplementedEngineServer) GetPosition(context.Context, *GetPositionReques
 }
 func (UnimplementedEngineServer) ListPositions(context.Context, *ListPositionsRequest) (*ListPositionsReply, error) {
 	return nil, status.Errorf(codes.Unimplemented, "method ListPositions not implemented")
+}
+func (UnimplementedEngineServer) GetTicker(context.Context, *GetTickerRequest) (*GetTickerReply, error) {
+	return nil, status.Errorf(codes.Unimplemented, "method GetTicker not implemented")
+}
+func (UnimplementedEngineServer) GetKlines(context.Context, *GetKlinesRequest) (*GetKlinesReply, error) {
+	return nil, status.Errorf(codes.Unimplemented, "method GetKlines not implemented")
+}
+func (UnimplementedEngineServer) ListTickers(context.Context, *ListTickersRequest) (*ListTickersReply, error) {
+	return nil, status.Errorf(codes.Unimplemented, "method ListTickers not implemented")
 }
 func (UnimplementedEngineServer) GetOrder(context.Context, *GetOrderRequest) (*GetOrderReply, error) {
 	return nil, status.Errorf(codes.Unimplemented, "method GetOrder not implemented")
@@ -581,6 +629,60 @@ func _Engine_ListPositions_Handler(srv interface{}, ctx context.Context, dec fun
 	return interceptor(ctx, in, info, handler)
 }
 
+func _Engine_GetTicker_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+	in := new(GetTickerRequest)
+	if err := dec(in); err != nil {
+		return nil, err
+	}
+	if interceptor == nil {
+		return srv.(EngineServer).GetTicker(ctx, in)
+	}
+	info := &grpc.UnaryServerInfo{
+		Server:     srv,
+		FullMethod: Engine_GetTicker_FullMethodName,
+	}
+	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
+		return srv.(EngineServer).GetTicker(ctx, req.(*GetTickerRequest))
+	}
+	return interceptor(ctx, in, info, handler)
+}
+
+func _Engine_GetKlines_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+	in := new(GetKlinesRequest)
+	if err := dec(in); err != nil {
+		return nil, err
+	}
+	if interceptor == nil {
+		return srv.(EngineServer).GetKlines(ctx, in)
+	}
+	info := &grpc.UnaryServerInfo{
+		Server:     srv,
+		FullMethod: Engine_GetKlines_FullMethodName,
+	}
+	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
+		return srv.(EngineServer).GetKlines(ctx, req.(*GetKlinesRequest))
+	}
+	return interceptor(ctx, in, info, handler)
+}
+
+func _Engine_ListTickers_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+	in := new(ListTickersRequest)
+	if err := dec(in); err != nil {
+		return nil, err
+	}
+	if interceptor == nil {
+		return srv.(EngineServer).ListTickers(ctx, in)
+	}
+	info := &grpc.UnaryServerInfo{
+		Server:     srv,
+		FullMethod: Engine_ListTickers_FullMethodName,
+	}
+	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
+		return srv.(EngineServer).ListTickers(ctx, req.(*ListTickersRequest))
+	}
+	return interceptor(ctx, in, info, handler)
+}
+
 func _Engine_GetOrder_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
 	in := new(GetOrderRequest)
 	if err := dec(in); err != nil {
@@ -750,6 +852,18 @@ var Engine_ServiceDesc = grpc.ServiceDesc{
 		{
 			MethodName: "ListPositions",
 			Handler:    _Engine_ListPositions_Handler,
+		},
+		{
+			MethodName: "GetTicker",
+			Handler:    _Engine_GetTicker_Handler,
+		},
+		{
+			MethodName: "GetKlines",
+			Handler:    _Engine_GetKlines_Handler,
+		},
+		{
+			MethodName: "ListTickers",
+			Handler:    _Engine_ListTickers_Handler,
 		},
 		{
 			MethodName: "GetOrder",

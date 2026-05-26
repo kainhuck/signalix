@@ -82,14 +82,7 @@ func (e *Engine) rpcGetKlines(strategyName string, params map[string]interface{}
 	case int64:
 		limit = int(v)
 	}
-	if limit <= 0 {
-		limit = 100
-	}
-	if limit > 2000 {
-		limit = 2000
-	}
-	klines := e.router.ListClosedKlines(contract, interval, limit)
-	return klines, nil
+	return e.ClosedKlines(contract, interval, limit)
 }
 
 func balanceToRPC(b *perp.BalanceView) map[string]interface{} {

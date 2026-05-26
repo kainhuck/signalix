@@ -191,8 +191,9 @@ flowchart LR
 - **Readiness**：`GetHealth`（`engine` / `account_projection` / `exchange` 检查；`skip_exchange_ping` 可跳过所探测）
 - **Account**：`GetBalance` / `GetPosition` / `ListPositions`（`AccountProjection` 只读快照）
 - **Strategy**：`ListStrategies`（catalog + 运行时字段，不要求 engine running）、`GetStrategyStatus`（单策略快照，要求 running）
+- **Market**：`GetTicker` / `GetKlines` / `ListTickers`（`MarketRouter` 缓存/缓冲只读；v1 无 REST 回源）
 - **Emergency**：`ActivateKillSwitch` / `DeactivateKillSwitch` / `GetKillSwitchStatus`（EH-3；内存态，重启后默认 OFF）
-- **未实现 / 推迟**：行情只读 RPC、Unix socket
+- **未实现 / 推迟**：行情 REST 回源、Unix socket
 
 ---
 
@@ -225,7 +226,7 @@ flowchart LR
 | 风控扩展字段 | 已实现（EH-2/EH-3/EH-4） | — |
 | 策略级风控 | 已实现 | `config.yaml` `risk` 可选段；Kill Switch → 策略 → 全局 |
 | Kill Switch | 已实现 | 不持久化；拒开仓、允 Flat/撤单 |
-| `get_market` RPC | 未实现 | 读 tickerCache |
+| `get_market` RPC | 未实现 | 读 tickerCache；gRPC `GetTicker`/`ListTickers` 已暴露缓存 |
 | HTTP 网关 | 无 | 独立服务，REST → gRPC |
 | 合约元数据 | 无缓存 | 下单前校验 |
 | REST rate_limit | 配置占位 | adapter 层限流 |

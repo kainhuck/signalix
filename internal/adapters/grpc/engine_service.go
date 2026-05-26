@@ -4,6 +4,7 @@ import (
 	"context"
 	"errors"
 	"runtime"
+	"sort"
 	"strings"
 	"time"
 
@@ -173,6 +174,64 @@ func (s *EngineService) ListPositions(ctx context.Context, _ *enginev1.ListPosit
 		out = append(out, positionToProto(p))
 	}
 	return &enginev1.ListPositionsReply{Positions: out}, nil
+}
+
+func (s *EngineService) GetTicker(ctx context.Context, req *enginev1.GetTickerRequest) (*enginev1.GetTickerReply, error) {
+	if err := requireRunning(s.eng); err != nil {
+		return nil, err
+	}
+	symbol := strings.TrimSpace(req.GetSymbol())
+	if symbol == "" {
+		return nil, status.Error(codes.InvalidArgument, "empty symbol")
+	}
+	snap, err := s.eng.TickerSnapshot(perp.Contract(symbol))
+	if err != nil {
+		return nil, mapMarketErr(err)
+	}
+	return &enginev1.GetTickerReply{Ticker: tickerToProto(snap)}, nil
+}
+
+func (s *EngineService) GetKlines(ctx context.Context, req *enginev1.GetKlinesRequest) (*enginev1.GetKlinesReply, error) {
+	if err := requireRunning(s.eng); err != nil {
+		return nil, err
+	}
+	symbol := strings.TrimSpace(req.GetSymbol())
+	if symbol == "" {
+		return nil, status.Error(codes.InvalidArgument, "empty symbol")
+	}
+	interval := strings.TrimSpace(req.GetInterval())
+	if interval == "" {
+		return nil, status.Error(codes.InvalidArgument, "empty interval")
+	}
+	klines, err := s.eng.ClosedKlines(perp.Contract(symbol), interval, int(req.GetLimit()))
+	if err != nil {
+		return nil, mapMarketErr(err)
+	}
+	out := make([]*enginev1.Kline, 0, len(klines))
+	for _, k := range klines {
+		out = append(out, klineToProto(k))
+	}
+	return &enginev1.GetKlinesReply{Klines: out}, nil
+}
+
+func (s *EngineService) ListTickers(ctx context.Context, _ *enginev1.ListTickersRequest) (*enginev1.ListTickersReply, error) {
+	if err := requireRunning(s.eng); err != nil {
+		return nil, err
+	}
+	all, err := s.eng.ListCachedTickers()
+	if err != nil {
+		return nil, mapMarketErr(err)
+	}
+	symbols := make([]string, 0, len(all))
+	for sym := range all {
+		symbols = append(symbols, string(sym))
+	}
+	sort.Strings(symbols)
+	out := make([]*enginev1.Ticker, 0, len(symbols))
+	for _, sym := range symbols {
+		out = append(out, tickerToProto(all[perp.Contract(sym)]))
+	}
+	return &enginev1.ListTickersReply{Tickers: out}, nil
 }
 
 func (s *EngineService) GetOrder(ctx context.Context, req *enginev1.GetOrderRequest) (*enginev1.GetOrderReply, error) {

@@ -112,6 +112,14 @@ grpcurl -plaintext -d '{}' localhost:50051 signalix.engine.v1.Engine/ListStrateg
 grpcurl -plaintext -d '{"name":"example_trend"}' \
   localhost:50051 signalix.engine.v1.Engine/GetStrategyStatus
 
+# 行情只读（GR-4，读 MarketRouter 缓存；需策略已订阅）
+grpcurl -plaintext -d '{"symbol":"BTC/USDT"}' \
+  localhost:50051 signalix.engine.v1.Engine/GetTicker
+grpcurl -plaintext -d '{"symbol":"BTC/USDT","interval":"5m","limit":50}' \
+  localhost:50051 signalix.engine.v1.Engine/GetKlines
+grpcurl -plaintext -d '{}' \
+  localhost:50051 signalix.engine.v1.Engine/ListTickers
+
 # Kill Switch（EH-3）
 grpcurl -plaintext -d '{"reason":"manual drill"}' \
   localhost:50051 signalix.engine.v1.Engine/ActivateKillSwitch

@@ -168,6 +168,7 @@ Signalix 是一个 **本地化量化交易引擎**：Go 负责行情、路由、
 | Orders | 查单、撤单 | GetOrder / CancelOrder / 事件流 |
 | Positions | 持仓汇总 | `GetPosition` / `ListPositions` |
 | Account | 余额 | `GetBalance` |
+| Market | 行情缓存 | `GetTicker` / `GetKlines` / `ListTickers` |
 | Emergency | Kill Switch | 已实现 |
 
 ---

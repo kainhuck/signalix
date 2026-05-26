@@ -32,6 +32,10 @@ service Engine {
   rpc GetPosition(GetPositionRequest) returns (GetPositionReply);
   rpc ListPositions(ListPositionsRequest) returns (ListPositionsReply);
 
+  rpc GetTicker(GetTickerRequest) returns (GetTickerReply);
+  rpc GetKlines(GetKlinesRequest) returns (GetKlinesReply);
+  rpc ListTickers(ListTickersRequest) returns (ListTickersReply);
+
   rpc GetOrder(GetOrderRequest) returns (GetOrderReply);
 
   rpc ListOpenOrders(ListOpenOrdersRequest) returns (ListOpenOrdersReply);
@@ -175,6 +179,59 @@ message ListPositionsRequest {}
 
 message ListPositionsReply {
   repeated Position positions = 1;
+}
+
+message Ticker {
+  string symbol = 1;
+  string last = 2;
+  string mark_price = 3;
+  string index_price = 4;
+  string funding_rate = 5;
+  string change_pct_24h = 6;
+  string volume_24h = 7;
+  string volume_24h_base = 8;
+  string volume_24h_quote = 9;
+  string open_interest = 10;
+  string low_24h = 11;
+  string high_24h = 12;
+  int64 timestamp_unix_ms = 13;
+}
+
+message Kline {
+  string symbol = 1;
+  string interval = 2;
+  string open = 3;
+  string high = 4;
+  string low = 5;
+  string close = 6;
+  string volume = 7;
+  string volume_base = 8;
+  int64 timestamp_unix_sec = 9;
+  bool window_closed = 10;
+}
+
+message GetTickerRequest {
+  string symbol = 1;
+}
+
+message GetTickerReply {
+  Ticker ticker = 1;
+}
+
+message GetKlinesRequest {
+  string symbol = 1;
+  string interval = 2;
+  int32 limit = 3;
+}
+
+message GetKlinesReply {
+  repeated Kline klines = 1;
+}
+
+message ListTickersRequest {}
+
+message ListTickersReply {
+  repeated Ticker tickers = 1;
 }
 
 message GetOrderRequest {
