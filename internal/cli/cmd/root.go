@@ -68,6 +68,8 @@ func NewRoot() *cobra.Command {
 	root.AddCommand(newBalanceCmd())
 	root.AddCommand(newPositionCmd())
 	root.AddCommand(newOrderCmd())
+	root.AddCommand(newMarketCmd())
+	root.AddCommand(newKillSwitchCmd())
 
 	return root
 }

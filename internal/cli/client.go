@@ -68,6 +68,9 @@ func FormatGRPCError(addr string, timeout time.Duration, err error) error {
 		return fmt.Errorf("%s", msg)
 	case codes.NotFound:
 		lower := strings.ToLower(msg)
+		if strings.Contains(lower, "ticker not in cache") {
+			return fmt.Errorf("%s (ensure a running strategy subscribes to this symbol's ticker)", msg)
+		}
 		if strings.Contains(lower, "catalog") || strings.Contains(lower, "strategy") {
 			return fmt.Errorf("%s", msg)
 		}
@@ -75,8 +78,12 @@ func FormatGRPCError(addr string, timeout time.Duration, err error) error {
 	case codes.InvalidArgument:
 		return fmt.Errorf("%s", msg)
 	case codes.Internal:
-		if strings.Contains(strings.ToLower(msg), "start strategy") {
+		lower := strings.ToLower(msg)
+		if strings.Contains(lower, "start strategy") {
 			return fmt.Errorf("failed to start strategy: %s", strings.TrimPrefix(msg, "start strategy: "))
+		}
+		if strings.Contains(lower, "activate kill switch") {
+			return fmt.Errorf("failed to activate kill switch: %s", strings.TrimPrefix(msg, "activate kill switch: "))
 		}
 		return fmt.Errorf("rpc error: %s %s", st.Code(), msg)
 	case codes.DeadlineExceeded:

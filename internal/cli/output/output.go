@@ -410,6 +410,137 @@ func (p *Printer) printOrderNDJSON(order *enginev1.Order) error {
 	return err
 }
 
+func (p *Printer) PrintTicker(reply *enginev1.GetTickerReply) error {
+	switch p.format {
+	case JSON, YAML:
+		return p.printStructured(reply)
+	case Table:
+		t := reply.GetTicker()
+		if t == nil {
+			return fmt.Errorf("empty ticker")
+		}
+		return p.printKeyValue([][2]string{
+			{"symbol", t.GetSymbol()},
+			{"last", t.GetLast()},
+			{"mark_price", t.GetMarkPrice()},
+			{"index_price", t.GetIndexPrice()},
+			{"funding_rate", t.GetFundingRate()},
+			{"change_pct_24h", t.GetChangePct_24H()},
+			{"volume_24h", t.GetVolume_24H()},
+			{"open_interest", t.GetOpenInterest()},
+			{"high_24h", t.GetHigh_24H()},
+			{"low_24h", t.GetLow_24H()},
+			{"timestamp", formatUnixMs(t.GetTimestampUnixMs())},
+		})
+	default:
+		return fmt.Errorf("unknown format")
+	}
+}
+
+func (p *Printer) PrintKlines(reply *enginev1.GetKlinesReply) error {
+	switch p.format {
+	case JSON, YAML:
+		return p.printStructured(reply)
+	case Table:
+		tbl := tablewriter.NewWriter(p.w)
+		tbl.SetHeader([]string{"timestamp", "open", "high", "low", "close", "volume", "closed"})
+		tbl.SetBorder(true)
+		for _, k := range reply.GetKlines() {
+			tbl.Append([]string{
+				formatUnixSec(k.GetTimestampUnixSec()),
+				k.GetOpen(),
+				k.GetHigh(),
+				k.GetLow(),
+				k.GetClose(),
+				k.GetVolume(),
+				fmt.Sprintf("%t", k.GetWindowClosed()),
+			})
+		}
+		tbl.Render()
+		return nil
+	default:
+		return fmt.Errorf("unknown format")
+	}
+}
+
+func (p *Printer) PrintTickerList(reply *enginev1.ListTickersReply) error {
+	switch p.format {
+	case JSON, YAML:
+		return p.printStructured(reply)
+	case Table:
+		tickers := append([]*enginev1.Ticker(nil), reply.GetTickers()...)
+		sort.Slice(tickers, func(i, j int) bool {
+			return tickers[i].GetSymbol() < tickers[j].GetSymbol()
+		})
+		tbl := tablewriter.NewWriter(p.w)
+		tbl.SetHeader([]string{"symbol", "last", "mark_price", "change_pct_24h", "volume_24h", "timestamp"})
+		tbl.SetBorder(true)
+		for _, t := range tickers {
+			tbl.Append([]string{
+				t.GetSymbol(),
+				t.GetLast(),
+				t.GetMarkPrice(),
+				t.GetChangePct_24H(),
+				t.GetVolume_24H(),
+				formatUnixMs(t.GetTimestampUnixMs()),
+			})
+		}
+		tbl.Render()
+		return nil
+	default:
+		return fmt.Errorf("unknown format")
+	}
+}
+
+func (p *Printer) PrintKillSwitchStatus(reply *enginev1.GetKillSwitchStatusReply) error {
+	switch p.format {
+	case JSON, YAML:
+		return p.printStructured(reply)
+	case Table:
+		return p.printKeyValue(killSwitchStatusRows(reply.GetStatus()))
+	default:
+		return fmt.Errorf("unknown format")
+	}
+}
+
+func (p *Printer) PrintActivateKillSwitch(reply *enginev1.ActivateKillSwitchReply) error {
+	switch p.format {
+	case JSON, YAML:
+		return p.printStructured(reply)
+	case Table:
+		rows := killSwitchStatusRows(reply.GetStatus())
+		rows = append(rows,
+			[2]string{"cancel_attempted", fmt.Sprintf("%d", reply.GetCancelAttempted())},
+			[2]string{"cancel_failed", fmt.Sprintf("%d", reply.GetCancelFailed())},
+		)
+		return p.printKeyValue(rows)
+	default:
+		return fmt.Errorf("unknown format")
+	}
+}
+
+func (p *Printer) PrintDeactivateKillSwitch(reply *enginev1.DeactivateKillSwitchReply) error {
+	switch p.format {
+	case JSON, YAML:
+		return p.printStructured(reply)
+	case Table:
+		return p.printKeyValue(killSwitchStatusRows(reply.GetStatus()))
+	default:
+		return fmt.Errorf("unknown format")
+	}
+}
+
+func killSwitchStatusRows(st *enginev1.KillSwitchStatus) [][2]string {
+	if st == nil {
+		return [][2]string{{"active", "false"}}
+	}
+	return [][2]string{
+		{"active", fmt.Sprintf("%t", st.GetActive())},
+		{"reason", st.GetReason()},
+		{"activated_at", formatUnixMs(st.GetActivatedAtUnixMs())},
+	}
+}
+
 func orderKeyValues(o *enginev1.Order) [][2]string {
 	return [][2]string{
 		{"id", o.GetId()},
@@ -488,6 +619,13 @@ func formatUnixMs(ms int64) string {
 		return ""
 	}
 	return time.UnixMilli(ms).UTC().Format(time.RFC3339Nano)
+}
+
+func formatUnixSec(sec int64) string {
+	if sec <= 0 {
+		return ""
+	}
+	return time.Unix(sec, 0).UTC().Format(time.RFC3339)
 }
 
 func healthStatusLabel(s enginev1.HealthStatus) string {

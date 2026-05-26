@@ -78,6 +78,20 @@ func TestFormatStreamError_canceled(t *testing.T) {
 	}
 }
 
+func TestFormatGRPCError_tickerNotFound(t *testing.T) {
+	err := cli.FormatGRPCError("127.0.0.1:50051", time.Second, status.Error(codes.NotFound, "ticker not in cache for BTC/USDT"))
+	if err == nil || !strings.Contains(err.Error(), "subscribes to this symbol's ticker") {
+		t.Fatalf("got %v", err)
+	}
+}
+
+func TestFormatGRPCError_activateKillSwitch(t *testing.T) {
+	err := cli.FormatGRPCError("127.0.0.1:50051", time.Second, status.Error(codes.Internal, "activate kill switch: boom"))
+	if err == nil || err.Error() != "failed to activate kill switch: boom" {
+		t.Fatalf("got %v", err)
+	}
+}
+
 func TestFormatGRPCError_other(t *testing.T) {
 	err := cli.FormatGRPCError("127.0.0.1:50051", time.Second, status.Error(codes.Internal, "boom"))
 	if err == nil {
