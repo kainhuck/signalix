@@ -21,6 +21,7 @@ vendor/
 # IDE
 .idea/
 .vscode/
+.cursor/
 *.swp
 *.swo
 *~
@@ -52,7 +53,7 @@ sdk/python/signalix.egg-info/
 sdk/python/tests/
 
 # Private development notes (local only)
-progress/
+spec-driven-dev/
 TODO
 
 # Temporary files
