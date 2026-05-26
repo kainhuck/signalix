@@ -1,7 +1,9 @@
 package cli_test
 
 import (
+	"context"
 	"errors"
+	"strings"
 	"testing"
 	"time"
 
@@ -43,6 +45,50 @@ func TestFormatGRPCError_unavailable(t *testing.T) {
 	want := "cannot connect to 127.0.0.1:9: connection refused"
 	if err.Error() != want {
 		t.Fatalf("got %q", err.Error())
+	}
+}
+
+func TestFormatGRPCError_strategyNotFound(t *testing.T) {
+	err := cli.FormatGRPCError("127.0.0.1:50051", time.Second, status.Error(codes.NotFound, `strategy "foo" not in catalog`))
+	if err == nil || err.Error() != `strategy "foo" not in catalog` {
+		t.Fatalf("got %v", err)
+	}
+}
+
+func TestFormatGRPCError_startInternal(t *testing.T) {
+	err := cli.FormatGRPCError("127.0.0.1:50051", time.Second, status.Error(codes.Internal, "start strategy: boom"))
+	if err == nil || err.Error() != "failed to start strategy: boom" {
+		t.Fatalf("got %v", err)
+	}
+}
+
+func TestFormatGRPCError_projectionNotReady(t *testing.T) {
+	err := cli.FormatGRPCError("127.0.0.1:50051", time.Second, status.Error(codes.FailedPrecondition, "account projection not ready"))
+	if err == nil || !strings.Contains(err.Error(), "account projection not ready") {
+		t.Fatalf("got %v", err)
+	}
+}
+
+func TestFormatStreamError_canceled(t *testing.T) {
+	ctx, cancel := context.WithCancel(context.Background())
+	cancel()
+	err := cli.FormatStreamError("127.0.0.1:50051", ctx, context.Canceled)
+	if err != nil {
+		t.Fatalf("expected nil, got %v", err)
+	}
+}
+
+func TestFormatGRPCError_tickerNotFound(t *testing.T) {
+	err := cli.FormatGRPCError("127.0.0.1:50051", time.Second, status.Error(codes.NotFound, "ticker not in cache for BTC/USDT"))
+	if err == nil || !strings.Contains(err.Error(), "subscribes to this symbol's ticker") {
+		t.Fatalf("got %v", err)
+	}
+}
+
+func TestFormatGRPCError_activateKillSwitch(t *testing.T) {
+	err := cli.FormatGRPCError("127.0.0.1:50051", time.Second, status.Error(codes.Internal, "activate kill switch: boom"))
+	if err == nil || err.Error() != "failed to activate kill switch: boom" {
+		t.Fatalf("got %v", err)
 	}
 }
 

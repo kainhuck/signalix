@@ -1,0 +1,19 @@
+# Signalix CLI 配置示例
+#
+# 首次使用：
+#   mkdir -p ~/.signalix
+#   cp config.example.cli.toml ~/.signalix/cli.toml
+#
+# gRPC 地址不在此文件配置，请使用：
+#   --addr 或环境变量 SIGNALIX_GRPC_ADDR（默认 127.0.0.1:50051）
+#
+# 也可通过 SIGNALIX_CLI_CONFIG 或 --config 指定其它路径
+
+[defaults]
+# table | json | yaml
+output = "table"
+timeout = "10s"
+
+[auth]
+# 非空时作为 metadata: authorization: Bearer <token>
+token = ""

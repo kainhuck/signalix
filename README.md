@@ -88,8 +88,36 @@ The work directory is set by `SIGNALIX_WORK_DIR` (default: `~/.signalix`):
 ```bash
 go run ./cmd/signalixd
 # or
-make build && ./bin/signalix
+make build && ./bin/signalixd
 ```
+
+### Signalix CLI
+
+Local operations CLI (`cmd/signalix/`) connects to `signalixd` over gRPC:
+
+```bash
+make build-cli
+# or
+go install ./cmd/signalix
+
+mkdir -p ~/.signalix
+cp config.example.cli.toml ~/.signalix/cli.toml
+export SIGNALIX_GRPC_ADDR=127.0.0.1:50051   # or --addr
+
+signalix ping
+signalix strategy list
+signalix balance
+signalix order watch
+signalix market ticker BTC/USDT
+signalix kill-switch status
+signalix strategy template list
+signalix strategy create my_strategy
+
+# Shell completion (bash)
+source <(signalix completion bash)
+```
+
+See `signalix --help` for the full command tree. Default output is **table**; use `--output json|yaml` for machine-readable output.
 
 Enable gRPC (`[grpc] enabled = true` in `config.toml`):
 

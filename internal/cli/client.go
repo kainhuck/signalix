@@ -2,7 +2,9 @@ package cli
 
 import (
 	"context"
+	"errors"
 	"fmt"
+	"io"
 	"strings"
 	"time"
 
@@ -60,12 +62,51 @@ func FormatGRPCError(addr string, timeout time.Duration, err error) error {
 		if strings.Contains(strings.ToLower(msg), "engine not running") {
 			return fmt.Errorf("引擎未运行，请先启动 signalixd: %s", msg)
 		}
+		if strings.Contains(strings.ToLower(msg), "projection not ready") {
+			return fmt.Errorf("account projection not ready: wait for `signalix health` account_projection=PASS (%s)", msg)
+		}
 		return fmt.Errorf("%s", msg)
+	case codes.NotFound:
+		lower := strings.ToLower(msg)
+		if strings.Contains(lower, "ticker not in cache") {
+			return fmt.Errorf("%s (ensure a running strategy subscribes to this symbol's ticker)", msg)
+		}
+		if strings.Contains(lower, "catalog") || strings.Contains(lower, "strategy") {
+			return fmt.Errorf("%s", msg)
+		}
+		return fmt.Errorf("%s", msg)
+	case codes.InvalidArgument:
+		return fmt.Errorf("%s", msg)
+	case codes.AlreadyExists:
+		return fmt.Errorf("%s", msg)
+	case codes.Internal:
+		lower := strings.ToLower(msg)
+		if strings.Contains(lower, "start strategy") {
+			return fmt.Errorf("failed to start strategy: %s", strings.TrimPrefix(msg, "start strategy: "))
+		}
+		if strings.Contains(lower, "activate kill switch") {
+			return fmt.Errorf("failed to activate kill switch: %s", strings.TrimPrefix(msg, "activate kill switch: "))
+		}
+		return fmt.Errorf("rpc error: %s %s", st.Code(), msg)
 	case codes.DeadlineExceeded:
 		return fmt.Errorf("request timed out after %s", timeout)
 	default:
 		return fmt.Errorf("rpc error: %s %s", st.Code(), msg)
 	}
+}
+
+// FormatStreamError maps streaming errors; context cancellation returns nil.
+func FormatStreamError(addr string, ctx context.Context, err error) error {
+	if err == nil {
+		return nil
+	}
+	if errors.Is(err, context.Canceled) || ctx.Err() != nil {
+		return nil
+	}
+	if errors.Is(err, io.EOF) {
+		return nil
+	}
+	return FormatGRPCError(addr, 0, err)
 }
 
 func authUnaryInterceptor(token string) grpc.UnaryClientInterceptor {

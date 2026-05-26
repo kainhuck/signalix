@@ -11,7 +11,7 @@ import (
 	"github.com/spf13/cobra"
 )
 
-const version = "dev"
+var version = "dev"
 
 var runtime struct {
 	addr         string
@@ -64,6 +64,13 @@ func NewRoot() *cobra.Command {
 	root.AddCommand(newPingCmd())
 	root.AddCommand(newHealthCmd())
 	root.AddCommand(newEngineCmd())
+	root.AddCommand(newStrategyCmd())
+	root.AddCommand(newBalanceCmd())
+	root.AddCommand(newPositionCmd())
+	root.AddCommand(newOrderCmd())
+	root.AddCommand(newMarketCmd())
+	root.AddCommand(newKillSwitchCmd())
+	root.AddCommand(newCompletionCmd(root))
 
 	return root
 }
