@@ -20,6 +20,7 @@ type BuildParams struct {
 	DefaultInterval   string
 	Restart           config.RestartSettings
 	KillSwitch        config.KillSwitchSettings
+	Persistence       config.PersistenceSettings
 }
 
 // BuildParamsFromConfig 从全局配置提取构建参数。
@@ -31,6 +32,7 @@ func BuildParamsFromConfig(c *config.Config) BuildParams {
 			OMSMaxRetries:     3,
 			Restart:           config.DefaultRestartSettings(),
 			KillSwitch:        config.DefaultKillSwitchSettings(),
+			Persistence:       config.DefaultPersistenceSettings(),
 		}
 	}
 	return BuildParams{
@@ -41,11 +43,12 @@ func BuildParamsFromConfig(c *config.Config) BuildParams {
 		DefaultInterval:   c.Strategies.DefaultInterval,
 		Restart:           c.RestartSettings(),
 		KillSwitch:        c.KillSwitchSettings(),
+		Persistence:       c.PersistenceSettings(),
 	}
 }
 
-// WithPersistence 注入本地订单与策略状态存储。
-func WithPersistence(store ports.OrderStore) EngineOption {
+// WithPersistence 注入本地持久化存储（订单、策略状态、快照与日志）。
+func WithPersistence(store ports.PersistenceStore) EngineOption {
 	return func(e *Engine) {
 		e.store = store
 	}

@@ -28,17 +28,19 @@ type Config struct {
 	StrategiesDir string
 	Strategies    StrategiesConfig
 
-	Log      LogConfig
-	Exchange ExchangeConfig
-	Risk     RiskConfig
-	Database DatabaseConfig
-	Channels ChannelsConfig
-	Decision DecisionConfig
-	GRPC     GRPCConfig
+	Log         LogConfig
+	Exchange    ExchangeConfig
+	Risk        RiskConfig
+	Database    DatabaseConfig
+	Persistence PersistenceConfig
+	Channels    ChannelsConfig
+	Decision    DecisionConfig
+	GRPC        GRPCConfig
 
-	projectionRefresh  time.Duration
-	restartSettings    RestartSettings
-	killSwitchSettings KillSwitchSettings
+	projectionRefresh   time.Duration
+	restartSettings     RestartSettings
+	killSwitchSettings  KillSwitchSettings
+	persistenceSettings PersistenceSettings
 }
 
 type LogConfig struct {
@@ -141,6 +143,29 @@ type DatabaseConfig struct {
 	MaxOpenConns int `mapstructure:"max_open_conns"`
 }
 
+// PersistenceConfig TOML [persistence] 原始配置。
+type PersistenceConfig struct {
+	StrategyLogRetentionDays     int    `mapstructure:"strategy_log_retention_days"`
+	AccountSnapshotRetentionDays int    `mapstructure:"account_snapshot_retention_days"`
+	CleanupInterval              string `mapstructure:"cleanup_interval"`
+}
+
+// PersistenceSettings 解析后的持久化保留与清理配置。
+type PersistenceSettings struct {
+	StrategyLogRetentionDays     int
+	AccountSnapshotRetentionDays int
+	CleanupInterval              time.Duration
+}
+
+// DefaultPersistenceSettings EP-1 默认值。
+func DefaultPersistenceSettings() PersistenceSettings {
+	return PersistenceSettings{
+		StrategyLogRetentionDays:     7,
+		AccountSnapshotRetentionDays: 30,
+		CleanupInterval:              time.Hour,
+	}
+}
+
 type ChannelsConfig struct {
 	Signal         int `mapstructure:"signal"`
 	Order          int `mapstructure:"order"`
@@ -181,13 +206,14 @@ func Load() (*Config, error) {
 	}
 
 	var raw struct {
-		Log        LogConfig        `mapstructure:"log"`
-		Strategies StrategiesConfig `mapstructure:"strategies"`
-		Exchange   ExchangeConfig   `mapstructure:"exchange"`
-		Risk       RiskConfig       `mapstructure:"risk"`
-		Database   DatabaseConfig   `mapstructure:"database"`
-		Channels   ChannelsConfig   `mapstructure:"channels"`
-		Projection struct {
+		Log         LogConfig         `mapstructure:"log"`
+		Strategies  StrategiesConfig  `mapstructure:"strategies"`
+		Exchange    ExchangeConfig    `mapstructure:"exchange"`
+		Risk        RiskConfig        `mapstructure:"risk"`
+		Database    DatabaseConfig    `mapstructure:"database"`
+		Persistence PersistenceConfig `mapstructure:"persistence"`
+		Channels    ChannelsConfig    `mapstructure:"channels"`
+		Projection  struct {
 			RefreshInterval string `mapstructure:"refresh_interval"`
 		} `mapstructure:"projection"`
 		Decision DecisionConfig `mapstructure:"decision"`
@@ -225,22 +251,28 @@ func Load() (*Config, error) {
 		restart.Enabled = raw.Strategies.Restart.Enabled
 	}
 
+	persistence, err := parsePersistenceSettings(raw.Persistence)
+	if err != nil {
+		return nil, err
+	}
+
 	cfg := &Config{
-		WorkDir:            workDir,
-		ConfigPath:         configPath,
-		DatabasePath:       filepath.Join(workDir, DatabaseRelPath),
-		StrategiesDir:      strategiesDir,
-		Strategies:         raw.Strategies,
-		Log:                raw.Log,
-		Exchange:           raw.Exchange,
-		Risk:               raw.Risk,
-		Database:           raw.Database,
-		Channels:           raw.Channels,
-		Decision:           raw.Decision,
-		GRPC:               normalizeGRPC(raw.GRPC),
-		projectionRefresh:  refresh,
-		restartSettings:    restart,
-		killSwitchSettings: parseKillSwitchSettings(raw.Risk.KillSwitch),
+		WorkDir:             workDir,
+		ConfigPath:          configPath,
+		DatabasePath:        filepath.Join(workDir, DatabaseRelPath),
+		StrategiesDir:       strategiesDir,
+		Strategies:          raw.Strategies,
+		Log:                 raw.Log,
+		Exchange:            raw.Exchange,
+		Risk:                raw.Risk,
+		Database:            raw.Database,
+		Channels:            raw.Channels,
+		Decision:            raw.Decision,
+		GRPC:                normalizeGRPC(raw.GRPC),
+		projectionRefresh:   refresh,
+		restartSettings:     restart,
+		killSwitchSettings:  parseKillSwitchSettings(raw.Risk.KillSwitch),
+		persistenceSettings: persistence,
 	}
 	cfg.Log.File = logFile
 
@@ -272,6 +304,39 @@ func (c *Config) KillSwitchSettings() KillSwitchSettings {
 		return DefaultKillSwitchSettings()
 	}
 	return c.killSwitchSettings
+}
+
+// PersistenceSettings 返回解析后的持久化保留与清理配置。
+func (c *Config) PersistenceSettings() PersistenceSettings {
+	if c == nil {
+		return DefaultPersistenceSettings()
+	}
+	return c.persistenceSettings
+}
+
+func parsePersistenceSettings(raw PersistenceConfig) (PersistenceSettings, error) {
+	out := DefaultPersistenceSettings()
+	out.StrategyLogRetentionDays = raw.StrategyLogRetentionDays
+	out.AccountSnapshotRetentionDays = raw.AccountSnapshotRetentionDays
+
+	if raw.StrategyLogRetentionDays < 0 {
+		return PersistenceSettings{}, fmt.Errorf("persistence.strategy_log_retention_days must be non-negative")
+	}
+	if raw.AccountSnapshotRetentionDays < 0 {
+		return PersistenceSettings{}, fmt.Errorf("persistence.account_snapshot_retention_days must be non-negative")
+	}
+
+	s := strings.TrimSpace(raw.CleanupInterval)
+	if s == "" {
+		return out, nil
+	}
+	d, err := time.ParseDuration(s)
+	if err != nil || d <= 0 {
+		out.CleanupInterval = time.Hour
+		return out, nil
+	}
+	out.CleanupInterval = d
+	return out, nil
 }
 
 func parseKillSwitchSettings(raw KillSwitchConfigRaw) KillSwitchSettings {
@@ -415,6 +480,10 @@ func setDefaults(v *viper.Viper) {
 	v.SetDefault("risk.kill_switch.cancel_open_orders_on_activate", false)
 
 	v.SetDefault("database.max_open_conns", 1)
+
+	v.SetDefault("persistence.strategy_log_retention_days", 7)
+	v.SetDefault("persistence.account_snapshot_retention_days", 30)
+	v.SetDefault("persistence.cleanup_interval", "1h")
 
 	v.SetDefault("channels.signal", 100)
 	v.SetDefault("channels.order", 100)

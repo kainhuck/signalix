@@ -8,6 +8,7 @@ import (
 )
 
 // OrderStore 本地订单与策略状态持久化（SQLite 等实现）；nil 表示禁用。
+// 资产快照与策略日志见 PersistenceStore。
 type OrderStore interface {
 	SaveOrder(ctx context.Context, order *models.Order) error
 	ListNonTerminalOrders(ctx context.Context) ([]*models.Order, error)

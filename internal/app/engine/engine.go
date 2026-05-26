@@ -45,7 +45,10 @@ type Engine struct {
 	executionEngine   *oms.ExecutionEngine
 	accountProjection *projection.AccountProjection
 	riskEvaluator     ports.RiskEvaluator
-	store             ports.OrderStore
+	store             ports.PersistenceStore
+
+	// persistenceSettings 资产快照/策略日志保留与清理周期。
+	persistenceSettings config.PersistenceSettings
 
 	// 输出通道
 	signalCh chan *models.StrategySignal
@@ -129,17 +132,18 @@ func NewEngine(strategyDir string, exchange ports.Exchange, build BuildParams, o
 	router := market.NewMarketRouter(exchange, market.WithBufferSize(marketBuf))
 
 	e := &Engine{
-		strategyProcess: make(map[string]strategy.StrategyRuntime),
-		exchange:        exchange,
-		loader:          loader,
-		router:          router,
-		defaultInterval: build.DefaultInterval,
-		restartCfg:      build.Restart,
-		crashTracker:    newCrashTracker(),
-		restartAttempt:  make(map[string]int),
-		pendingRestart:  make(map[string]time.Time),
-		equityTracker:   equityTracker,
-		killSwitchCfg:   build.KillSwitch,
+		strategyProcess:     make(map[string]strategy.StrategyRuntime),
+		exchange:            exchange,
+		loader:              loader,
+		router:              router,
+		defaultInterval:     build.DefaultInterval,
+		restartCfg:          build.Restart,
+		crashTracker:        newCrashTracker(),
+		restartAttempt:      make(map[string]int),
+		pendingRestart:      make(map[string]time.Time),
+		equityTracker:       equityTracker,
+		killSwitchCfg:       build.KillSwitch,
+		persistenceSettings: build.Persistence,
 		decisionEngine: decision.NewDecisionEngine(proj,
 			decision.WithDefaultSizeDivisor(divisor),
 			decision.WithExchange(exchange),
@@ -305,6 +309,15 @@ func (e *Engine) Start() error {
 	}()
 
 	e.running.Store(true)
+
+	if e.store != nil {
+		e.wg.Add(1)
+		go func() {
+			defer e.wg.Done()
+			e.retentionLoop()
+		}()
+	}
+
 	return nil
 }
 

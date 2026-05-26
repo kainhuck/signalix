@@ -16,14 +16,17 @@ import (
 	"github.com/kainhuck/signalix/pkg/exchange/perp"
 )
 
-const schemaVersion = 1
+const schemaVersion = 2
 
-// Store SQLite 实现的 OrderStore。
+// Store SQLite 实现的 OrderStore 与 PersistenceStore。
 type Store struct {
 	db *sql.DB
 }
 
-var _ ports.OrderStore = (*Store)(nil)
+var (
+	_ ports.OrderStore       = (*Store)(nil)
+	_ ports.PersistenceStore = (*Store)(nil)
+)
 
 // Open 打开或创建 SQLite 库，启用 WAL，并确保表结构存在。
 func Open(path string, maxOpenConns int) (*Store, error) {
@@ -74,6 +77,21 @@ func (s *Store) initSchema() error {
 	if err := s.db.QueryRow(`PRAGMA user_version`).Scan(&v); err != nil {
 		return err
 	}
+	if v < 1 {
+		if err := s.migrateV1(); err != nil {
+			return err
+		}
+		v = 1
+	}
+	if v < 2 {
+		if err := s.migrateV2(); err != nil {
+			return err
+		}
+	}
+	return nil
+}
+
+func (s *Store) migrateV1() error {
 	_, err := s.db.Exec(`
 CREATE TABLE IF NOT EXISTS orders (
   id TEXT PRIMARY KEY,
@@ -101,12 +119,41 @@ CREATE TABLE IF NOT EXISTS strategy_state (
 	if err != nil {
 		return err
 	}
-	if v < schemaVersion {
-		if _, err := s.db.Exec(fmt.Sprintf(`PRAGMA user_version = %d`, schemaVersion)); err != nil {
-			return err
-		}
+	_, err = s.db.Exec(fmt.Sprintf(`PRAGMA user_version = %d`, 1))
+	return err
+}
+
+func (s *Store) migrateV2() error {
+	_, err := s.db.Exec(`
+CREATE TABLE IF NOT EXISTS account_snapshots (
+  id INTEGER PRIMARY KEY AUTOINCREMENT,
+  snapshot_at TEXT NOT NULL,
+  revision INTEGER NOT NULL,
+  currency TEXT NOT NULL,
+  total_equity TEXT NOT NULL,
+  balance_json TEXT NOT NULL,
+  positions_json TEXT NOT NULL
+);
+CREATE INDEX IF NOT EXISTS idx_account_snapshots_snapshot_at
+  ON account_snapshots (snapshot_at);
+
+CREATE TABLE IF NOT EXISTS strategy_logs (
+  id INTEGER PRIMARY KEY AUTOINCREMENT,
+  strategy_name TEXT NOT NULL,
+  level TEXT NOT NULL,
+  message TEXT NOT NULL,
+  created_at TEXT NOT NULL
+);
+CREATE INDEX IF NOT EXISTS idx_strategy_logs_strategy_created
+  ON strategy_logs (strategy_name, created_at);
+CREATE INDEX IF NOT EXISTS idx_strategy_logs_created_at
+  ON strategy_logs (created_at);
+`)
+	if err != nil {
+		return err
 	}
-	return nil
+	_, err = s.db.Exec(fmt.Sprintf(`PRAGMA user_version = %d`, schemaVersion))
+	return err
 }
 
 // Close 关闭数据库连接。
