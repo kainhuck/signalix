@@ -61,6 +61,19 @@ func FormatGRPCError(addr string, timeout time.Duration, err error) error {
 			return fmt.Errorf("引擎未运行，请先启动 signalixd: %s", msg)
 		}
 		return fmt.Errorf("%s", msg)
+	case codes.NotFound:
+		lower := strings.ToLower(msg)
+		if strings.Contains(lower, "catalog") || strings.Contains(lower, "strategy") {
+			return fmt.Errorf("%s", msg)
+		}
+		return fmt.Errorf("%s", msg)
+	case codes.InvalidArgument:
+		return fmt.Errorf("%s", msg)
+	case codes.Internal:
+		if strings.Contains(strings.ToLower(msg), "start strategy") {
+			return fmt.Errorf("failed to start strategy: %s", strings.TrimPrefix(msg, "start strategy: "))
+		}
+		return fmt.Errorf("rpc error: %s %s", st.Code(), msg)
 	case codes.DeadlineExceeded:
 		return fmt.Errorf("request timed out after %s", timeout)
 	default:

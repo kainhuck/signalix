@@ -4,6 +4,7 @@ import (
 	"encoding/json"
 	"fmt"
 	"io"
+	"sort"
 	"strings"
 	"time"
 
@@ -113,6 +114,104 @@ func (p *Printer) PrintEngineInfo(reply *enginev1.GetEngineInfoReply) error {
 			{"version", reply.GetVersion()},
 			{"strategies_dir", reply.GetStrategiesDir()},
 			{"go_version", reply.GetGoVersion()},
+		})
+	default:
+		return fmt.Errorf("unknown format")
+	}
+}
+
+func (p *Printer) PrintStrategyList(reply *enginev1.ListStrategiesReply) error {
+	switch p.format {
+	case JSON, YAML:
+		return p.printStructured(reply)
+	case Table:
+		strategies := append([]*enginev1.StrategySummary(nil), reply.GetStrategies()...)
+		sort.Slice(strategies, func(i, j int) bool {
+			return strategies[i].GetName() < strategies[j].GetName()
+		})
+		tbl := tablewriter.NewWriter(p.w)
+		tbl.SetHeader([]string{"name", "enabled", "running", "symbols", "crash_count", "crash_window", "circuit_open", "backoff_sec"})
+		tbl.SetBorder(true)
+		for _, s := range strategies {
+			tbl.Append([]string{
+				s.GetName(),
+				fmt.Sprintf("%t", s.GetEnabled()),
+				fmt.Sprintf("%t", s.GetRunning()),
+				strings.Join(s.GetSymbols(), ","),
+				fmt.Sprintf("%d", s.GetCrashCount()),
+				fmt.Sprintf("%d", s.GetCrashCountInWindow()),
+				fmt.Sprintf("%t", s.GetCircuitOpen()),
+				fmt.Sprintf("%.1f", s.GetRestartBackoffSec()),
+			})
+		}
+		tbl.Render()
+		return nil
+	default:
+		return fmt.Errorf("unknown format")
+	}
+}
+
+func (p *Printer) PrintStrategyStatus(reply *enginev1.GetStrategyStatusReply) error {
+	switch p.format {
+	case JSON, YAML:
+		return p.printStructured(reply)
+	case Table:
+		s := reply.GetStatus()
+		if s == nil {
+			return fmt.Errorf("empty strategy status")
+		}
+		return p.printKeyValue([][2]string{
+			{"name", s.GetName()},
+			{"enabled", fmt.Sprintf("%t", s.GetEnabled())},
+			{"symbols", strings.Join(s.GetSymbols(), ",")},
+			{"running", fmt.Sprintf("%t", s.GetRunning())},
+			{"last_heartbeat", formatUnixMs(s.GetLastHeartbeatUnixMs())},
+			{"crash_count", fmt.Sprintf("%d", s.GetCrashCount())},
+			{"crash_count_in_window", fmt.Sprintf("%d", s.GetCrashCountInWindow())},
+			{"auto_restart_enabled", fmt.Sprintf("%t", s.GetAutoRestartEnabled())},
+			{"restart_backoff_sec", fmt.Sprintf("%.1f", s.GetRestartBackoffSec())},
+			{"circuit_open", fmt.Sprintf("%t", s.GetCircuitOpen())},
+		})
+	default:
+		return fmt.Errorf("unknown format")
+	}
+}
+
+func (p *Printer) PrintStrategyAction(name, action string) error {
+	switch p.format {
+	case JSON, YAML:
+		doc := map[string]string{"name": name, "action": action}
+		if p.format == JSON {
+			b, err := json.MarshalIndent(doc, "", "  ")
+			if err != nil {
+				return err
+			}
+			b = append(b, '\n')
+			_, err = p.w.Write(b)
+			return err
+		}
+		enc := yaml.NewEncoder(p.w)
+		enc.SetIndent(2)
+		defer enc.Close()
+		return enc.Encode(doc)
+	case Table:
+		return p.printKeyValue([][2]string{
+			{"action", action},
+			{"name", name},
+		})
+	default:
+		return fmt.Errorf("unknown format")
+	}
+}
+
+func (p *Printer) PrintReloadResult(count int32) error {
+	reply := &enginev1.ReloadStrategiesReply{CatalogCount: count}
+	switch p.format {
+	case JSON, YAML:
+		return p.printStructured(reply)
+	case Table:
+		return p.printKeyValue([][2]string{
+			{"catalog_count", fmt.Sprintf("%d", count)},
 		})
 	default:
 		return fmt.Errorf("unknown format")

@@ -64,6 +64,7 @@ func NewRoot() *cobra.Command {
 	root.AddCommand(newPingCmd())
 	root.AddCommand(newHealthCmd())
 	root.AddCommand(newEngineCmd())
+	root.AddCommand(newStrategyCmd())
 
 	return root
 }
