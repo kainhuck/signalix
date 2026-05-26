@@ -19,29 +19,33 @@ import (
 const _ = grpc.SupportPackageIsVersion9
 
 const (
-	Engine_Ping_FullMethodName                 = "/signalix.engine.v1.Engine/Ping"
-	Engine_GetHealth_FullMethodName            = "/signalix.engine.v1.Engine/GetHealth"
-	Engine_GetEngineInfo_FullMethodName        = "/signalix.engine.v1.Engine/GetEngineInfo"
-	Engine_ListStrategies_FullMethodName       = "/signalix.engine.v1.Engine/ListStrategies"
-	Engine_GetStrategyStatus_FullMethodName    = "/signalix.engine.v1.Engine/GetStrategyStatus"
-	Engine_StartStrategy_FullMethodName        = "/signalix.engine.v1.Engine/StartStrategy"
-	Engine_StopStrategy_FullMethodName         = "/signalix.engine.v1.Engine/StopStrategy"
-	Engine_ReloadStrategies_FullMethodName     = "/signalix.engine.v1.Engine/ReloadStrategies"
-	Engine_ListTemplates_FullMethodName        = "/signalix.engine.v1.Engine/ListTemplates"
-	Engine_CreateStrategy_FullMethodName       = "/signalix.engine.v1.Engine/CreateStrategy"
-	Engine_GetBalance_FullMethodName           = "/signalix.engine.v1.Engine/GetBalance"
-	Engine_GetPosition_FullMethodName          = "/signalix.engine.v1.Engine/GetPosition"
-	Engine_ListPositions_FullMethodName        = "/signalix.engine.v1.Engine/ListPositions"
-	Engine_GetTicker_FullMethodName            = "/signalix.engine.v1.Engine/GetTicker"
-	Engine_GetKlines_FullMethodName            = "/signalix.engine.v1.Engine/GetKlines"
-	Engine_ListTickers_FullMethodName          = "/signalix.engine.v1.Engine/ListTickers"
-	Engine_GetOrder_FullMethodName             = "/signalix.engine.v1.Engine/GetOrder"
-	Engine_ListOpenOrders_FullMethodName       = "/signalix.engine.v1.Engine/ListOpenOrders"
-	Engine_CancelOrder_FullMethodName          = "/signalix.engine.v1.Engine/CancelOrder"
-	Engine_SubscribeOrderEvents_FullMethodName = "/signalix.engine.v1.Engine/SubscribeOrderEvents"
-	Engine_ActivateKillSwitch_FullMethodName   = "/signalix.engine.v1.Engine/ActivateKillSwitch"
-	Engine_DeactivateKillSwitch_FullMethodName = "/signalix.engine.v1.Engine/DeactivateKillSwitch"
-	Engine_GetKillSwitchStatus_FullMethodName  = "/signalix.engine.v1.Engine/GetKillSwitchStatus"
+	Engine_Ping_FullMethodName                     = "/signalix.engine.v1.Engine/Ping"
+	Engine_GetHealth_FullMethodName                = "/signalix.engine.v1.Engine/GetHealth"
+	Engine_GetEngineInfo_FullMethodName            = "/signalix.engine.v1.Engine/GetEngineInfo"
+	Engine_ListStrategies_FullMethodName           = "/signalix.engine.v1.Engine/ListStrategies"
+	Engine_GetStrategyStatus_FullMethodName        = "/signalix.engine.v1.Engine/GetStrategyStatus"
+	Engine_StartStrategy_FullMethodName            = "/signalix.engine.v1.Engine/StartStrategy"
+	Engine_StopStrategy_FullMethodName             = "/signalix.engine.v1.Engine/StopStrategy"
+	Engine_ReloadStrategies_FullMethodName         = "/signalix.engine.v1.Engine/ReloadStrategies"
+	Engine_ListTemplates_FullMethodName            = "/signalix.engine.v1.Engine/ListTemplates"
+	Engine_CreateStrategy_FullMethodName           = "/signalix.engine.v1.Engine/CreateStrategy"
+	Engine_GetBalance_FullMethodName               = "/signalix.engine.v1.Engine/GetBalance"
+	Engine_GetPosition_FullMethodName              = "/signalix.engine.v1.Engine/GetPosition"
+	Engine_ListPositions_FullMethodName            = "/signalix.engine.v1.Engine/ListPositions"
+	Engine_GetTicker_FullMethodName                = "/signalix.engine.v1.Engine/GetTicker"
+	Engine_GetKlines_FullMethodName                = "/signalix.engine.v1.Engine/GetKlines"
+	Engine_ListTickers_FullMethodName              = "/signalix.engine.v1.Engine/ListTickers"
+	Engine_GetOrder_FullMethodName                 = "/signalix.engine.v1.Engine/GetOrder"
+	Engine_ListOpenOrders_FullMethodName           = "/signalix.engine.v1.Engine/ListOpenOrders"
+	Engine_CancelOrder_FullMethodName              = "/signalix.engine.v1.Engine/CancelOrder"
+	Engine_ListStrategyLogs_FullMethodName         = "/signalix.engine.v1.Engine/ListStrategyLogs"
+	Engine_ListAccountSnapshots_FullMethodName     = "/signalix.engine.v1.Engine/ListAccountSnapshots"
+	Engine_GetLatestAccountSnapshot_FullMethodName = "/signalix.engine.v1.Engine/GetLatestAccountSnapshot"
+	Engine_SubscribeOrderEvents_FullMethodName     = "/signalix.engine.v1.Engine/SubscribeOrderEvents"
+	Engine_SubscribeStrategyLogs_FullMethodName    = "/signalix.engine.v1.Engine/SubscribeStrategyLogs"
+	Engine_ActivateKillSwitch_FullMethodName       = "/signalix.engine.v1.Engine/ActivateKillSwitch"
+	Engine_DeactivateKillSwitch_FullMethodName     = "/signalix.engine.v1.Engine/DeactivateKillSwitch"
+	Engine_GetKillSwitchStatus_FullMethodName      = "/signalix.engine.v1.Engine/GetKillSwitchStatus"
 )
 
 // EngineClient is the client API for Engine service.
@@ -73,8 +77,13 @@ type EngineClient interface {
 	GetOrder(ctx context.Context, in *GetOrderRequest, opts ...grpc.CallOption) (*GetOrderReply, error)
 	ListOpenOrders(ctx context.Context, in *ListOpenOrdersRequest, opts ...grpc.CallOption) (*ListOpenOrdersReply, error)
 	CancelOrder(ctx context.Context, in *CancelOrderRequest, opts ...grpc.CallOption) (*CancelOrderReply, error)
+	// --- Persistence Query ---
+	ListStrategyLogs(ctx context.Context, in *ListStrategyLogsRequest, opts ...grpc.CallOption) (*ListStrategyLogsReply, error)
+	ListAccountSnapshots(ctx context.Context, in *ListAccountSnapshotsRequest, opts ...grpc.CallOption) (*ListAccountSnapshotsReply, error)
+	GetLatestAccountSnapshot(ctx context.Context, in *GetLatestAccountSnapshotRequest, opts ...grpc.CallOption) (*GetLatestAccountSnapshotReply, error)
 	// --- Stream ---
 	SubscribeOrderEvents(ctx context.Context, in *SubscribeOrderEventsRequest, opts ...grpc.CallOption) (grpc.ServerStreamingClient[Order], error)
+	SubscribeStrategyLogs(ctx context.Context, in *SubscribeStrategyLogsRequest, opts ...grpc.CallOption) (grpc.ServerStreamingClient[StrategyLog], error)
 	// --- Emergency ---
 	ActivateKillSwitch(ctx context.Context, in *ActivateKillSwitchRequest, opts ...grpc.CallOption) (*ActivateKillSwitchReply, error)
 	DeactivateKillSwitch(ctx context.Context, in *DeactivateKillSwitchRequest, opts ...grpc.CallOption) (*DeactivateKillSwitchReply, error)
@@ -279,6 +288,36 @@ func (c *engineClient) CancelOrder(ctx context.Context, in *CancelOrderRequest, 
 	return out, nil
 }
 
+func (c *engineClient) ListStrategyLogs(ctx context.Context, in *ListStrategyLogsRequest, opts ...grpc.CallOption) (*ListStrategyLogsReply, error) {
+	cOpts := append([]grpc.CallOption{grpc.StaticMethod()}, opts...)
+	out := new(ListStrategyLogsReply)
+	err := c.cc.Invoke(ctx, Engine_ListStrategyLogs_FullMethodName, in, out, cOpts...)
+	if err != nil {
+		return nil, err
+	}
+	return out, nil
+}
+
+func (c *engineClient) ListAccountSnapshots(ctx context.Context, in *ListAccountSnapshotsRequest, opts ...grpc.CallOption) (*ListAccountSnapshotsReply, error) {
+	cOpts := append([]grpc.CallOption{grpc.StaticMethod()}, opts...)
+	out := new(ListAccountSnapshotsReply)
+	err := c.cc.Invoke(ctx, Engine_ListAccountSnapshots_FullMethodName, in, out, cOpts...)
+	if err != nil {
+		return nil, err
+	}
+	return out, nil
+}
+
+func (c *engineClient) GetLatestAccountSnapshot(ctx context.Context, in *GetLatestAccountSnapshotRequest, opts ...grpc.CallOption) (*GetLatestAccountSnapshotReply, error) {
+	cOpts := append([]grpc.CallOption{grpc.StaticMethod()}, opts...)
+	out := new(GetLatestAccountSnapshotReply)
+	err := c.cc.Invoke(ctx, Engine_GetLatestAccountSnapshot_FullMethodName, in, out, cOpts...)
+	if err != nil {
+		return nil, err
+	}
+	return out, nil
+}
+
 func (c *engineClient) SubscribeOrderEvents(ctx context.Context, in *SubscribeOrderEventsRequest, opts ...grpc.CallOption) (grpc.ServerStreamingClient[Order], error) {
 	cOpts := append([]grpc.CallOption{grpc.StaticMethod()}, opts...)
 	stream, err := c.cc.NewStream(ctx, &Engine_ServiceDesc.Streams[0], Engine_SubscribeOrderEvents_FullMethodName, cOpts...)
@@ -297,6 +336,25 @@ func (c *engineClient) SubscribeOrderEvents(ctx context.Context, in *SubscribeOr
 
 // This type alias is provided for backwards compatibility with existing code that references the prior non-generic stream type by name.
 type Engine_SubscribeOrderEventsClient = grpc.ServerStreamingClient[Order]
+
+func (c *engineClient) SubscribeStrategyLogs(ctx context.Context, in *SubscribeStrategyLogsRequest, opts ...grpc.CallOption) (grpc.ServerStreamingClient[StrategyLog], error) {
+	cOpts := append([]grpc.CallOption{grpc.StaticMethod()}, opts...)
+	stream, err := c.cc.NewStream(ctx, &Engine_ServiceDesc.Streams[1], Engine_SubscribeStrategyLogs_FullMethodName, cOpts...)
+	if err != nil {
+		return nil, err
+	}
+	x := &grpc.GenericClientStream[SubscribeStrategyLogsRequest, StrategyLog]{ClientStream: stream}
+	if err := x.ClientStream.SendMsg(in); err != nil {
+		return nil, err
+	}
+	if err := x.ClientStream.CloseSend(); err != nil {
+		return nil, err
+	}
+	return x, nil
+}
+
+// This type alias is provided for backwards compatibility with existing code that references the prior non-generic stream type by name.
+type Engine_SubscribeStrategyLogsClient = grpc.ServerStreamingClient[StrategyLog]
 
 func (c *engineClient) ActivateKillSwitch(ctx context.Context, in *ActivateKillSwitchRequest, opts ...grpc.CallOption) (*ActivateKillSwitchReply, error) {
 	cOpts := append([]grpc.CallOption{grpc.StaticMethod()}, opts...)
@@ -357,8 +415,13 @@ type EngineServer interface {
 	GetOrder(context.Context, *GetOrderRequest) (*GetOrderReply, error)
 	ListOpenOrders(context.Context, *ListOpenOrdersRequest) (*ListOpenOrdersReply, error)
 	CancelOrder(context.Context, *CancelOrderRequest) (*CancelOrderReply, error)
+	// --- Persistence Query ---
+	ListStrategyLogs(context.Context, *ListStrategyLogsRequest) (*ListStrategyLogsReply, error)
+	ListAccountSnapshots(context.Context, *ListAccountSnapshotsRequest) (*ListAccountSnapshotsReply, error)
+	GetLatestAccountSnapshot(context.Context, *GetLatestAccountSnapshotRequest) (*GetLatestAccountSnapshotReply, error)
 	// --- Stream ---
 	SubscribeOrderEvents(*SubscribeOrderEventsRequest, grpc.ServerStreamingServer[Order]) error
+	SubscribeStrategyLogs(*SubscribeStrategyLogsRequest, grpc.ServerStreamingServer[StrategyLog]) error
 	// --- Emergency ---
 	ActivateKillSwitch(context.Context, *ActivateKillSwitchRequest) (*ActivateKillSwitchReply, error)
 	DeactivateKillSwitch(context.Context, *DeactivateKillSwitchRequest) (*DeactivateKillSwitchReply, error)
@@ -430,8 +493,20 @@ func (UnimplementedEngineServer) ListOpenOrders(context.Context, *ListOpenOrders
 func (UnimplementedEngineServer) CancelOrder(context.Context, *CancelOrderRequest) (*CancelOrderReply, error) {
 	return nil, status.Errorf(codes.Unimplemented, "method CancelOrder not implemented")
 }
+func (UnimplementedEngineServer) ListStrategyLogs(context.Context, *ListStrategyLogsRequest) (*ListStrategyLogsReply, error) {
+	return nil, status.Errorf(codes.Unimplemented, "method ListStrategyLogs not implemented")
+}
+func (UnimplementedEngineServer) ListAccountSnapshots(context.Context, *ListAccountSnapshotsRequest) (*ListAccountSnapshotsReply, error) {
+	return nil, status.Errorf(codes.Unimplemented, "method ListAccountSnapshots not implemented")
+}
+func (UnimplementedEngineServer) GetLatestAccountSnapshot(context.Context, *GetLatestAccountSnapshotRequest) (*GetLatestAccountSnapshotReply, error) {
+	return nil, status.Errorf(codes.Unimplemented, "method GetLatestAccountSnapshot not implemented")
+}
 func (UnimplementedEngineServer) SubscribeOrderEvents(*SubscribeOrderEventsRequest, grpc.ServerStreamingServer[Order]) error {
 	return status.Errorf(codes.Unimplemented, "method SubscribeOrderEvents not implemented")
+}
+func (UnimplementedEngineServer) SubscribeStrategyLogs(*SubscribeStrategyLogsRequest, grpc.ServerStreamingServer[StrategyLog]) error {
+	return status.Errorf(codes.Unimplemented, "method SubscribeStrategyLogs not implemented")
 }
 func (UnimplementedEngineServer) ActivateKillSwitch(context.Context, *ActivateKillSwitchRequest) (*ActivateKillSwitchReply, error) {
 	return nil, status.Errorf(codes.Unimplemented, "method ActivateKillSwitch not implemented")
@@ -805,6 +880,60 @@ func _Engine_CancelOrder_Handler(srv interface{}, ctx context.Context, dec func(
 	return interceptor(ctx, in, info, handler)
 }
 
+func _Engine_ListStrategyLogs_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+	in := new(ListStrategyLogsRequest)
+	if err := dec(in); err != nil {
+		return nil, err
+	}
+	if interceptor == nil {
+		return srv.(EngineServer).ListStrategyLogs(ctx, in)
+	}
+	info := &grpc.UnaryServerInfo{
+		Server:     srv,
+		FullMethod: Engine_ListStrategyLogs_FullMethodName,
+	}
+	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
+		return srv.(EngineServer).ListStrategyLogs(ctx, req.(*ListStrategyLogsRequest))
+	}
+	return interceptor(ctx, in, info, handler)
+}
+
+func _Engine_ListAccountSnapshots_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+	in := new(ListAccountSnapshotsRequest)
+	if err := dec(in); err != nil {
+		return nil, err
+	}
+	if interceptor == nil {
+		return srv.(EngineServer).ListAccountSnapshots(ctx, in)
+	}
+	info := &grpc.UnaryServerInfo{
+		Server:     srv,
+		FullMethod: Engine_ListAccountSnapshots_FullMethodName,
+	}
+	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
+		return srv.(EngineServer).ListAccountSnapshots(ctx, req.(*ListAccountSnapshotsRequest))
+	}
+	return interceptor(ctx, in, info, handler)
+}
+
+func _Engine_GetLatestAccountSnapshot_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+	in := new(GetLatestAccountSnapshotRequest)
+	if err := dec(in); err != nil {
+		return nil, err
+	}
+	if interceptor == nil {
+		return srv.(EngineServer).GetLatestAccountSnapshot(ctx, in)
+	}
+	info := &grpc.UnaryServerInfo{
+		Server:     srv,
+		FullMethod: Engine_GetLatestAccountSnapshot_FullMethodName,
+	}
+	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
+		return srv.(EngineServer).GetLatestAccountSnapshot(ctx, req.(*GetLatestAccountSnapshotRequest))
+	}
+	return interceptor(ctx, in, info, handler)
+}
+
 func _Engine_SubscribeOrderEvents_Handler(srv interface{}, stream grpc.ServerStream) error {
 	m := new(SubscribeOrderEventsRequest)
 	if err := stream.RecvMsg(m); err != nil {
@@ -815,6 +944,17 @@ func _Engine_SubscribeOrderEvents_Handler(srv interface{}, stream grpc.ServerStr
 
 // This type alias is provided for backwards compatibility with existing code that references the prior non-generic stream type by name.
 type Engine_SubscribeOrderEventsServer = grpc.ServerStreamingServer[Order]
+
+func _Engine_SubscribeStrategyLogs_Handler(srv interface{}, stream grpc.ServerStream) error {
+	m := new(SubscribeStrategyLogsRequest)
+	if err := stream.RecvMsg(m); err != nil {
+		return err
+	}
+	return srv.(EngineServer).SubscribeStrategyLogs(m, &grpc.GenericServerStream[SubscribeStrategyLogsRequest, StrategyLog]{ServerStream: stream})
+}
+
+// This type alias is provided for backwards compatibility with existing code that references the prior non-generic stream type by name.
+type Engine_SubscribeStrategyLogsServer = grpc.ServerStreamingServer[StrategyLog]
 
 func _Engine_ActivateKillSwitch_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
 	in := new(ActivateKillSwitchRequest)
@@ -954,6 +1094,18 @@ var Engine_ServiceDesc = grpc.ServiceDesc{
 			Handler:    _Engine_CancelOrder_Handler,
 		},
 		{
+			MethodName: "ListStrategyLogs",
+			Handler:    _Engine_ListStrategyLogs_Handler,
+		},
+		{
+			MethodName: "ListAccountSnapshots",
+			Handler:    _Engine_ListAccountSnapshots_Handler,
+		},
+		{
+			MethodName: "GetLatestAccountSnapshot",
+			Handler:    _Engine_GetLatestAccountSnapshot_Handler,
+		},
+		{
 			MethodName: "ActivateKillSwitch",
 			Handler:    _Engine_ActivateKillSwitch_Handler,
 		},
@@ -970,6 +1122,11 @@ var Engine_ServiceDesc = grpc.ServiceDesc{
 		{
 			StreamName:    "SubscribeOrderEvents",
 			Handler:       _Engine_SubscribeOrderEvents_Handler,
+			ServerStreams: true,
+		},
+		{
+			StreamName:    "SubscribeStrategyLogs",
+			Handler:       _Engine_SubscribeStrategyLogs_Handler,
 			ServerStreams: true,
 		},
 	},

@@ -38,6 +38,18 @@ func (s *snapshotCaptureStore) PurgeAccountSnapshotsBefore(context.Context, time
 func (s *snapshotCaptureStore) PurgeStrategyLogsBefore(context.Context, time.Time) (int64, error) {
 	return 0, nil
 }
+func (s *snapshotCaptureStore) ListStrategyLogs(context.Context, models.StrategyLogListFilter) ([]*models.StrategyLogRow, error) {
+	return nil, nil
+}
+func (s *snapshotCaptureStore) ListRecentStrategyLogs(context.Context, string, int) ([]*models.StrategyLogRow, error) {
+	return nil, nil
+}
+func (s *snapshotCaptureStore) ListAccountSnapshots(context.Context, models.AccountSnapshotListFilter) ([]*models.AccountSnapshotRow, error) {
+	return nil, nil
+}
+func (s *snapshotCaptureStore) GetLatestAccountSnapshot(context.Context) (*models.AccountSnapshotRow, error) {
+	return nil, nil
+}
 
 var _ ports.PersistenceStore = (*snapshotCaptureStore)(nil)
 

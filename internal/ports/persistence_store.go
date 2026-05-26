@@ -16,4 +16,9 @@ type PersistenceStore interface {
 
 	PurgeAccountSnapshotsBefore(ctx context.Context, before time.Time) (int64, error)
 	PurgeStrategyLogsBefore(ctx context.Context, before time.Time) (int64, error)
+
+	ListStrategyLogs(ctx context.Context, filter models.StrategyLogListFilter) ([]*models.StrategyLogRow, error)
+	ListRecentStrategyLogs(ctx context.Context, strategyName string, limit int) ([]*models.StrategyLogRow, error)
+	ListAccountSnapshots(ctx context.Context, filter models.AccountSnapshotListFilter) ([]*models.AccountSnapshotRow, error)
+	GetLatestAccountSnapshot(ctx context.Context) (*models.AccountSnapshotRow, error)
 }

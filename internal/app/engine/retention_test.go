@@ -38,6 +38,18 @@ func (p *purgeRecorder) PurgeStrategyLogsBefore(context.Context, time.Time) (int
 	p.logCalls++
 	return 0, nil
 }
+func (p *purgeRecorder) ListStrategyLogs(context.Context, models.StrategyLogListFilter) ([]*models.StrategyLogRow, error) {
+	return nil, nil
+}
+func (p *purgeRecorder) ListRecentStrategyLogs(context.Context, string, int) ([]*models.StrategyLogRow, error) {
+	return nil, nil
+}
+func (p *purgeRecorder) ListAccountSnapshots(context.Context, models.AccountSnapshotListFilter) ([]*models.AccountSnapshotRow, error) {
+	return nil, nil
+}
+func (p *purgeRecorder) GetLatestAccountSnapshot(context.Context) (*models.AccountSnapshotRow, error) {
+	return nil, nil
+}
 
 var _ ports.PersistenceStore = (*purgeRecorder)(nil)
 

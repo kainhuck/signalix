@@ -47,8 +47,14 @@ service Engine {
 
   rpc CancelOrder(CancelOrderRequest) returns (CancelOrderReply);
 
+  // --- Persistence Query ---
+  rpc ListStrategyLogs(ListStrategyLogsRequest) returns (ListStrategyLogsReply);
+  rpc ListAccountSnapshots(ListAccountSnapshotsRequest) returns (ListAccountSnapshotsReply);
+  rpc GetLatestAccountSnapshot(GetLatestAccountSnapshotRequest) returns (GetLatestAccountSnapshotReply);
+
   // --- Stream ---
   rpc SubscribeOrderEvents(SubscribeOrderEventsRequest) returns (stream Order);
+  rpc SubscribeStrategyLogs(SubscribeStrategyLogsRequest) returns (stream StrategyLog);
 
   // --- Emergency ---
   rpc ActivateKillSwitch(ActivateKillSwitchRequest) returns (ActivateKillSwitchReply);
@@ -290,6 +296,63 @@ message CancelOrderRequest {
 }
 
 message CancelOrderReply {}
+
+message StrategyLog {
+  int64 id = 1;
+  string strategy_name = 2;
+  string level = 3;
+  string message = 4;
+  int64 created_at_unix_ms = 5;
+}
+
+message ListStrategyLogsRequest {
+  string strategy_name = 1;
+  int64 start_at_unix_ms = 2;
+  int64 end_at_unix_ms = 3;
+  int32 limit = 4;
+}
+
+message ListStrategyLogsReply {
+  repeated StrategyLog logs = 1;
+}
+
+message SubscribeStrategyLogsRequest {
+  string strategy_name = 1;
+  int32 tail = 2;
+}
+
+message AccountSnapshotSummary {
+  int64 id = 1;
+  int64 snapshot_at_unix_ms = 2;
+  uint64 revision = 3;
+  string currency = 4;
+  string total_equity = 5;
+}
+
+message AccountSnapshot {
+  AccountSnapshotSummary summary = 1;
+  Balance balance = 2;
+  repeated Position positions = 3;
+}
+
+message ListAccountSnapshotsRequest {
+  int64 start_at_unix_ms = 1;
+  int64 end_at_unix_ms = 2;
+  int32 limit = 3;
+  bool include_details = 4;
+}
+
+message ListAccountSnapshotsReply {
+  repeated AccountSnapshot snapshots = 1;
+}
+
+message GetLatestAccountSnapshotRequest {
+  bool include_details = 1;
+}
+
+message GetLatestAccountSnapshotReply {
+  AccountSnapshot snapshot = 1;
+}
 
 message SubscribeOrderEventsRequest {}
 

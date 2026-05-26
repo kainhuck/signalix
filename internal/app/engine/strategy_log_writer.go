@@ -61,6 +61,8 @@ func (e *Engine) strategyLogWriterLoop() {
 				logger.String("strategy", row.StrategyName),
 				logger.String("level", row.Level),
 				logger.Any("error", err))
+			continue
 		}
+		e.notifyStrategyLogSubscribers(row)
 	}
 }

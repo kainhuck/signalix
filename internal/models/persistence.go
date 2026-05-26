@@ -21,3 +21,18 @@ type StrategyLogRow struct {
 	Message      string
 	CreatedAt    time.Time
 }
+
+// StrategyLogListFilter 策略日志列表查询条件。
+type StrategyLogListFilter struct {
+	StrategyName string
+	StartAt      *time.Time
+	EndAt        *time.Time
+	Limit        int
+}
+
+// AccountSnapshotListFilter 资产快照列表查询条件。
+type AccountSnapshotListFilter struct {
+	StartAt *time.Time
+	EndAt   *time.Time
+	Limit   int
+}

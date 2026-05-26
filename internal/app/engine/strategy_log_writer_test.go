@@ -36,6 +36,7 @@ func (s *strategyLogCaptureStore) SaveAccountSnapshot(context.Context, *models.A
 }
 func (s *strategyLogCaptureStore) SaveStrategyLog(_ context.Context, row *models.StrategyLogRow) error {
 	s.mu.Lock()
+	row.ID = int64(len(s.rows) + 1)
 	s.rows = append(s.rows, row)
 	s.mu.Unlock()
 	select {
@@ -43,6 +44,18 @@ func (s *strategyLogCaptureStore) SaveStrategyLog(_ context.Context, row *models
 	default:
 	}
 	return nil
+}
+func (s *strategyLogCaptureStore) ListStrategyLogs(context.Context, models.StrategyLogListFilter) ([]*models.StrategyLogRow, error) {
+	return nil, nil
+}
+func (s *strategyLogCaptureStore) ListRecentStrategyLogs(context.Context, string, int) ([]*models.StrategyLogRow, error) {
+	return nil, nil
+}
+func (s *strategyLogCaptureStore) ListAccountSnapshots(context.Context, models.AccountSnapshotListFilter) ([]*models.AccountSnapshotRow, error) {
+	return nil, nil
+}
+func (s *strategyLogCaptureStore) GetLatestAccountSnapshot(context.Context) (*models.AccountSnapshotRow, error) {
+	return nil, nil
 }
 func (s *strategyLogCaptureStore) PurgeAccountSnapshotsBefore(context.Context, time.Time) (int64, error) {
 	return 0, nil

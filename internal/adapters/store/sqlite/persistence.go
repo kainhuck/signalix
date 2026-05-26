@@ -47,7 +47,7 @@ func (s *Store) SaveStrategyLog(ctx context.Context, row *models.StrategyLogRow)
 	if level == "" {
 		level = "info"
 	}
-	_, err := s.db.ExecContext(ctx, `
+	res, err := s.db.ExecContext(ctx, `
 INSERT INTO strategy_logs (strategy_name, level, message, created_at)
 VALUES (?, ?, ?, ?)
 `,
@@ -56,7 +56,15 @@ VALUES (?, ?, ?, ?)
 		row.Message,
 		formatTimeUTC(row.CreatedAt),
 	)
-	return err
+	if err != nil {
+		return err
+	}
+	id, err := res.LastInsertId()
+	if err != nil {
+		return err
+	}
+	row.ID = id
+	return nil
 }
 
 // PurgeAccountSnapshotsBefore 删除 snapshot_at 严格早于 before 的行。

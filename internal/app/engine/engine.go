@@ -98,6 +98,10 @@ type Engine struct {
 
 	strategyLogCh       chan *models.StrategyLogRow
 	strategyLogStopOnce sync.Once
+
+	strategyLogSubMu   sync.RWMutex
+	strategyLogSubNext uint64
+	strategyLogSubs    map[uint64]*strategyLogSubscription
 }
 
 // NewEngine 创建策略引擎；可通过 EngineOption 覆盖风控等默认行为。
@@ -1060,6 +1064,14 @@ func (e *Engine) orderFanoutLoop() {
 // Running 表示 Engine.Start 已完整成功且尚未进入 Stop。
 func (e *Engine) Running() bool {
 	return e.running.Load()
+}
+
+// SetRunning 设置 running 标志（供测试使用）。
+func (e *Engine) SetRunning(v bool) {
+	if e == nil {
+		return
+	}
+	e.running.Store(v)
 }
 
 // ListStrategyCatalog 返回 Discover 后的策略元数据（含未运行条目），按名称排序。
