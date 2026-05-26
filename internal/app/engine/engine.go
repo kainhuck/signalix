@@ -95,6 +95,9 @@ type Engine struct {
 	killSwitchMu  sync.RWMutex
 	killSwitch    killSwitchState
 	killSwitchCfg config.KillSwitchSettings
+
+	strategyLogCh       chan *models.StrategyLogRow
+	strategyLogStopOnce sync.Once
 }
 
 // NewEngine 创建策略引擎；可通过 EngineOption 覆盖风控等默认行为。
@@ -250,6 +253,7 @@ func (e *Engine) Start() error {
 	}
 
 	if e.store != nil {
+		e.startStrategyLogWriter()
 		e.accountProjection.SetRefreshHook(e.persistAccountSnapshot)
 	}
 
@@ -507,6 +511,8 @@ func (e *Engine) Stop() error {
 		}
 		flushCancel()
 	}
+
+	e.stopStrategyLogWriter()
 
 	// 取消 context
 	e.cancel()
@@ -800,8 +806,7 @@ func (e *Engine) handleStrategyMessage(sp strategy.StrategyRuntime, msg strategy
 		level, _ := msg.Data["level"].(string)
 		message, _ := msg.Data["message"].(string)
 		logger.DebugContext(e.ctx, "[strategy log]", logger.String("strategy", sp.Name()), logger.String("level", level), logger.String("message", message))
-
-		// TODO 保存到数据库
+		e.enqueueStrategyLog(sp.Name(), level, message)
 
 	default:
 		logger.WarnContext(e.ctx, "Unknown message type", logger.String("strategy", sp.Name()), logger.String("type", msg.Type))
