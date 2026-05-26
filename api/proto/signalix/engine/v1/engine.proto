@@ -15,8 +15,10 @@ service Engine {
 
   rpc GetEngineInfo(GetEngineInfoRequest) returns (GetEngineInfoReply);
 
-  // ListStrategies 返回 catalog（Discover 结果），含未运行条目。
+  // ListStrategies 返回 catalog（Discover 结果），含未运行条目及运行时字段。
   rpc ListStrategies(ListStrategiesRequest) returns (ListStrategiesReply);
+
+  rpc GetStrategyStatus(GetStrategyStatusRequest) returns (GetStrategyStatusReply);
 
   rpc StartStrategy(StartStrategyRequest) returns (StartStrategyReply);
 
@@ -97,6 +99,21 @@ message StrategySummary {
   string name = 1;
   bool enabled = 2;
   repeated string symbols = 3;
+  bool running = 4;
+  int64 last_heartbeat_unix_ms = 5;
+  int32 crash_count = 6;
+  int32 crash_count_in_window = 7;
+  bool auto_restart_enabled = 8;
+  double restart_backoff_sec = 9;
+  bool circuit_open = 10;
+}
+
+message GetStrategyStatusRequest {
+  string name = 1;
+}
+
+message GetStrategyStatusReply {
+  StrategySummary status = 1;
 }
 
 message ListStrategiesReply {

@@ -123,6 +123,9 @@ func (e *Engine) recordStrategyCrash(name string) int {
 }
 
 func (e *Engine) crashCountInWindow(name string) int {
+	if e.crashTracker == nil {
+		return 0
+	}
 	return e.crashTracker.countInWindow(name, e.restartCfg.CrashWindow, time.Now())
 }
 

@@ -2,6 +2,7 @@ package grpc
 
 import (
 	"context"
+	"errors"
 	"runtime"
 	"strings"
 	"time"
@@ -55,23 +56,30 @@ func (s *EngineService) GetEngineInfo(ctx context.Context, _ *enginev1.GetEngine
 
 func (s *EngineService) ListStrategies(ctx context.Context, _ *enginev1.ListStrategiesRequest) (*enginev1.ListStrategiesReply, error) {
 	_ = ctx
-	list := s.eng.ListStrategyCatalog()
+	list := s.eng.ListStrategyRuntimeSnapshots()
 	out := make([]*enginev1.StrategySummary, 0, len(list))
-	for _, st := range list {
-		if st == nil {
-			continue
-		}
-		syms := make([]string, 0, len(st.Symbols))
-		for _, sym := range st.Symbols {
-			syms = append(syms, string(sym))
-		}
-		out = append(out, &enginev1.StrategySummary{
-			Name:    st.Name,
-			Enabled: st.Enabled,
-			Symbols: syms,
-		})
+	for _, snap := range list {
+		out = append(out, strategySummaryToProto(snap))
 	}
 	return &enginev1.ListStrategiesReply{Strategies: out}, nil
+}
+
+func (s *EngineService) GetStrategyStatus(ctx context.Context, req *enginev1.GetStrategyStatusRequest) (*enginev1.GetStrategyStatusReply, error) {
+	if err := requireRunning(s.eng); err != nil {
+		return nil, err
+	}
+	name := strings.TrimSpace(req.GetName())
+	if name == "" {
+		return nil, status.Error(codes.InvalidArgument, "empty name")
+	}
+	snap, err := s.eng.StrategyRuntimeSnapshot(name)
+	if err != nil {
+		if errors.Is(err, engine.ErrStrategyNotFound) {
+			return nil, status.Errorf(codes.NotFound, "strategy %q not in catalog", name)
+		}
+		return nil, status.Errorf(codes.Internal, "strategy status: %v", err)
+	}
+	return &enginev1.GetStrategyStatusReply{Status: strategySummaryToProto(snap)}, nil
 }
 
 func (s *EngineService) StartStrategy(ctx context.Context, req *enginev1.StartStrategyRequest) (*enginev1.StartStrategyReply, error) {

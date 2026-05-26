@@ -23,6 +23,7 @@ const (
 	Engine_GetHealth_FullMethodName            = "/signalix.engine.v1.Engine/GetHealth"
 	Engine_GetEngineInfo_FullMethodName        = "/signalix.engine.v1.Engine/GetEngineInfo"
 	Engine_ListStrategies_FullMethodName       = "/signalix.engine.v1.Engine/ListStrategies"
+	Engine_GetStrategyStatus_FullMethodName    = "/signalix.engine.v1.Engine/GetStrategyStatus"
 	Engine_StartStrategy_FullMethodName        = "/signalix.engine.v1.Engine/StartStrategy"
 	Engine_StopStrategy_FullMethodName         = "/signalix.engine.v1.Engine/StopStrategy"
 	Engine_ReloadStrategies_FullMethodName     = "/signalix.engine.v1.Engine/ReloadStrategies"
@@ -48,8 +49,9 @@ type EngineClient interface {
 	// GetHealth 返回引擎就绪状态（readiness）；与 Ping（liveness）互补。
 	GetHealth(ctx context.Context, in *GetHealthRequest, opts ...grpc.CallOption) (*GetHealthReply, error)
 	GetEngineInfo(ctx context.Context, in *GetEngineInfoRequest, opts ...grpc.CallOption) (*GetEngineInfoReply, error)
-	// ListStrategies 返回 catalog（Discover 结果），含未运行条目。
+	// ListStrategies 返回 catalog（Discover 结果），含未运行条目及运行时字段。
 	ListStrategies(ctx context.Context, in *ListStrategiesRequest, opts ...grpc.CallOption) (*ListStrategiesReply, error)
+	GetStrategyStatus(ctx context.Context, in *GetStrategyStatusRequest, opts ...grpc.CallOption) (*GetStrategyStatusReply, error)
 	StartStrategy(ctx context.Context, in *StartStrategyRequest, opts ...grpc.CallOption) (*StartStrategyReply, error)
 	StopStrategy(ctx context.Context, in *StopStrategyRequest, opts ...grpc.CallOption) (*StopStrategyReply, error)
 	// ReloadStrategies 仅重新扫描目录并刷新内存 catalog，不自动启停已运行进程。
@@ -111,6 +113,16 @@ func (c *engineClient) ListStrategies(ctx context.Context, in *ListStrategiesReq
 	cOpts := append([]grpc.CallOption{grpc.StaticMethod()}, opts...)
 	out := new(ListStrategiesReply)
 	err := c.cc.Invoke(ctx, Engine_ListStrategies_FullMethodName, in, out, cOpts...)
+	if err != nil {
+		return nil, err
+	}
+	return out, nil
+}
+
+func (c *engineClient) GetStrategyStatus(ctx context.Context, in *GetStrategyStatusRequest, opts ...grpc.CallOption) (*GetStrategyStatusReply, error) {
+	cOpts := append([]grpc.CallOption{grpc.StaticMethod()}, opts...)
+	out := new(GetStrategyStatusReply)
+	err := c.cc.Invoke(ctx, Engine_GetStrategyStatus_FullMethodName, in, out, cOpts...)
 	if err != nil {
 		return nil, err
 	}
@@ -266,8 +278,9 @@ type EngineServer interface {
 	// GetHealth 返回引擎就绪状态（readiness）；与 Ping（liveness）互补。
 	GetHealth(context.Context, *GetHealthRequest) (*GetHealthReply, error)
 	GetEngineInfo(context.Context, *GetEngineInfoRequest) (*GetEngineInfoReply, error)
-	// ListStrategies 返回 catalog（Discover 结果），含未运行条目。
+	// ListStrategies 返回 catalog（Discover 结果），含未运行条目及运行时字段。
 	ListStrategies(context.Context, *ListStrategiesRequest) (*ListStrategiesReply, error)
+	GetStrategyStatus(context.Context, *GetStrategyStatusRequest) (*GetStrategyStatusReply, error)
 	StartStrategy(context.Context, *StartStrategyRequest) (*StartStrategyReply, error)
 	StopStrategy(context.Context, *StopStrategyRequest) (*StopStrategyReply, error)
 	// ReloadStrategies 仅重新扫描目录并刷新内存 catalog，不自动启停已运行进程。
@@ -306,6 +319,9 @@ func (UnimplementedEngineServer) GetEngineInfo(context.Context, *GetEngineInfoRe
 }
 func (UnimplementedEngineServer) ListStrategies(context.Context, *ListStrategiesRequest) (*ListStrategiesReply, error) {
 	return nil, status.Errorf(codes.Unimplemented, "method ListStrategies not implemented")
+}
+func (UnimplementedEngineServer) GetStrategyStatus(context.Context, *GetStrategyStatusRequest) (*GetStrategyStatusReply, error) {
+	return nil, status.Errorf(codes.Unimplemented, "method GetStrategyStatus not implemented")
 }
 func (UnimplementedEngineServer) StartStrategy(context.Context, *StartStrategyRequest) (*StartStrategyReply, error) {
 	return nil, status.Errorf(codes.Unimplemented, "method StartStrategy not implemented")
@@ -435,6 +451,24 @@ func _Engine_ListStrategies_Handler(srv interface{}, ctx context.Context, dec fu
 	}
 	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
 		return srv.(EngineServer).ListStrategies(ctx, req.(*ListStrategiesRequest))
+	}
+	return interceptor(ctx, in, info, handler)
+}
+
+func _Engine_GetStrategyStatus_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+	in := new(GetStrategyStatusRequest)
+	if err := dec(in); err != nil {
+		return nil, err
+	}
+	if interceptor == nil {
+		return srv.(EngineServer).GetStrategyStatus(ctx, in)
+	}
+	info := &grpc.UnaryServerInfo{
+		Server:     srv,
+		FullMethod: Engine_GetStrategyStatus_FullMethodName,
+	}
+	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
+		return srv.(EngineServer).GetStrategyStatus(ctx, req.(*GetStrategyStatusRequest))
 	}
 	return interceptor(ctx, in, info, handler)
 }
@@ -688,6 +722,10 @@ var Engine_ServiceDesc = grpc.ServiceDesc{
 		{
 			MethodName: "ListStrategies",
 			Handler:    _Engine_ListStrategies_Handler,
+		},
+		{
+			MethodName: "GetStrategyStatus",
+			Handler:    _Engine_GetStrategyStatus_Handler,
 		},
 		{
 			MethodName: "StartStrategy",

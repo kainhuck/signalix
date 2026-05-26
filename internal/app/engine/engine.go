@@ -940,26 +940,13 @@ func (e *Engine) ListStrategies() []string {
 	return names
 }
 
-// GetStrategyStatus 获取策略状态
+// GetStrategyStatus 获取策略状态（catalog + 运行时；未运行进程时 running=false）。
 func (e *Engine) GetStrategyStatus(name string) (map[string]interface{}, error) {
-	e.processMu.RLock()
-	sp, exists := e.strategyProcess[name]
-	e.processMu.RUnlock()
-
-	if !exists {
-		return nil, fmt.Errorf("strategy not found: %s", name)
+	snap, err := e.StrategyRuntimeSnapshot(name)
+	if err != nil {
+		return nil, err
 	}
-
-	return map[string]interface{}{
-		"name":                  sp.Name(),
-		"running":               sp.IsRunning(),
-		"last_heartbeat":        sp.GetLastHeartbeat(),
-		"crash_count":           sp.GetCrashCount(),
-		"crash_count_in_window": e.crashCountInWindow(name),
-		"auto_restart_enabled":  e.restartCfg.Enabled,
-		"restart_backoff_sec":   e.pendingRestartSeconds(name),
-		"circuit_open":          e.circuitOpen(name),
-	}, nil
+	return strategyRuntimeSnapshotToMap(snap), nil
 }
 
 // LoadStrategies 加载所有策略

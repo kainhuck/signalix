@@ -107,6 +107,11 @@ grpcurl -plaintext -d '{"symbol":"BTC/USDT"}' \
   localhost:50051 signalix.engine.v1.Engine/GetPosition
 grpcurl -plaintext -d '{}' localhost:50051 signalix.engine.v1.Engine/ListPositions
 
+# Strategy runtime (GR-3)
+grpcurl -plaintext -d '{}' localhost:50051 signalix.engine.v1.Engine/ListStrategies
+grpcurl -plaintext -d '{"name":"example_trend"}' \
+  localhost:50051 signalix.engine.v1.Engine/GetStrategyStatus
+
 # Kill Switch
 grpcurl -plaintext -d '{"reason":"manual drill"}' \
   localhost:50051 signalix.engine.v1.Engine/ActivateKillSwitch

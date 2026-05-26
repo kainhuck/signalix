@@ -516,12 +516,19 @@ func (*ListStrategiesRequest) Descriptor() ([]byte, []int) {
 }
 
 type StrategySummary struct {
-	state         protoimpl.MessageState `protogen:"open.v1"`
-	Name          string                 `protobuf:"bytes,1,opt,name=name,proto3" json:"name,omitempty"`
-	Enabled       bool                   `protobuf:"varint,2,opt,name=enabled,proto3" json:"enabled,omitempty"`
-	Symbols       []string               `protobuf:"bytes,3,rep,name=symbols,proto3" json:"symbols,omitempty"`
-	unknownFields protoimpl.UnknownFields
-	sizeCache     protoimpl.SizeCache
+	state               protoimpl.MessageState `protogen:"open.v1"`
+	Name                string                 `protobuf:"bytes,1,opt,name=name,proto3" json:"name,omitempty"`
+	Enabled             bool                   `protobuf:"varint,2,opt,name=enabled,proto3" json:"enabled,omitempty"`
+	Symbols             []string               `protobuf:"bytes,3,rep,name=symbols,proto3" json:"symbols,omitempty"`
+	Running             bool                   `protobuf:"varint,4,opt,name=running,proto3" json:"running,omitempty"`
+	LastHeartbeatUnixMs int64                  `protobuf:"varint,5,opt,name=last_heartbeat_unix_ms,json=lastHeartbeatUnixMs,proto3" json:"last_heartbeat_unix_ms,omitempty"`
+	CrashCount          int32                  `protobuf:"varint,6,opt,name=crash_count,json=crashCount,proto3" json:"crash_count,omitempty"`
+	CrashCountInWindow  int32                  `protobuf:"varint,7,opt,name=crash_count_in_window,json=crashCountInWindow,proto3" json:"crash_count_in_window,omitempty"`
+	AutoRestartEnabled  bool                   `protobuf:"varint,8,opt,name=auto_restart_enabled,json=autoRestartEnabled,proto3" json:"auto_restart_enabled,omitempty"`
+	RestartBackoffSec   float64                `protobuf:"fixed64,9,opt,name=restart_backoff_sec,json=restartBackoffSec,proto3" json:"restart_backoff_sec,omitempty"`
+	CircuitOpen         bool                   `protobuf:"varint,10,opt,name=circuit_open,json=circuitOpen,proto3" json:"circuit_open,omitempty"`
+	unknownFields       protoimpl.UnknownFields
+	sizeCache           protoimpl.SizeCache
 }
 
 func (x *StrategySummary) Reset() {
@@ -575,6 +582,143 @@ func (x *StrategySummary) GetSymbols() []string {
 	return nil
 }
 
+func (x *StrategySummary) GetRunning() bool {
+	if x != nil {
+		return x.Running
+	}
+	return false
+}
+
+func (x *StrategySummary) GetLastHeartbeatUnixMs() int64 {
+	if x != nil {
+		return x.LastHeartbeatUnixMs
+	}
+	return 0
+}
+
+func (x *StrategySummary) GetCrashCount() int32 {
+	if x != nil {
+		return x.CrashCount
+	}
+	return 0
+}
+
+func (x *StrategySummary) GetCrashCountInWindow() int32 {
+	if x != nil {
+		return x.CrashCountInWindow
+	}
+	return 0
+}
+
+func (x *StrategySummary) GetAutoRestartEnabled() bool {
+	if x != nil {
+		return x.AutoRestartEnabled
+	}
+	return false
+}
+
+func (x *StrategySummary) GetRestartBackoffSec() float64 {
+	if x != nil {
+		return x.RestartBackoffSec
+	}
+	return 0
+}
+
+func (x *StrategySummary) GetCircuitOpen() bool {
+	if x != nil {
+		return x.CircuitOpen
+	}
+	return false
+}
+
+type GetStrategyStatusRequest struct {
+	state         protoimpl.MessageState `protogen:"open.v1"`
+	Name          string                 `protobuf:"bytes,1,opt,name=name,proto3" json:"name,omitempty"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
+}
+
+func (x *GetStrategyStatusRequest) Reset() {
+	*x = GetStrategyStatusRequest{}
+	mi := &file_signalix_engine_v1_engine_proto_msgTypes[9]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *GetStrategyStatusRequest) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*GetStrategyStatusRequest) ProtoMessage() {}
+
+func (x *GetStrategyStatusRequest) ProtoReflect() protoreflect.Message {
+	mi := &file_signalix_engine_v1_engine_proto_msgTypes[9]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use GetStrategyStatusRequest.ProtoReflect.Descriptor instead.
+func (*GetStrategyStatusRequest) Descriptor() ([]byte, []int) {
+	return file_signalix_engine_v1_engine_proto_rawDescGZIP(), []int{9}
+}
+
+func (x *GetStrategyStatusRequest) GetName() string {
+	if x != nil {
+		return x.Name
+	}
+	return ""
+}
+
+type GetStrategyStatusReply struct {
+	state         protoimpl.MessageState `protogen:"open.v1"`
+	Status        *StrategySummary       `protobuf:"bytes,1,opt,name=status,proto3" json:"status,omitempty"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
+}
+
+func (x *GetStrategyStatusReply) Reset() {
+	*x = GetStrategyStatusReply{}
+	mi := &file_signalix_engine_v1_engine_proto_msgTypes[10]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *GetStrategyStatusReply) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*GetStrategyStatusReply) ProtoMessage() {}
+
+func (x *GetStrategyStatusReply) ProtoReflect() protoreflect.Message {
+	mi := &file_signalix_engine_v1_engine_proto_msgTypes[10]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use GetStrategyStatusReply.ProtoReflect.Descriptor instead.
+func (*GetStrategyStatusReply) Descriptor() ([]byte, []int) {
+	return file_signalix_engine_v1_engine_proto_rawDescGZIP(), []int{10}
+}
+
+func (x *GetStrategyStatusReply) GetStatus() *StrategySummary {
+	if x != nil {
+		return x.Status
+	}
+	return nil
+}
+
 type ListStrategiesReply struct {
 	state         protoimpl.MessageState `protogen:"open.v1"`
 	Strategies    []*StrategySummary     `protobuf:"bytes,1,rep,name=strategies,proto3" json:"strategies,omitempty"`
@@ -584,7 +728,7 @@ type ListStrategiesReply struct {
 
 func (x *ListStrategiesReply) Reset() {
 	*x = ListStrategiesReply{}
-	mi := &file_signalix_engine_v1_engine_proto_msgTypes[9]
+	mi := &file_signalix_engine_v1_engine_proto_msgTypes[11]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -596,7 +740,7 @@ func (x *ListStrategiesReply) String() string {
 func (*ListStrategiesReply) ProtoMessage() {}
 
 func (x *ListStrategiesReply) ProtoReflect() protoreflect.Message {
-	mi := &file_signalix_engine_v1_engine_proto_msgTypes[9]
+	mi := &file_signalix_engine_v1_engine_proto_msgTypes[11]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -609,7 +753,7 @@ func (x *ListStrategiesReply) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use ListStrategiesReply.ProtoReflect.Descriptor instead.
 func (*ListStrategiesReply) Descriptor() ([]byte, []int) {
-	return file_signalix_engine_v1_engine_proto_rawDescGZIP(), []int{9}
+	return file_signalix_engine_v1_engine_proto_rawDescGZIP(), []int{11}
 }
 
 func (x *ListStrategiesReply) GetStrategies() []*StrategySummary {
@@ -628,7 +772,7 @@ type StartStrategyRequest struct {
 
 func (x *StartStrategyRequest) Reset() {
 	*x = StartStrategyRequest{}
-	mi := &file_signalix_engine_v1_engine_proto_msgTypes[10]
+	mi := &file_signalix_engine_v1_engine_proto_msgTypes[12]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -640,7 +784,7 @@ func (x *StartStrategyRequest) String() string {
 func (*StartStrategyRequest) ProtoMessage() {}
 
 func (x *StartStrategyRequest) ProtoReflect() protoreflect.Message {
-	mi := &file_signalix_engine_v1_engine_proto_msgTypes[10]
+	mi := &file_signalix_engine_v1_engine_proto_msgTypes[12]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -653,7 +797,7 @@ func (x *StartStrategyRequest) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use StartStrategyRequest.ProtoReflect.Descriptor instead.
 func (*StartStrategyRequest) Descriptor() ([]byte, []int) {
-	return file_signalix_engine_v1_engine_proto_rawDescGZIP(), []int{10}
+	return file_signalix_engine_v1_engine_proto_rawDescGZIP(), []int{12}
 }
 
 func (x *StartStrategyRequest) GetName() string {
@@ -671,7 +815,7 @@ type StartStrategyReply struct {
 
 func (x *StartStrategyReply) Reset() {
 	*x = StartStrategyReply{}
-	mi := &file_signalix_engine_v1_engine_proto_msgTypes[11]
+	mi := &file_signalix_engine_v1_engine_proto_msgTypes[13]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -683,7 +827,7 @@ func (x *StartStrategyReply) String() string {
 func (*StartStrategyReply) ProtoMessage() {}
 
 func (x *StartStrategyReply) ProtoReflect() protoreflect.Message {
-	mi := &file_signalix_engine_v1_engine_proto_msgTypes[11]
+	mi := &file_signalix_engine_v1_engine_proto_msgTypes[13]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -696,7 +840,7 @@ func (x *StartStrategyReply) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use StartStrategyReply.ProtoReflect.Descriptor instead.
 func (*StartStrategyReply) Descriptor() ([]byte, []int) {
-	return file_signalix_engine_v1_engine_proto_rawDescGZIP(), []int{11}
+	return file_signalix_engine_v1_engine_proto_rawDescGZIP(), []int{13}
 }
 
 type StopStrategyRequest struct {
@@ -708,7 +852,7 @@ type StopStrategyRequest struct {
 
 func (x *StopStrategyRequest) Reset() {
 	*x = StopStrategyRequest{}
-	mi := &file_signalix_engine_v1_engine_proto_msgTypes[12]
+	mi := &file_signalix_engine_v1_engine_proto_msgTypes[14]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -720,7 +864,7 @@ func (x *StopStrategyRequest) String() string {
 func (*StopStrategyRequest) ProtoMessage() {}
 
 func (x *StopStrategyRequest) ProtoReflect() protoreflect.Message {
-	mi := &file_signalix_engine_v1_engine_proto_msgTypes[12]
+	mi := &file_signalix_engine_v1_engine_proto_msgTypes[14]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -733,7 +877,7 @@ func (x *StopStrategyRequest) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use StopStrategyRequest.ProtoReflect.Descriptor instead.
 func (*StopStrategyRequest) Descriptor() ([]byte, []int) {
-	return file_signalix_engine_v1_engine_proto_rawDescGZIP(), []int{12}
+	return file_signalix_engine_v1_engine_proto_rawDescGZIP(), []int{14}
 }
 
 func (x *StopStrategyRequest) GetName() string {
@@ -751,7 +895,7 @@ type StopStrategyReply struct {
 
 func (x *StopStrategyReply) Reset() {
 	*x = StopStrategyReply{}
-	mi := &file_signalix_engine_v1_engine_proto_msgTypes[13]
+	mi := &file_signalix_engine_v1_engine_proto_msgTypes[15]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -763,7 +907,7 @@ func (x *StopStrategyReply) String() string {
 func (*StopStrategyReply) ProtoMessage() {}
 
 func (x *StopStrategyReply) ProtoReflect() protoreflect.Message {
-	mi := &file_signalix_engine_v1_engine_proto_msgTypes[13]
+	mi := &file_signalix_engine_v1_engine_proto_msgTypes[15]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -776,7 +920,7 @@ func (x *StopStrategyReply) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use StopStrategyReply.ProtoReflect.Descriptor instead.
 func (*StopStrategyReply) Descriptor() ([]byte, []int) {
-	return file_signalix_engine_v1_engine_proto_rawDescGZIP(), []int{13}
+	return file_signalix_engine_v1_engine_proto_rawDescGZIP(), []int{15}
 }
 
 type ReloadStrategiesRequest struct {
@@ -787,7 +931,7 @@ type ReloadStrategiesRequest struct {
 
 func (x *ReloadStrategiesRequest) Reset() {
 	*x = ReloadStrategiesRequest{}
-	mi := &file_signalix_engine_v1_engine_proto_msgTypes[14]
+	mi := &file_signalix_engine_v1_engine_proto_msgTypes[16]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -799,7 +943,7 @@ func (x *ReloadStrategiesRequest) String() string {
 func (*ReloadStrategiesRequest) ProtoMessage() {}
 
 func (x *ReloadStrategiesRequest) ProtoReflect() protoreflect.Message {
-	mi := &file_signalix_engine_v1_engine_proto_msgTypes[14]
+	mi := &file_signalix_engine_v1_engine_proto_msgTypes[16]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -812,7 +956,7 @@ func (x *ReloadStrategiesRequest) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use ReloadStrategiesRequest.ProtoReflect.Descriptor instead.
 func (*ReloadStrategiesRequest) Descriptor() ([]byte, []int) {
-	return file_signalix_engine_v1_engine_proto_rawDescGZIP(), []int{14}
+	return file_signalix_engine_v1_engine_proto_rawDescGZIP(), []int{16}
 }
 
 type ReloadStrategiesReply struct {
@@ -824,7 +968,7 @@ type ReloadStrategiesReply struct {
 
 func (x *ReloadStrategiesReply) Reset() {
 	*x = ReloadStrategiesReply{}
-	mi := &file_signalix_engine_v1_engine_proto_msgTypes[15]
+	mi := &file_signalix_engine_v1_engine_proto_msgTypes[17]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -836,7 +980,7 @@ func (x *ReloadStrategiesReply) String() string {
 func (*ReloadStrategiesReply) ProtoMessage() {}
 
 func (x *ReloadStrategiesReply) ProtoReflect() protoreflect.Message {
-	mi := &file_signalix_engine_v1_engine_proto_msgTypes[15]
+	mi := &file_signalix_engine_v1_engine_proto_msgTypes[17]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -849,7 +993,7 @@ func (x *ReloadStrategiesReply) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use ReloadStrategiesReply.ProtoReflect.Descriptor instead.
 func (*ReloadStrategiesReply) Descriptor() ([]byte, []int) {
-	return file_signalix_engine_v1_engine_proto_rawDescGZIP(), []int{15}
+	return file_signalix_engine_v1_engine_proto_rawDescGZIP(), []int{17}
 }
 
 func (x *ReloadStrategiesReply) GetCatalogCount() int32 {
@@ -872,7 +1016,7 @@ type Balance struct {
 
 func (x *Balance) Reset() {
 	*x = Balance{}
-	mi := &file_signalix_engine_v1_engine_proto_msgTypes[16]
+	mi := &file_signalix_engine_v1_engine_proto_msgTypes[18]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -884,7 +1028,7 @@ func (x *Balance) String() string {
 func (*Balance) ProtoMessage() {}
 
 func (x *Balance) ProtoReflect() protoreflect.Message {
-	mi := &file_signalix_engine_v1_engine_proto_msgTypes[16]
+	mi := &file_signalix_engine_v1_engine_proto_msgTypes[18]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -897,7 +1041,7 @@ func (x *Balance) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use Balance.ProtoReflect.Descriptor instead.
 func (*Balance) Descriptor() ([]byte, []int) {
-	return file_signalix_engine_v1_engine_proto_rawDescGZIP(), []int{16}
+	return file_signalix_engine_v1_engine_proto_rawDescGZIP(), []int{18}
 }
 
 func (x *Balance) GetCurrency() string {
@@ -951,7 +1095,7 @@ type Position struct {
 
 func (x *Position) Reset() {
 	*x = Position{}
-	mi := &file_signalix_engine_v1_engine_proto_msgTypes[17]
+	mi := &file_signalix_engine_v1_engine_proto_msgTypes[19]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -963,7 +1107,7 @@ func (x *Position) String() string {
 func (*Position) ProtoMessage() {}
 
 func (x *Position) ProtoReflect() protoreflect.Message {
-	mi := &file_signalix_engine_v1_engine_proto_msgTypes[17]
+	mi := &file_signalix_engine_v1_engine_proto_msgTypes[19]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -976,7 +1120,7 @@ func (x *Position) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use Position.ProtoReflect.Descriptor instead.
 func (*Position) Descriptor() ([]byte, []int) {
-	return file_signalix_engine_v1_engine_proto_rawDescGZIP(), []int{17}
+	return file_signalix_engine_v1_engine_proto_rawDescGZIP(), []int{19}
 }
 
 func (x *Position) GetSymbol() string {
@@ -1043,7 +1187,7 @@ type GetBalanceRequest struct {
 
 func (x *GetBalanceRequest) Reset() {
 	*x = GetBalanceRequest{}
-	mi := &file_signalix_engine_v1_engine_proto_msgTypes[18]
+	mi := &file_signalix_engine_v1_engine_proto_msgTypes[20]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -1055,7 +1199,7 @@ func (x *GetBalanceRequest) String() string {
 func (*GetBalanceRequest) ProtoMessage() {}
 
 func (x *GetBalanceRequest) ProtoReflect() protoreflect.Message {
-	mi := &file_signalix_engine_v1_engine_proto_msgTypes[18]
+	mi := &file_signalix_engine_v1_engine_proto_msgTypes[20]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -1068,7 +1212,7 @@ func (x *GetBalanceRequest) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use GetBalanceRequest.ProtoReflect.Descriptor instead.
 func (*GetBalanceRequest) Descriptor() ([]byte, []int) {
-	return file_signalix_engine_v1_engine_proto_rawDescGZIP(), []int{18}
+	return file_signalix_engine_v1_engine_proto_rawDescGZIP(), []int{20}
 }
 
 type GetBalanceReply struct {
@@ -1080,7 +1224,7 @@ type GetBalanceReply struct {
 
 func (x *GetBalanceReply) Reset() {
 	*x = GetBalanceReply{}
-	mi := &file_signalix_engine_v1_engine_proto_msgTypes[19]
+	mi := &file_signalix_engine_v1_engine_proto_msgTypes[21]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -1092,7 +1236,7 @@ func (x *GetBalanceReply) String() string {
 func (*GetBalanceReply) ProtoMessage() {}
 
 func (x *GetBalanceReply) ProtoReflect() protoreflect.Message {
-	mi := &file_signalix_engine_v1_engine_proto_msgTypes[19]
+	mi := &file_signalix_engine_v1_engine_proto_msgTypes[21]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -1105,7 +1249,7 @@ func (x *GetBalanceReply) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use GetBalanceReply.ProtoReflect.Descriptor instead.
 func (*GetBalanceReply) Descriptor() ([]byte, []int) {
-	return file_signalix_engine_v1_engine_proto_rawDescGZIP(), []int{19}
+	return file_signalix_engine_v1_engine_proto_rawDescGZIP(), []int{21}
 }
 
 func (x *GetBalanceReply) GetBalance() *Balance {
@@ -1124,7 +1268,7 @@ type GetPositionRequest struct {
 
 func (x *GetPositionRequest) Reset() {
 	*x = GetPositionRequest{}
-	mi := &file_signalix_engine_v1_engine_proto_msgTypes[20]
+	mi := &file_signalix_engine_v1_engine_proto_msgTypes[22]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -1136,7 +1280,7 @@ func (x *GetPositionRequest) String() string {
 func (*GetPositionRequest) ProtoMessage() {}
 
 func (x *GetPositionRequest) ProtoReflect() protoreflect.Message {
-	mi := &file_signalix_engine_v1_engine_proto_msgTypes[20]
+	mi := &file_signalix_engine_v1_engine_proto_msgTypes[22]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -1149,7 +1293,7 @@ func (x *GetPositionRequest) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use GetPositionRequest.ProtoReflect.Descriptor instead.
 func (*GetPositionRequest) Descriptor() ([]byte, []int) {
-	return file_signalix_engine_v1_engine_proto_rawDescGZIP(), []int{20}
+	return file_signalix_engine_v1_engine_proto_rawDescGZIP(), []int{22}
 }
 
 func (x *GetPositionRequest) GetSymbol() string {
@@ -1168,7 +1312,7 @@ type GetPositionReply struct {
 
 func (x *GetPositionReply) Reset() {
 	*x = GetPositionReply{}
-	mi := &file_signalix_engine_v1_engine_proto_msgTypes[21]
+	mi := &file_signalix_engine_v1_engine_proto_msgTypes[23]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -1180,7 +1324,7 @@ func (x *GetPositionReply) String() string {
 func (*GetPositionReply) ProtoMessage() {}
 
 func (x *GetPositionReply) ProtoReflect() protoreflect.Message {
-	mi := &file_signalix_engine_v1_engine_proto_msgTypes[21]
+	mi := &file_signalix_engine_v1_engine_proto_msgTypes[23]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -1193,7 +1337,7 @@ func (x *GetPositionReply) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use GetPositionReply.ProtoReflect.Descriptor instead.
 func (*GetPositionReply) Descriptor() ([]byte, []int) {
-	return file_signalix_engine_v1_engine_proto_rawDescGZIP(), []int{21}
+	return file_signalix_engine_v1_engine_proto_rawDescGZIP(), []int{23}
 }
 
 func (x *GetPositionReply) GetPosition() *Position {
@@ -1211,7 +1355,7 @@ type ListPositionsRequest struct {
 
 func (x *ListPositionsRequest) Reset() {
 	*x = ListPositionsRequest{}
-	mi := &file_signalix_engine_v1_engine_proto_msgTypes[22]
+	mi := &file_signalix_engine_v1_engine_proto_msgTypes[24]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -1223,7 +1367,7 @@ func (x *ListPositionsRequest) String() string {
 func (*ListPositionsRequest) ProtoMessage() {}
 
 func (x *ListPositionsRequest) ProtoReflect() protoreflect.Message {
-	mi := &file_signalix_engine_v1_engine_proto_msgTypes[22]
+	mi := &file_signalix_engine_v1_engine_proto_msgTypes[24]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -1236,7 +1380,7 @@ func (x *ListPositionsRequest) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use ListPositionsRequest.ProtoReflect.Descriptor instead.
 func (*ListPositionsRequest) Descriptor() ([]byte, []int) {
-	return file_signalix_engine_v1_engine_proto_rawDescGZIP(), []int{22}
+	return file_signalix_engine_v1_engine_proto_rawDescGZIP(), []int{24}
 }
 
 type ListPositionsReply struct {
@@ -1248,7 +1392,7 @@ type ListPositionsReply struct {
 
 func (x *ListPositionsReply) Reset() {
 	*x = ListPositionsReply{}
-	mi := &file_signalix_engine_v1_engine_proto_msgTypes[23]
+	mi := &file_signalix_engine_v1_engine_proto_msgTypes[25]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -1260,7 +1404,7 @@ func (x *ListPositionsReply) String() string {
 func (*ListPositionsReply) ProtoMessage() {}
 
 func (x *ListPositionsReply) ProtoReflect() protoreflect.Message {
-	mi := &file_signalix_engine_v1_engine_proto_msgTypes[23]
+	mi := &file_signalix_engine_v1_engine_proto_msgTypes[25]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -1273,7 +1417,7 @@ func (x *ListPositionsReply) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use ListPositionsReply.ProtoReflect.Descriptor instead.
 func (*ListPositionsReply) Descriptor() ([]byte, []int) {
-	return file_signalix_engine_v1_engine_proto_rawDescGZIP(), []int{23}
+	return file_signalix_engine_v1_engine_proto_rawDescGZIP(), []int{25}
 }
 
 func (x *ListPositionsReply) GetPositions() []*Position {
@@ -1292,7 +1436,7 @@ type GetOrderRequest struct {
 
 func (x *GetOrderRequest) Reset() {
 	*x = GetOrderRequest{}
-	mi := &file_signalix_engine_v1_engine_proto_msgTypes[24]
+	mi := &file_signalix_engine_v1_engine_proto_msgTypes[26]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -1304,7 +1448,7 @@ func (x *GetOrderRequest) String() string {
 func (*GetOrderRequest) ProtoMessage() {}
 
 func (x *GetOrderRequest) ProtoReflect() protoreflect.Message {
-	mi := &file_signalix_engine_v1_engine_proto_msgTypes[24]
+	mi := &file_signalix_engine_v1_engine_proto_msgTypes[26]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -1317,7 +1461,7 @@ func (x *GetOrderRequest) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use GetOrderRequest.ProtoReflect.Descriptor instead.
 func (*GetOrderRequest) Descriptor() ([]byte, []int) {
-	return file_signalix_engine_v1_engine_proto_rawDescGZIP(), []int{24}
+	return file_signalix_engine_v1_engine_proto_rawDescGZIP(), []int{26}
 }
 
 func (x *GetOrderRequest) GetOrderId() string {
@@ -1336,7 +1480,7 @@ type GetOrderReply struct {
 
 func (x *GetOrderReply) Reset() {
 	*x = GetOrderReply{}
-	mi := &file_signalix_engine_v1_engine_proto_msgTypes[25]
+	mi := &file_signalix_engine_v1_engine_proto_msgTypes[27]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -1348,7 +1492,7 @@ func (x *GetOrderReply) String() string {
 func (*GetOrderReply) ProtoMessage() {}
 
 func (x *GetOrderReply) ProtoReflect() protoreflect.Message {
-	mi := &file_signalix_engine_v1_engine_proto_msgTypes[25]
+	mi := &file_signalix_engine_v1_engine_proto_msgTypes[27]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -1361,7 +1505,7 @@ func (x *GetOrderReply) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use GetOrderReply.ProtoReflect.Descriptor instead.
 func (*GetOrderReply) Descriptor() ([]byte, []int) {
-	return file_signalix_engine_v1_engine_proto_rawDescGZIP(), []int{25}
+	return file_signalix_engine_v1_engine_proto_rawDescGZIP(), []int{27}
 }
 
 func (x *GetOrderReply) GetOrder() *Order {
@@ -1380,7 +1524,7 @@ type ListOpenOrdersRequest struct {
 
 func (x *ListOpenOrdersRequest) Reset() {
 	*x = ListOpenOrdersRequest{}
-	mi := &file_signalix_engine_v1_engine_proto_msgTypes[26]
+	mi := &file_signalix_engine_v1_engine_proto_msgTypes[28]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -1392,7 +1536,7 @@ func (x *ListOpenOrdersRequest) String() string {
 func (*ListOpenOrdersRequest) ProtoMessage() {}
 
 func (x *ListOpenOrdersRequest) ProtoReflect() protoreflect.Message {
-	mi := &file_signalix_engine_v1_engine_proto_msgTypes[26]
+	mi := &file_signalix_engine_v1_engine_proto_msgTypes[28]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -1405,7 +1549,7 @@ func (x *ListOpenOrdersRequest) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use ListOpenOrdersRequest.ProtoReflect.Descriptor instead.
 func (*ListOpenOrdersRequest) Descriptor() ([]byte, []int) {
-	return file_signalix_engine_v1_engine_proto_rawDescGZIP(), []int{26}
+	return file_signalix_engine_v1_engine_proto_rawDescGZIP(), []int{28}
 }
 
 func (x *ListOpenOrdersRequest) GetLimit() int32 {
@@ -1424,7 +1568,7 @@ type ListOpenOrdersReply struct {
 
 func (x *ListOpenOrdersReply) Reset() {
 	*x = ListOpenOrdersReply{}
-	mi := &file_signalix_engine_v1_engine_proto_msgTypes[27]
+	mi := &file_signalix_engine_v1_engine_proto_msgTypes[29]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -1436,7 +1580,7 @@ func (x *ListOpenOrdersReply) String() string {
 func (*ListOpenOrdersReply) ProtoMessage() {}
 
 func (x *ListOpenOrdersReply) ProtoReflect() protoreflect.Message {
-	mi := &file_signalix_engine_v1_engine_proto_msgTypes[27]
+	mi := &file_signalix_engine_v1_engine_proto_msgTypes[29]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -1449,7 +1593,7 @@ func (x *ListOpenOrdersReply) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use ListOpenOrdersReply.ProtoReflect.Descriptor instead.
 func (*ListOpenOrdersReply) Descriptor() ([]byte, []int) {
-	return file_signalix_engine_v1_engine_proto_rawDescGZIP(), []int{27}
+	return file_signalix_engine_v1_engine_proto_rawDescGZIP(), []int{29}
 }
 
 func (x *ListOpenOrdersReply) GetOrders() []*Order {
@@ -1468,7 +1612,7 @@ type CancelOrderRequest struct {
 
 func (x *CancelOrderRequest) Reset() {
 	*x = CancelOrderRequest{}
-	mi := &file_signalix_engine_v1_engine_proto_msgTypes[28]
+	mi := &file_signalix_engine_v1_engine_proto_msgTypes[30]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -1480,7 +1624,7 @@ func (x *CancelOrderRequest) String() string {
 func (*CancelOrderRequest) ProtoMessage() {}
 
 func (x *CancelOrderRequest) ProtoReflect() protoreflect.Message {
-	mi := &file_signalix_engine_v1_engine_proto_msgTypes[28]
+	mi := &file_signalix_engine_v1_engine_proto_msgTypes[30]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -1493,7 +1637,7 @@ func (x *CancelOrderRequest) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use CancelOrderRequest.ProtoReflect.Descriptor instead.
 func (*CancelOrderRequest) Descriptor() ([]byte, []int) {
-	return file_signalix_engine_v1_engine_proto_rawDescGZIP(), []int{28}
+	return file_signalix_engine_v1_engine_proto_rawDescGZIP(), []int{30}
 }
 
 func (x *CancelOrderRequest) GetOrderId() string {
@@ -1511,7 +1655,7 @@ type CancelOrderReply struct {
 
 func (x *CancelOrderReply) Reset() {
 	*x = CancelOrderReply{}
-	mi := &file_signalix_engine_v1_engine_proto_msgTypes[29]
+	mi := &file_signalix_engine_v1_engine_proto_msgTypes[31]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -1523,7 +1667,7 @@ func (x *CancelOrderReply) String() string {
 func (*CancelOrderReply) ProtoMessage() {}
 
 func (x *CancelOrderReply) ProtoReflect() protoreflect.Message {
-	mi := &file_signalix_engine_v1_engine_proto_msgTypes[29]
+	mi := &file_signalix_engine_v1_engine_proto_msgTypes[31]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -1536,7 +1680,7 @@ func (x *CancelOrderReply) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use CancelOrderReply.ProtoReflect.Descriptor instead.
 func (*CancelOrderReply) Descriptor() ([]byte, []int) {
-	return file_signalix_engine_v1_engine_proto_rawDescGZIP(), []int{29}
+	return file_signalix_engine_v1_engine_proto_rawDescGZIP(), []int{31}
 }
 
 type SubscribeOrderEventsRequest struct {
@@ -1547,7 +1691,7 @@ type SubscribeOrderEventsRequest struct {
 
 func (x *SubscribeOrderEventsRequest) Reset() {
 	*x = SubscribeOrderEventsRequest{}
-	mi := &file_signalix_engine_v1_engine_proto_msgTypes[30]
+	mi := &file_signalix_engine_v1_engine_proto_msgTypes[32]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -1559,7 +1703,7 @@ func (x *SubscribeOrderEventsRequest) String() string {
 func (*SubscribeOrderEventsRequest) ProtoMessage() {}
 
 func (x *SubscribeOrderEventsRequest) ProtoReflect() protoreflect.Message {
-	mi := &file_signalix_engine_v1_engine_proto_msgTypes[30]
+	mi := &file_signalix_engine_v1_engine_proto_msgTypes[32]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -1572,7 +1716,7 @@ func (x *SubscribeOrderEventsRequest) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use SubscribeOrderEventsRequest.ProtoReflect.Descriptor instead.
 func (*SubscribeOrderEventsRequest) Descriptor() ([]byte, []int) {
-	return file_signalix_engine_v1_engine_proto_rawDescGZIP(), []int{30}
+	return file_signalix_engine_v1_engine_proto_rawDescGZIP(), []int{32}
 }
 
 type KillSwitchStatus struct {
@@ -1586,7 +1730,7 @@ type KillSwitchStatus struct {
 
 func (x *KillSwitchStatus) Reset() {
 	*x = KillSwitchStatus{}
-	mi := &file_signalix_engine_v1_engine_proto_msgTypes[31]
+	mi := &file_signalix_engine_v1_engine_proto_msgTypes[33]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -1598,7 +1742,7 @@ func (x *KillSwitchStatus) String() string {
 func (*KillSwitchStatus) ProtoMessage() {}
 
 func (x *KillSwitchStatus) ProtoReflect() protoreflect.Message {
-	mi := &file_signalix_engine_v1_engine_proto_msgTypes[31]
+	mi := &file_signalix_engine_v1_engine_proto_msgTypes[33]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -1611,7 +1755,7 @@ func (x *KillSwitchStatus) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use KillSwitchStatus.ProtoReflect.Descriptor instead.
 func (*KillSwitchStatus) Descriptor() ([]byte, []int) {
-	return file_signalix_engine_v1_engine_proto_rawDescGZIP(), []int{31}
+	return file_signalix_engine_v1_engine_proto_rawDescGZIP(), []int{33}
 }
 
 func (x *KillSwitchStatus) GetActive() bool {
@@ -1645,7 +1789,7 @@ type ActivateKillSwitchRequest struct {
 
 func (x *ActivateKillSwitchRequest) Reset() {
 	*x = ActivateKillSwitchRequest{}
-	mi := &file_signalix_engine_v1_engine_proto_msgTypes[32]
+	mi := &file_signalix_engine_v1_engine_proto_msgTypes[34]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -1657,7 +1801,7 @@ func (x *ActivateKillSwitchRequest) String() string {
 func (*ActivateKillSwitchRequest) ProtoMessage() {}
 
 func (x *ActivateKillSwitchRequest) ProtoReflect() protoreflect.Message {
-	mi := &file_signalix_engine_v1_engine_proto_msgTypes[32]
+	mi := &file_signalix_engine_v1_engine_proto_msgTypes[34]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -1670,7 +1814,7 @@ func (x *ActivateKillSwitchRequest) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use ActivateKillSwitchRequest.ProtoReflect.Descriptor instead.
 func (*ActivateKillSwitchRequest) Descriptor() ([]byte, []int) {
-	return file_signalix_engine_v1_engine_proto_rawDescGZIP(), []int{32}
+	return file_signalix_engine_v1_engine_proto_rawDescGZIP(), []int{34}
 }
 
 func (x *ActivateKillSwitchRequest) GetReason() string {
@@ -1698,7 +1842,7 @@ type ActivateKillSwitchReply struct {
 
 func (x *ActivateKillSwitchReply) Reset() {
 	*x = ActivateKillSwitchReply{}
-	mi := &file_signalix_engine_v1_engine_proto_msgTypes[33]
+	mi := &file_signalix_engine_v1_engine_proto_msgTypes[35]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -1710,7 +1854,7 @@ func (x *ActivateKillSwitchReply) String() string {
 func (*ActivateKillSwitchReply) ProtoMessage() {}
 
 func (x *ActivateKillSwitchReply) ProtoReflect() protoreflect.Message {
-	mi := &file_signalix_engine_v1_engine_proto_msgTypes[33]
+	mi := &file_signalix_engine_v1_engine_proto_msgTypes[35]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -1723,7 +1867,7 @@ func (x *ActivateKillSwitchReply) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use ActivateKillSwitchReply.ProtoReflect.Descriptor instead.
 func (*ActivateKillSwitchReply) Descriptor() ([]byte, []int) {
-	return file_signalix_engine_v1_engine_proto_rawDescGZIP(), []int{33}
+	return file_signalix_engine_v1_engine_proto_rawDescGZIP(), []int{35}
 }
 
 func (x *ActivateKillSwitchReply) GetStatus() *KillSwitchStatus {
@@ -1755,7 +1899,7 @@ type DeactivateKillSwitchRequest struct {
 
 func (x *DeactivateKillSwitchRequest) Reset() {
 	*x = DeactivateKillSwitchRequest{}
-	mi := &file_signalix_engine_v1_engine_proto_msgTypes[34]
+	mi := &file_signalix_engine_v1_engine_proto_msgTypes[36]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -1767,7 +1911,7 @@ func (x *DeactivateKillSwitchRequest) String() string {
 func (*DeactivateKillSwitchRequest) ProtoMessage() {}
 
 func (x *DeactivateKillSwitchRequest) ProtoReflect() protoreflect.Message {
-	mi := &file_signalix_engine_v1_engine_proto_msgTypes[34]
+	mi := &file_signalix_engine_v1_engine_proto_msgTypes[36]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -1780,7 +1924,7 @@ func (x *DeactivateKillSwitchRequest) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use DeactivateKillSwitchRequest.ProtoReflect.Descriptor instead.
 func (*DeactivateKillSwitchRequest) Descriptor() ([]byte, []int) {
-	return file_signalix_engine_v1_engine_proto_rawDescGZIP(), []int{34}
+	return file_signalix_engine_v1_engine_proto_rawDescGZIP(), []int{36}
 }
 
 type DeactivateKillSwitchReply struct {
@@ -1792,7 +1936,7 @@ type DeactivateKillSwitchReply struct {
 
 func (x *DeactivateKillSwitchReply) Reset() {
 	*x = DeactivateKillSwitchReply{}
-	mi := &file_signalix_engine_v1_engine_proto_msgTypes[35]
+	mi := &file_signalix_engine_v1_engine_proto_msgTypes[37]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -1804,7 +1948,7 @@ func (x *DeactivateKillSwitchReply) String() string {
 func (*DeactivateKillSwitchReply) ProtoMessage() {}
 
 func (x *DeactivateKillSwitchReply) ProtoReflect() protoreflect.Message {
-	mi := &file_signalix_engine_v1_engine_proto_msgTypes[35]
+	mi := &file_signalix_engine_v1_engine_proto_msgTypes[37]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -1817,7 +1961,7 @@ func (x *DeactivateKillSwitchReply) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use DeactivateKillSwitchReply.ProtoReflect.Descriptor instead.
 func (*DeactivateKillSwitchReply) Descriptor() ([]byte, []int) {
-	return file_signalix_engine_v1_engine_proto_rawDescGZIP(), []int{35}
+	return file_signalix_engine_v1_engine_proto_rawDescGZIP(), []int{37}
 }
 
 func (x *DeactivateKillSwitchReply) GetStatus() *KillSwitchStatus {
@@ -1835,7 +1979,7 @@ type GetKillSwitchStatusRequest struct {
 
 func (x *GetKillSwitchStatusRequest) Reset() {
 	*x = GetKillSwitchStatusRequest{}
-	mi := &file_signalix_engine_v1_engine_proto_msgTypes[36]
+	mi := &file_signalix_engine_v1_engine_proto_msgTypes[38]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -1847,7 +1991,7 @@ func (x *GetKillSwitchStatusRequest) String() string {
 func (*GetKillSwitchStatusRequest) ProtoMessage() {}
 
 func (x *GetKillSwitchStatusRequest) ProtoReflect() protoreflect.Message {
-	mi := &file_signalix_engine_v1_engine_proto_msgTypes[36]
+	mi := &file_signalix_engine_v1_engine_proto_msgTypes[38]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -1860,7 +2004,7 @@ func (x *GetKillSwitchStatusRequest) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use GetKillSwitchStatusRequest.ProtoReflect.Descriptor instead.
 func (*GetKillSwitchStatusRequest) Descriptor() ([]byte, []int) {
-	return file_signalix_engine_v1_engine_proto_rawDescGZIP(), []int{36}
+	return file_signalix_engine_v1_engine_proto_rawDescGZIP(), []int{38}
 }
 
 type GetKillSwitchStatusReply struct {
@@ -1872,7 +2016,7 @@ type GetKillSwitchStatusReply struct {
 
 func (x *GetKillSwitchStatusReply) Reset() {
 	*x = GetKillSwitchStatusReply{}
-	mi := &file_signalix_engine_v1_engine_proto_msgTypes[37]
+	mi := &file_signalix_engine_v1_engine_proto_msgTypes[39]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -1884,7 +2028,7 @@ func (x *GetKillSwitchStatusReply) String() string {
 func (*GetKillSwitchStatusReply) ProtoMessage() {}
 
 func (x *GetKillSwitchStatusReply) ProtoReflect() protoreflect.Message {
-	mi := &file_signalix_engine_v1_engine_proto_msgTypes[37]
+	mi := &file_signalix_engine_v1_engine_proto_msgTypes[39]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -1897,7 +2041,7 @@ func (x *GetKillSwitchStatusReply) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use GetKillSwitchStatusReply.ProtoReflect.Descriptor instead.
 func (*GetKillSwitchStatusReply) Descriptor() ([]byte, []int) {
-	return file_signalix_engine_v1_engine_proto_rawDescGZIP(), []int{37}
+	return file_signalix_engine_v1_engine_proto_rawDescGZIP(), []int{39}
 }
 
 func (x *GetKillSwitchStatusReply) GetStatus() *KillSwitchStatus {
@@ -1928,7 +2072,7 @@ type Order struct {
 
 func (x *Order) Reset() {
 	*x = Order{}
-	mi := &file_signalix_engine_v1_engine_proto_msgTypes[38]
+	mi := &file_signalix_engine_v1_engine_proto_msgTypes[40]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -1940,7 +2084,7 @@ func (x *Order) String() string {
 func (*Order) ProtoMessage() {}
 
 func (x *Order) ProtoReflect() protoreflect.Message {
-	mi := &file_signalix_engine_v1_engine_proto_msgTypes[38]
+	mi := &file_signalix_engine_v1_engine_proto_msgTypes[40]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -1953,7 +2097,7 @@ func (x *Order) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use Order.ProtoReflect.Descriptor instead.
 func (*Order) Descriptor() ([]byte, []int) {
-	return file_signalix_engine_v1_engine_proto_rawDescGZIP(), []int{38}
+	return file_signalix_engine_v1_engine_proto_rawDescGZIP(), []int{40}
 }
 
 func (x *Order) GetId() string {
@@ -2095,13 +2239,40 @@ var file_signalix_engine_v1_engine_proto_rawDesc = string([]byte{
 	0x69, 0x72, 0x12, 0x1d, 0x0a, 0x0a, 0x67, 0x6f, 0x5f, 0x76, 0x65, 0x72, 0x73, 0x69, 0x6f, 0x6e,
 	0x18, 0x03, 0x20, 0x01, 0x28, 0x09, 0x52, 0x09, 0x67, 0x6f, 0x56, 0x65, 0x72, 0x73, 0x69, 0x6f,
 	0x6e, 0x22, 0x17, 0x0a, 0x15, 0x4c, 0x69, 0x73, 0x74, 0x53, 0x74, 0x72, 0x61, 0x74, 0x65, 0x67,
-	0x69, 0x65, 0x73, 0x52, 0x65, 0x71, 0x75, 0x65, 0x73, 0x74, 0x22, 0x59, 0x0a, 0x0f, 0x53, 0x74,
-	0x72, 0x61, 0x74, 0x65, 0x67, 0x79, 0x53, 0x75, 0x6d, 0x6d, 0x61, 0x72, 0x79, 0x12, 0x12, 0x0a,
-	0x04, 0x6e, 0x61, 0x6d, 0x65, 0x18, 0x01, 0x20, 0x01, 0x28, 0x09, 0x52, 0x04, 0x6e, 0x61, 0x6d,
-	0x65, 0x12, 0x18, 0x0a, 0x07, 0x65, 0x6e, 0x61, 0x62, 0x6c, 0x65, 0x64, 0x18, 0x02, 0x20, 0x01,
-	0x28, 0x08, 0x52, 0x07, 0x65, 0x6e, 0x61, 0x62, 0x6c, 0x65, 0x64, 0x12, 0x18, 0x0a, 0x07, 0x73,
-	0x79, 0x6d, 0x62, 0x6f, 0x6c, 0x73, 0x18, 0x03, 0x20, 0x03, 0x28, 0x09, 0x52, 0x07, 0x73, 0x79,
-	0x6d, 0x62, 0x6f, 0x6c, 0x73, 0x22, 0x5a, 0x0a, 0x13, 0x4c, 0x69, 0x73, 0x74, 0x53, 0x74, 0x72,
+	0x69, 0x65, 0x73, 0x52, 0x65, 0x71, 0x75, 0x65, 0x73, 0x74, 0x22, 0x81, 0x03, 0x0a, 0x0f, 0x53,
+	0x74, 0x72, 0x61, 0x74, 0x65, 0x67, 0x79, 0x53, 0x75, 0x6d, 0x6d, 0x61, 0x72, 0x79, 0x12, 0x12,
+	0x0a, 0x04, 0x6e, 0x61, 0x6d, 0x65, 0x18, 0x01, 0x20, 0x01, 0x28, 0x09, 0x52, 0x04, 0x6e, 0x61,
+	0x6d, 0x65, 0x12, 0x18, 0x0a, 0x07, 0x65, 0x6e, 0x61, 0x62, 0x6c, 0x65, 0x64, 0x18, 0x02, 0x20,
+	0x01, 0x28, 0x08, 0x52, 0x07, 0x65, 0x6e, 0x61, 0x62, 0x6c, 0x65, 0x64, 0x12, 0x18, 0x0a, 0x07,
+	0x73, 0x79, 0x6d, 0x62, 0x6f, 0x6c, 0x73, 0x18, 0x03, 0x20, 0x03, 0x28, 0x09, 0x52, 0x07, 0x73,
+	0x79, 0x6d, 0x62, 0x6f, 0x6c, 0x73, 0x12, 0x18, 0x0a, 0x07, 0x72, 0x75, 0x6e, 0x6e, 0x69, 0x6e,
+	0x67, 0x18, 0x04, 0x20, 0x01, 0x28, 0x08, 0x52, 0x07, 0x72, 0x75, 0x6e, 0x6e, 0x69, 0x6e, 0x67,
+	0x12, 0x33, 0x0a, 0x16, 0x6c, 0x61, 0x73, 0x74, 0x5f, 0x68, 0x65, 0x61, 0x72, 0x74, 0x62, 0x65,
+	0x61, 0x74, 0x5f, 0x75, 0x6e, 0x69, 0x78, 0x5f, 0x6d, 0x73, 0x18, 0x05, 0x20, 0x01, 0x28, 0x03,
+	0x52, 0x13, 0x6c, 0x61, 0x73, 0x74, 0x48, 0x65, 0x61, 0x72, 0x74, 0x62, 0x65, 0x61, 0x74, 0x55,
+	0x6e, 0x69, 0x78, 0x4d, 0x73, 0x12, 0x1f, 0x0a, 0x0b, 0x63, 0x72, 0x61, 0x73, 0x68, 0x5f, 0x63,
+	0x6f, 0x75, 0x6e, 0x74, 0x18, 0x06, 0x20, 0x01, 0x28, 0x05, 0x52, 0x0a, 0x63, 0x72, 0x61, 0x73,
+	0x68, 0x43, 0x6f, 0x75, 0x6e, 0x74, 0x12, 0x31, 0x0a, 0x15, 0x63, 0x72, 0x61, 0x73, 0x68, 0x5f,
+	0x63, 0x6f, 0x75, 0x6e, 0x74, 0x5f, 0x69, 0x6e, 0x5f, 0x77, 0x69, 0x6e, 0x64, 0x6f, 0x77, 0x18,
+	0x07, 0x20, 0x01, 0x28, 0x05, 0x52, 0x12, 0x63, 0x72, 0x61, 0x73, 0x68, 0x43, 0x6f, 0x75, 0x6e,
+	0x74, 0x49, 0x6e, 0x57, 0x69, 0x6e, 0x64, 0x6f, 0x77, 0x12, 0x30, 0x0a, 0x14, 0x61, 0x75, 0x74,
+	0x6f, 0x5f, 0x72, 0x65, 0x73, 0x74, 0x61, 0x72, 0x74, 0x5f, 0x65, 0x6e, 0x61, 0x62, 0x6c, 0x65,
+	0x64, 0x18, 0x08, 0x20, 0x01, 0x28, 0x08, 0x52, 0x12, 0x61, 0x75, 0x74, 0x6f, 0x52, 0x65, 0x73,
+	0x74, 0x61, 0x72, 0x74, 0x45, 0x6e, 0x61, 0x62, 0x6c, 0x65, 0x64, 0x12, 0x2e, 0x0a, 0x13, 0x72,
+	0x65, 0x73, 0x74, 0x61, 0x72, 0x74, 0x5f, 0x62, 0x61, 0x63, 0x6b, 0x6f, 0x66, 0x66, 0x5f, 0x73,
+	0x65, 0x63, 0x18, 0x09, 0x20, 0x01, 0x28, 0x01, 0x52, 0x11, 0x72, 0x65, 0x73, 0x74, 0x61, 0x72,
+	0x74, 0x42, 0x61, 0x63, 0x6b, 0x6f, 0x66, 0x66, 0x53, 0x65, 0x63, 0x12, 0x21, 0x0a, 0x0c, 0x63,
+	0x69, 0x72, 0x63, 0x75, 0x69, 0x74, 0x5f, 0x6f, 0x70, 0x65, 0x6e, 0x18, 0x0a, 0x20, 0x01, 0x28,
+	0x08, 0x52, 0x0b, 0x63, 0x69, 0x72, 0x63, 0x75, 0x69, 0x74, 0x4f, 0x70, 0x65, 0x6e, 0x22, 0x2e,
+	0x0a, 0x18, 0x47, 0x65, 0x74, 0x53, 0x74, 0x72, 0x61, 0x74, 0x65, 0x67, 0x79, 0x53, 0x74, 0x61,
+	0x74, 0x75, 0x73, 0x52, 0x65, 0x71, 0x75, 0x65, 0x73, 0x74, 0x12, 0x12, 0x0a, 0x04, 0x6e, 0x61,
+	0x6d, 0x65, 0x18, 0x01, 0x20, 0x01, 0x28, 0x09, 0x52, 0x04, 0x6e, 0x61, 0x6d, 0x65, 0x22, 0x55,
+	0x0a, 0x16, 0x47, 0x65, 0x74, 0x53, 0x74, 0x72, 0x61, 0x74, 0x65, 0x67, 0x79, 0x53, 0x74, 0x61,
+	0x74, 0x75, 0x73, 0x52, 0x65, 0x70, 0x6c, 0x79, 0x12, 0x3b, 0x0a, 0x06, 0x73, 0x74, 0x61, 0x74,
+	0x75, 0x73, 0x18, 0x01, 0x20, 0x01, 0x28, 0x0b, 0x32, 0x23, 0x2e, 0x73, 0x69, 0x67, 0x6e, 0x61,
+	0x6c, 0x69, 0x78, 0x2e, 0x65, 0x6e, 0x67, 0x69, 0x6e, 0x65, 0x2e, 0x76, 0x31, 0x2e, 0x53, 0x74,
+	0x72, 0x61, 0x74, 0x65, 0x67, 0x79, 0x53, 0x75, 0x6d, 0x6d, 0x61, 0x72, 0x79, 0x52, 0x06, 0x73,
+	0x74, 0x61, 0x74, 0x75, 0x73, 0x22, 0x5a, 0x0a, 0x13, 0x4c, 0x69, 0x73, 0x74, 0x53, 0x74, 0x72,
 	0x61, 0x74, 0x65, 0x67, 0x69, 0x65, 0x73, 0x52, 0x65, 0x70, 0x6c, 0x79, 0x12, 0x43, 0x0a, 0x0a,
 	0x73, 0x74, 0x72, 0x61, 0x74, 0x65, 0x67, 0x69, 0x65, 0x73, 0x18, 0x01, 0x20, 0x03, 0x28, 0x0b,
 	0x32, 0x23, 0x2e, 0x73, 0x69, 0x67, 0x6e, 0x61, 0x6c, 0x69, 0x78, 0x2e, 0x65, 0x6e, 0x67, 0x69,
@@ -2266,7 +2437,7 @@ var file_signalix_engine_v1_engine_proto_rawDesc = string([]byte{
 	0x12, 0x19, 0x0a, 0x15, 0x43, 0x4f, 0x4d, 0x50, 0x4f, 0x4e, 0x45, 0x4e, 0x54, 0x5f, 0x53, 0x54,
 	0x41, 0x54, 0x55, 0x53, 0x5f, 0x50, 0x41, 0x53, 0x53, 0x10, 0x01, 0x12, 0x19, 0x0a, 0x15, 0x43,
 	0x4f, 0x4d, 0x50, 0x4f, 0x4e, 0x45, 0x4e, 0x54, 0x5f, 0x53, 0x54, 0x41, 0x54, 0x55, 0x53, 0x5f,
-	0x46, 0x41, 0x49, 0x4c, 0x10, 0x02, 0x32, 0x95, 0x0d, 0x0a, 0x06, 0x45, 0x6e, 0x67, 0x69, 0x6e,
+	0x46, 0x41, 0x49, 0x4c, 0x10, 0x02, 0x32, 0x84, 0x0e, 0x0a, 0x06, 0x45, 0x6e, 0x67, 0x69, 0x6e,
 	0x65, 0x12, 0x46, 0x0a, 0x04, 0x50, 0x69, 0x6e, 0x67, 0x12, 0x1f, 0x2e, 0x73, 0x69, 0x67, 0x6e,
 	0x61, 0x6c, 0x69, 0x78, 0x2e, 0x65, 0x6e, 0x67, 0x69, 0x6e, 0x65, 0x2e, 0x76, 0x31, 0x2e, 0x50,
 	0x69, 0x6e, 0x67, 0x52, 0x65, 0x71, 0x75, 0x65, 0x73, 0x74, 0x1a, 0x1d, 0x2e, 0x73, 0x69, 0x67,
@@ -2289,94 +2460,101 @@ var file_signalix_engine_v1_engine_proto_rawDesc = string([]byte{
 	0x74, 0x72, 0x61, 0x74, 0x65, 0x67, 0x69, 0x65, 0x73, 0x52, 0x65, 0x71, 0x75, 0x65, 0x73, 0x74,
 	0x1a, 0x27, 0x2e, 0x73, 0x69, 0x67, 0x6e, 0x61, 0x6c, 0x69, 0x78, 0x2e, 0x65, 0x6e, 0x67, 0x69,
 	0x6e, 0x65, 0x2e, 0x76, 0x31, 0x2e, 0x4c, 0x69, 0x73, 0x74, 0x53, 0x74, 0x72, 0x61, 0x74, 0x65,
-	0x67, 0x69, 0x65, 0x73, 0x52, 0x65, 0x70, 0x6c, 0x79, 0x12, 0x61, 0x0a, 0x0d, 0x53, 0x74, 0x61,
-	0x72, 0x74, 0x53, 0x74, 0x72, 0x61, 0x74, 0x65, 0x67, 0x79, 0x12, 0x28, 0x2e, 0x73, 0x69, 0x67,
-	0x6e, 0x61, 0x6c, 0x69, 0x78, 0x2e, 0x65, 0x6e, 0x67, 0x69, 0x6e, 0x65, 0x2e, 0x76, 0x31, 0x2e,
-	0x53, 0x74, 0x61, 0x72, 0x74, 0x53, 0x74, 0x72, 0x61, 0x74, 0x65, 0x67, 0x79, 0x52, 0x65, 0x71,
-	0x75, 0x65, 0x73, 0x74, 0x1a, 0x26, 0x2e, 0x73, 0x69, 0x67, 0x6e, 0x61, 0x6c, 0x69, 0x78, 0x2e,
-	0x65, 0x6e, 0x67, 0x69, 0x6e, 0x65, 0x2e, 0x76, 0x31, 0x2e, 0x53, 0x74, 0x61, 0x72, 0x74, 0x53,
-	0x74, 0x72, 0x61, 0x74, 0x65, 0x67, 0x79, 0x52, 0x65, 0x70, 0x6c, 0x79, 0x12, 0x5e, 0x0a, 0x0c,
-	0x53, 0x74, 0x6f, 0x70, 0x53, 0x74, 0x72, 0x61, 0x74, 0x65, 0x67, 0x79, 0x12, 0x27, 0x2e, 0x73,
-	0x69, 0x67, 0x6e, 0x61, 0x6c, 0x69, 0x78, 0x2e, 0x65, 0x6e, 0x67, 0x69, 0x6e, 0x65, 0x2e, 0x76,
-	0x31, 0x2e, 0x53, 0x74, 0x6f, 0x70, 0x53, 0x74, 0x72, 0x61, 0x74, 0x65, 0x67, 0x79, 0x52, 0x65,
-	0x71, 0x75, 0x65, 0x73, 0x74, 0x1a, 0x25, 0x2e, 0x73, 0x69, 0x67, 0x6e, 0x61, 0x6c, 0x69, 0x78,
-	0x2e, 0x65, 0x6e, 0x67, 0x69, 0x6e, 0x65, 0x2e, 0x76, 0x31, 0x2e, 0x53, 0x74, 0x6f, 0x70, 0x53,
-	0x74, 0x72, 0x61, 0x74, 0x65, 0x67, 0x79, 0x52, 0x65, 0x70, 0x6c, 0x79, 0x12, 0x6a, 0x0a, 0x10,
-	0x52, 0x65, 0x6c, 0x6f, 0x61, 0x64, 0x53, 0x74, 0x72, 0x61, 0x74, 0x65, 0x67, 0x69, 0x65, 0x73,
-	0x12, 0x2b, 0x2e, 0x73, 0x69, 0x67, 0x6e, 0x61, 0x6c, 0x69, 0x78, 0x2e, 0x65, 0x6e, 0x67, 0x69,
-	0x6e, 0x65, 0x2e, 0x76, 0x31, 0x2e, 0x52, 0x65, 0x6c, 0x6f, 0x61, 0x64, 0x53, 0x74, 0x72, 0x61,
-	0x74, 0x65, 0x67, 0x69, 0x65, 0x73, 0x52, 0x65, 0x71, 0x75, 0x65, 0x73, 0x74, 0x1a, 0x29, 0x2e,
-	0x73, 0x69, 0x67, 0x6e, 0x61, 0x6c, 0x69, 0x78, 0x2e, 0x65, 0x6e, 0x67, 0x69, 0x6e, 0x65, 0x2e,
-	0x76, 0x31, 0x2e, 0x52, 0x65, 0x6c, 0x6f, 0x61, 0x64, 0x53, 0x74, 0x72, 0x61, 0x74, 0x65, 0x67,
-	0x69, 0x65, 0x73, 0x52, 0x65, 0x70, 0x6c, 0x79, 0x12, 0x58, 0x0a, 0x0a, 0x47, 0x65, 0x74, 0x42,
-	0x61, 0x6c, 0x61, 0x6e, 0x63, 0x65, 0x12, 0x25, 0x2e, 0x73, 0x69, 0x67, 0x6e, 0x61, 0x6c, 0x69,
-	0x78, 0x2e, 0x65, 0x6e, 0x67, 0x69, 0x6e, 0x65, 0x2e, 0x76, 0x31, 0x2e, 0x47, 0x65, 0x74, 0x42,
-	0x61, 0x6c, 0x61, 0x6e, 0x63, 0x65, 0x52, 0x65, 0x71, 0x75, 0x65, 0x73, 0x74, 0x1a, 0x23, 0x2e,
-	0x73, 0x69, 0x67, 0x6e, 0x61, 0x6c, 0x69, 0x78, 0x2e, 0x65, 0x6e, 0x67, 0x69, 0x6e, 0x65, 0x2e,
-	0x76, 0x31, 0x2e, 0x47, 0x65, 0x74, 0x42, 0x61, 0x6c, 0x61, 0x6e, 0x63, 0x65, 0x52, 0x65, 0x70,
-	0x6c, 0x79, 0x12, 0x5b, 0x0a, 0x0b, 0x47, 0x65, 0x74, 0x50, 0x6f, 0x73, 0x69, 0x74, 0x69, 0x6f,
-	0x6e, 0x12, 0x26, 0x2e, 0x73, 0x69, 0x67, 0x6e, 0x61, 0x6c, 0x69, 0x78, 0x2e, 0x65, 0x6e, 0x67,
-	0x69, 0x6e, 0x65, 0x2e, 0x76, 0x31, 0x2e, 0x47, 0x65, 0x74, 0x50, 0x6f, 0x73, 0x69, 0x74, 0x69,
-	0x6f, 0x6e, 0x52, 0x65, 0x71, 0x75, 0x65, 0x73, 0x74, 0x1a, 0x24, 0x2e, 0x73, 0x69, 0x67, 0x6e,
-	0x61, 0x6c, 0x69, 0x78, 0x2e, 0x65, 0x6e, 0x67, 0x69, 0x6e, 0x65, 0x2e, 0x76, 0x31, 0x2e, 0x47,
-	0x65, 0x74, 0x50, 0x6f, 0x73, 0x69, 0x74, 0x69, 0x6f, 0x6e, 0x52, 0x65, 0x70, 0x6c, 0x79, 0x12,
-	0x61, 0x0a, 0x0d, 0x4c, 0x69, 0x73, 0x74, 0x50, 0x6f, 0x73, 0x69, 0x74, 0x69, 0x6f, 0x6e, 0x73,
-	0x12, 0x28, 0x2e, 0x73, 0x69, 0x67, 0x6e, 0x61, 0x6c, 0x69, 0x78, 0x2e, 0x65, 0x6e, 0x67, 0x69,
-	0x6e, 0x65, 0x2e, 0x76, 0x31, 0x2e, 0x4c, 0x69, 0x73, 0x74, 0x50, 0x6f, 0x73, 0x69, 0x74, 0x69,
-	0x6f, 0x6e, 0x73, 0x52, 0x65, 0x71, 0x75, 0x65, 0x73, 0x74, 0x1a, 0x26, 0x2e, 0x73, 0x69, 0x67,
-	0x6e, 0x61, 0x6c, 0x69, 0x78, 0x2e, 0x65, 0x6e, 0x67, 0x69, 0x6e, 0x65, 0x2e, 0x76, 0x31, 0x2e,
-	0x4c, 0x69, 0x73, 0x74, 0x50, 0x6f, 0x73, 0x69, 0x74, 0x69, 0x6f, 0x6e, 0x73, 0x52, 0x65, 0x70,
-	0x6c, 0x79, 0x12, 0x52, 0x0a, 0x08, 0x47, 0x65, 0x74, 0x4f, 0x72, 0x64, 0x65, 0x72, 0x12, 0x23,
+	0x67, 0x69, 0x65, 0x73, 0x52, 0x65, 0x70, 0x6c, 0x79, 0x12, 0x6d, 0x0a, 0x11, 0x47, 0x65, 0x74,
+	0x53, 0x74, 0x72, 0x61, 0x74, 0x65, 0x67, 0x79, 0x53, 0x74, 0x61, 0x74, 0x75, 0x73, 0x12, 0x2c,
 	0x2e, 0x73, 0x69, 0x67, 0x6e, 0x61, 0x6c, 0x69, 0x78, 0x2e, 0x65, 0x6e, 0x67, 0x69, 0x6e, 0x65,
-	0x2e, 0x76, 0x31, 0x2e, 0x47, 0x65, 0x74, 0x4f, 0x72, 0x64, 0x65, 0x72, 0x52, 0x65, 0x71, 0x75,
-	0x65, 0x73, 0x74, 0x1a, 0x21, 0x2e, 0x73, 0x69, 0x67, 0x6e, 0x61, 0x6c, 0x69, 0x78, 0x2e, 0x65,
-	0x6e, 0x67, 0x69, 0x6e, 0x65, 0x2e, 0x76, 0x31, 0x2e, 0x47, 0x65, 0x74, 0x4f, 0x72, 0x64, 0x65,
-	0x72, 0x52, 0x65, 0x70, 0x6c, 0x79, 0x12, 0x64, 0x0a, 0x0e, 0x4c, 0x69, 0x73, 0x74, 0x4f, 0x70,
-	0x65, 0x6e, 0x4f, 0x72, 0x64, 0x65, 0x72, 0x73, 0x12, 0x29, 0x2e, 0x73, 0x69, 0x67, 0x6e, 0x61,
-	0x6c, 0x69, 0x78, 0x2e, 0x65, 0x6e, 0x67, 0x69, 0x6e, 0x65, 0x2e, 0x76, 0x31, 0x2e, 0x4c, 0x69,
-	0x73, 0x74, 0x4f, 0x70, 0x65, 0x6e, 0x4f, 0x72, 0x64, 0x65, 0x72, 0x73, 0x52, 0x65, 0x71, 0x75,
-	0x65, 0x73, 0x74, 0x1a, 0x27, 0x2e, 0x73, 0x69, 0x67, 0x6e, 0x61, 0x6c, 0x69, 0x78, 0x2e, 0x65,
-	0x6e, 0x67, 0x69, 0x6e, 0x65, 0x2e, 0x76, 0x31, 0x2e, 0x4c, 0x69, 0x73, 0x74, 0x4f, 0x70, 0x65,
-	0x6e, 0x4f, 0x72, 0x64, 0x65, 0x72, 0x73, 0x52, 0x65, 0x70, 0x6c, 0x79, 0x12, 0x5b, 0x0a, 0x0b,
-	0x43, 0x61, 0x6e, 0x63, 0x65, 0x6c, 0x4f, 0x72, 0x64, 0x65, 0x72, 0x12, 0x26, 0x2e, 0x73, 0x69,
+	0x2e, 0x76, 0x31, 0x2e, 0x47, 0x65, 0x74, 0x53, 0x74, 0x72, 0x61, 0x74, 0x65, 0x67, 0x79, 0x53,
+	0x74, 0x61, 0x74, 0x75, 0x73, 0x52, 0x65, 0x71, 0x75, 0x65, 0x73, 0x74, 0x1a, 0x2a, 0x2e, 0x73,
+	0x69, 0x67, 0x6e, 0x61, 0x6c, 0x69, 0x78, 0x2e, 0x65, 0x6e, 0x67, 0x69, 0x6e, 0x65, 0x2e, 0x76,
+	0x31, 0x2e, 0x47, 0x65, 0x74, 0x53, 0x74, 0x72, 0x61, 0x74, 0x65, 0x67, 0x79, 0x53, 0x74, 0x61,
+	0x74, 0x75, 0x73, 0x52, 0x65, 0x70, 0x6c, 0x79, 0x12, 0x61, 0x0a, 0x0d, 0x53, 0x74, 0x61, 0x72,
+	0x74, 0x53, 0x74, 0x72, 0x61, 0x74, 0x65, 0x67, 0x79, 0x12, 0x28, 0x2e, 0x73, 0x69, 0x67, 0x6e,
+	0x61, 0x6c, 0x69, 0x78, 0x2e, 0x65, 0x6e, 0x67, 0x69, 0x6e, 0x65, 0x2e, 0x76, 0x31, 0x2e, 0x53,
+	0x74, 0x61, 0x72, 0x74, 0x53, 0x74, 0x72, 0x61, 0x74, 0x65, 0x67, 0x79, 0x52, 0x65, 0x71, 0x75,
+	0x65, 0x73, 0x74, 0x1a, 0x26, 0x2e, 0x73, 0x69, 0x67, 0x6e, 0x61, 0x6c, 0x69, 0x78, 0x2e, 0x65,
+	0x6e, 0x67, 0x69, 0x6e, 0x65, 0x2e, 0x76, 0x31, 0x2e, 0x53, 0x74, 0x61, 0x72, 0x74, 0x53, 0x74,
+	0x72, 0x61, 0x74, 0x65, 0x67, 0x79, 0x52, 0x65, 0x70, 0x6c, 0x79, 0x12, 0x5e, 0x0a, 0x0c, 0x53,
+	0x74, 0x6f, 0x70, 0x53, 0x74, 0x72, 0x61, 0x74, 0x65, 0x67, 0x79, 0x12, 0x27, 0x2e, 0x73, 0x69,
 	0x67, 0x6e, 0x61, 0x6c, 0x69, 0x78, 0x2e, 0x65, 0x6e, 0x67, 0x69, 0x6e, 0x65, 0x2e, 0x76, 0x31,
-	0x2e, 0x43, 0x61, 0x6e, 0x63, 0x65, 0x6c, 0x4f, 0x72, 0x64, 0x65, 0x72, 0x52, 0x65, 0x71, 0x75,
-	0x65, 0x73, 0x74, 0x1a, 0x24, 0x2e, 0x73, 0x69, 0x67, 0x6e, 0x61, 0x6c, 0x69, 0x78, 0x2e, 0x65,
-	0x6e, 0x67, 0x69, 0x6e, 0x65, 0x2e, 0x76, 0x31, 0x2e, 0x43, 0x61, 0x6e, 0x63, 0x65, 0x6c, 0x4f,
-	0x72, 0x64, 0x65, 0x72, 0x52, 0x65, 0x70, 0x6c, 0x79, 0x12, 0x64, 0x0a, 0x14, 0x53, 0x75, 0x62,
-	0x73, 0x63, 0x72, 0x69, 0x62, 0x65, 0x4f, 0x72, 0x64, 0x65, 0x72, 0x45, 0x76, 0x65, 0x6e, 0x74,
-	0x73, 0x12, 0x2f, 0x2e, 0x73, 0x69, 0x67, 0x6e, 0x61, 0x6c, 0x69, 0x78, 0x2e, 0x65, 0x6e, 0x67,
-	0x69, 0x6e, 0x65, 0x2e, 0x76, 0x31, 0x2e, 0x53, 0x75, 0x62, 0x73, 0x63, 0x72, 0x69, 0x62, 0x65,
-	0x4f, 0x72, 0x64, 0x65, 0x72, 0x45, 0x76, 0x65, 0x6e, 0x74, 0x73, 0x52, 0x65, 0x71, 0x75, 0x65,
-	0x73, 0x74, 0x1a, 0x19, 0x2e, 0x73, 0x69, 0x67, 0x6e, 0x61, 0x6c, 0x69, 0x78, 0x2e, 0x65, 0x6e,
-	0x67, 0x69, 0x6e, 0x65, 0x2e, 0x76, 0x31, 0x2e, 0x4f, 0x72, 0x64, 0x65, 0x72, 0x30, 0x01, 0x12,
-	0x70, 0x0a, 0x12, 0x41, 0x63, 0x74, 0x69, 0x76, 0x61, 0x74, 0x65, 0x4b, 0x69, 0x6c, 0x6c, 0x53,
-	0x77, 0x69, 0x74, 0x63, 0x68, 0x12, 0x2d, 0x2e, 0x73, 0x69, 0x67, 0x6e, 0x61, 0x6c, 0x69, 0x78,
-	0x2e, 0x65, 0x6e, 0x67, 0x69, 0x6e, 0x65, 0x2e, 0x76, 0x31, 0x2e, 0x41, 0x63, 0x74, 0x69, 0x76,
-	0x61, 0x74, 0x65, 0x4b, 0x69, 0x6c, 0x6c, 0x53, 0x77, 0x69, 0x74, 0x63, 0x68, 0x52, 0x65, 0x71,
-	0x75, 0x65, 0x73, 0x74, 0x1a, 0x2b, 0x2e, 0x73, 0x69, 0x67, 0x6e, 0x61, 0x6c, 0x69, 0x78, 0x2e,
+	0x2e, 0x53, 0x74, 0x6f, 0x70, 0x53, 0x74, 0x72, 0x61, 0x74, 0x65, 0x67, 0x79, 0x52, 0x65, 0x71,
+	0x75, 0x65, 0x73, 0x74, 0x1a, 0x25, 0x2e, 0x73, 0x69, 0x67, 0x6e, 0x61, 0x6c, 0x69, 0x78, 0x2e,
+	0x65, 0x6e, 0x67, 0x69, 0x6e, 0x65, 0x2e, 0x76, 0x31, 0x2e, 0x53, 0x74, 0x6f, 0x70, 0x53, 0x74,
+	0x72, 0x61, 0x74, 0x65, 0x67, 0x79, 0x52, 0x65, 0x70, 0x6c, 0x79, 0x12, 0x6a, 0x0a, 0x10, 0x52,
+	0x65, 0x6c, 0x6f, 0x61, 0x64, 0x53, 0x74, 0x72, 0x61, 0x74, 0x65, 0x67, 0x69, 0x65, 0x73, 0x12,
+	0x2b, 0x2e, 0x73, 0x69, 0x67, 0x6e, 0x61, 0x6c, 0x69, 0x78, 0x2e, 0x65, 0x6e, 0x67, 0x69, 0x6e,
+	0x65, 0x2e, 0x76, 0x31, 0x2e, 0x52, 0x65, 0x6c, 0x6f, 0x61, 0x64, 0x53, 0x74, 0x72, 0x61, 0x74,
+	0x65, 0x67, 0x69, 0x65, 0x73, 0x52, 0x65, 0x71, 0x75, 0x65, 0x73, 0x74, 0x1a, 0x29, 0x2e, 0x73,
+	0x69, 0x67, 0x6e, 0x61, 0x6c, 0x69, 0x78, 0x2e, 0x65, 0x6e, 0x67, 0x69, 0x6e, 0x65, 0x2e, 0x76,
+	0x31, 0x2e, 0x52, 0x65, 0x6c, 0x6f, 0x61, 0x64, 0x53, 0x74, 0x72, 0x61, 0x74, 0x65, 0x67, 0x69,
+	0x65, 0x73, 0x52, 0x65, 0x70, 0x6c, 0x79, 0x12, 0x58, 0x0a, 0x0a, 0x47, 0x65, 0x74, 0x42, 0x61,
+	0x6c, 0x61, 0x6e, 0x63, 0x65, 0x12, 0x25, 0x2e, 0x73, 0x69, 0x67, 0x6e, 0x61, 0x6c, 0x69, 0x78,
+	0x2e, 0x65, 0x6e, 0x67, 0x69, 0x6e, 0x65, 0x2e, 0x76, 0x31, 0x2e, 0x47, 0x65, 0x74, 0x42, 0x61,
+	0x6c, 0x61, 0x6e, 0x63, 0x65, 0x52, 0x65, 0x71, 0x75, 0x65, 0x73, 0x74, 0x1a, 0x23, 0x2e, 0x73,
+	0x69, 0x67, 0x6e, 0x61, 0x6c, 0x69, 0x78, 0x2e, 0x65, 0x6e, 0x67, 0x69, 0x6e, 0x65, 0x2e, 0x76,
+	0x31, 0x2e, 0x47, 0x65, 0x74, 0x42, 0x61, 0x6c, 0x61, 0x6e, 0x63, 0x65, 0x52, 0x65, 0x70, 0x6c,
+	0x79, 0x12, 0x5b, 0x0a, 0x0b, 0x47, 0x65, 0x74, 0x50, 0x6f, 0x73, 0x69, 0x74, 0x69, 0x6f, 0x6e,
+	0x12, 0x26, 0x2e, 0x73, 0x69, 0x67, 0x6e, 0x61, 0x6c, 0x69, 0x78, 0x2e, 0x65, 0x6e, 0x67, 0x69,
+	0x6e, 0x65, 0x2e, 0x76, 0x31, 0x2e, 0x47, 0x65, 0x74, 0x50, 0x6f, 0x73, 0x69, 0x74, 0x69, 0x6f,
+	0x6e, 0x52, 0x65, 0x71, 0x75, 0x65, 0x73, 0x74, 0x1a, 0x24, 0x2e, 0x73, 0x69, 0x67, 0x6e, 0x61,
+	0x6c, 0x69, 0x78, 0x2e, 0x65, 0x6e, 0x67, 0x69, 0x6e, 0x65, 0x2e, 0x76, 0x31, 0x2e, 0x47, 0x65,
+	0x74, 0x50, 0x6f, 0x73, 0x69, 0x74, 0x69, 0x6f, 0x6e, 0x52, 0x65, 0x70, 0x6c, 0x79, 0x12, 0x61,
+	0x0a, 0x0d, 0x4c, 0x69, 0x73, 0x74, 0x50, 0x6f, 0x73, 0x69, 0x74, 0x69, 0x6f, 0x6e, 0x73, 0x12,
+	0x28, 0x2e, 0x73, 0x69, 0x67, 0x6e, 0x61, 0x6c, 0x69, 0x78, 0x2e, 0x65, 0x6e, 0x67, 0x69, 0x6e,
+	0x65, 0x2e, 0x76, 0x31, 0x2e, 0x4c, 0x69, 0x73, 0x74, 0x50, 0x6f, 0x73, 0x69, 0x74, 0x69, 0x6f,
+	0x6e, 0x73, 0x52, 0x65, 0x71, 0x75, 0x65, 0x73, 0x74, 0x1a, 0x26, 0x2e, 0x73, 0x69, 0x67, 0x6e,
+	0x61, 0x6c, 0x69, 0x78, 0x2e, 0x65, 0x6e, 0x67, 0x69, 0x6e, 0x65, 0x2e, 0x76, 0x31, 0x2e, 0x4c,
+	0x69, 0x73, 0x74, 0x50, 0x6f, 0x73, 0x69, 0x74, 0x69, 0x6f, 0x6e, 0x73, 0x52, 0x65, 0x70, 0x6c,
+	0x79, 0x12, 0x52, 0x0a, 0x08, 0x47, 0x65, 0x74, 0x4f, 0x72, 0x64, 0x65, 0x72, 0x12, 0x23, 0x2e,
+	0x73, 0x69, 0x67, 0x6e, 0x61, 0x6c, 0x69, 0x78, 0x2e, 0x65, 0x6e, 0x67, 0x69, 0x6e, 0x65, 0x2e,
+	0x76, 0x31, 0x2e, 0x47, 0x65, 0x74, 0x4f, 0x72, 0x64, 0x65, 0x72, 0x52, 0x65, 0x71, 0x75, 0x65,
+	0x73, 0x74, 0x1a, 0x21, 0x2e, 0x73, 0x69, 0x67, 0x6e, 0x61, 0x6c, 0x69, 0x78, 0x2e, 0x65, 0x6e,
+	0x67, 0x69, 0x6e, 0x65, 0x2e, 0x76, 0x31, 0x2e, 0x47, 0x65, 0x74, 0x4f, 0x72, 0x64, 0x65, 0x72,
+	0x52, 0x65, 0x70, 0x6c, 0x79, 0x12, 0x64, 0x0a, 0x0e, 0x4c, 0x69, 0x73, 0x74, 0x4f, 0x70, 0x65,
+	0x6e, 0x4f, 0x72, 0x64, 0x65, 0x72, 0x73, 0x12, 0x29, 0x2e, 0x73, 0x69, 0x67, 0x6e, 0x61, 0x6c,
+	0x69, 0x78, 0x2e, 0x65, 0x6e, 0x67, 0x69, 0x6e, 0x65, 0x2e, 0x76, 0x31, 0x2e, 0x4c, 0x69, 0x73,
+	0x74, 0x4f, 0x70, 0x65, 0x6e, 0x4f, 0x72, 0x64, 0x65, 0x72, 0x73, 0x52, 0x65, 0x71, 0x75, 0x65,
+	0x73, 0x74, 0x1a, 0x27, 0x2e, 0x73, 0x69, 0x67, 0x6e, 0x61, 0x6c, 0x69, 0x78, 0x2e, 0x65, 0x6e,
+	0x67, 0x69, 0x6e, 0x65, 0x2e, 0x76, 0x31, 0x2e, 0x4c, 0x69, 0x73, 0x74, 0x4f, 0x70, 0x65, 0x6e,
+	0x4f, 0x72, 0x64, 0x65, 0x72, 0x73, 0x52, 0x65, 0x70, 0x6c, 0x79, 0x12, 0x5b, 0x0a, 0x0b, 0x43,
+	0x61, 0x6e, 0x63, 0x65, 0x6c, 0x4f, 0x72, 0x64, 0x65, 0x72, 0x12, 0x26, 0x2e, 0x73, 0x69, 0x67,
+	0x6e, 0x61, 0x6c, 0x69, 0x78, 0x2e, 0x65, 0x6e, 0x67, 0x69, 0x6e, 0x65, 0x2e, 0x76, 0x31, 0x2e,
+	0x43, 0x61, 0x6e, 0x63, 0x65, 0x6c, 0x4f, 0x72, 0x64, 0x65, 0x72, 0x52, 0x65, 0x71, 0x75, 0x65,
+	0x73, 0x74, 0x1a, 0x24, 0x2e, 0x73, 0x69, 0x67, 0x6e, 0x61, 0x6c, 0x69, 0x78, 0x2e, 0x65, 0x6e,
+	0x67, 0x69, 0x6e, 0x65, 0x2e, 0x76, 0x31, 0x2e, 0x43, 0x61, 0x6e, 0x63, 0x65, 0x6c, 0x4f, 0x72,
+	0x64, 0x65, 0x72, 0x52, 0x65, 0x70, 0x6c, 0x79, 0x12, 0x64, 0x0a, 0x14, 0x53, 0x75, 0x62, 0x73,
+	0x63, 0x72, 0x69, 0x62, 0x65, 0x4f, 0x72, 0x64, 0x65, 0x72, 0x45, 0x76, 0x65, 0x6e, 0x74, 0x73,
+	0x12, 0x2f, 0x2e, 0x73, 0x69, 0x67, 0x6e, 0x61, 0x6c, 0x69, 0x78, 0x2e, 0x65, 0x6e, 0x67, 0x69,
+	0x6e, 0x65, 0x2e, 0x76, 0x31, 0x2e, 0x53, 0x75, 0x62, 0x73, 0x63, 0x72, 0x69, 0x62, 0x65, 0x4f,
+	0x72, 0x64, 0x65, 0x72, 0x45, 0x76, 0x65, 0x6e, 0x74, 0x73, 0x52, 0x65, 0x71, 0x75, 0x65, 0x73,
+	0x74, 0x1a, 0x19, 0x2e, 0x73, 0x69, 0x67, 0x6e, 0x61, 0x6c, 0x69, 0x78, 0x2e, 0x65, 0x6e, 0x67,
+	0x69, 0x6e, 0x65, 0x2e, 0x76, 0x31, 0x2e, 0x4f, 0x72, 0x64, 0x65, 0x72, 0x30, 0x01, 0x12, 0x70,
+	0x0a, 0x12, 0x41, 0x63, 0x74, 0x69, 0x76, 0x61, 0x74, 0x65, 0x4b, 0x69, 0x6c, 0x6c, 0x53, 0x77,
+	0x69, 0x74, 0x63, 0x68, 0x12, 0x2d, 0x2e, 0x73, 0x69, 0x67, 0x6e, 0x61, 0x6c, 0x69, 0x78, 0x2e,
 	0x65, 0x6e, 0x67, 0x69, 0x6e, 0x65, 0x2e, 0x76, 0x31, 0x2e, 0x41, 0x63, 0x74, 0x69, 0x76, 0x61,
-	0x74, 0x65, 0x4b, 0x69, 0x6c, 0x6c, 0x53, 0x77, 0x69, 0x74, 0x63, 0x68, 0x52, 0x65, 0x70, 0x6c,
-	0x79, 0x12, 0x76, 0x0a, 0x14, 0x44, 0x65, 0x61, 0x63, 0x74, 0x69, 0x76, 0x61, 0x74, 0x65, 0x4b,
-	0x69, 0x6c, 0x6c, 0x53, 0x77, 0x69, 0x74, 0x63, 0x68, 0x12, 0x2f, 0x2e, 0x73, 0x69, 0x67, 0x6e,
+	0x74, 0x65, 0x4b, 0x69, 0x6c, 0x6c, 0x53, 0x77, 0x69, 0x74, 0x63, 0x68, 0x52, 0x65, 0x71, 0x75,
+	0x65, 0x73, 0x74, 0x1a, 0x2b, 0x2e, 0x73, 0x69, 0x67, 0x6e, 0x61, 0x6c, 0x69, 0x78, 0x2e, 0x65,
+	0x6e, 0x67, 0x69, 0x6e, 0x65, 0x2e, 0x76, 0x31, 0x2e, 0x41, 0x63, 0x74, 0x69, 0x76, 0x61, 0x74,
+	0x65, 0x4b, 0x69, 0x6c, 0x6c, 0x53, 0x77, 0x69, 0x74, 0x63, 0x68, 0x52, 0x65, 0x70, 0x6c, 0x79,
+	0x12, 0x76, 0x0a, 0x14, 0x44, 0x65, 0x61, 0x63, 0x74, 0x69, 0x76, 0x61, 0x74, 0x65, 0x4b, 0x69,
+	0x6c, 0x6c, 0x53, 0x77, 0x69, 0x74, 0x63, 0x68, 0x12, 0x2f, 0x2e, 0x73, 0x69, 0x67, 0x6e, 0x61,
+	0x6c, 0x69, 0x78, 0x2e, 0x65, 0x6e, 0x67, 0x69, 0x6e, 0x65, 0x2e, 0x76, 0x31, 0x2e, 0x44, 0x65,
+	0x61, 0x63, 0x74, 0x69, 0x76, 0x61, 0x74, 0x65, 0x4b, 0x69, 0x6c, 0x6c, 0x53, 0x77, 0x69, 0x74,
+	0x63, 0x68, 0x52, 0x65, 0x71, 0x75, 0x65, 0x73, 0x74, 0x1a, 0x2d, 0x2e, 0x73, 0x69, 0x67, 0x6e,
 	0x61, 0x6c, 0x69, 0x78, 0x2e, 0x65, 0x6e, 0x67, 0x69, 0x6e, 0x65, 0x2e, 0x76, 0x31, 0x2e, 0x44,
 	0x65, 0x61, 0x63, 0x74, 0x69, 0x76, 0x61, 0x74, 0x65, 0x4b, 0x69, 0x6c, 0x6c, 0x53, 0x77, 0x69,
-	0x74, 0x63, 0x68, 0x52, 0x65, 0x71, 0x75, 0x65, 0x73, 0x74, 0x1a, 0x2d, 0x2e, 0x73, 0x69, 0x67,
-	0x6e, 0x61, 0x6c, 0x69, 0x78, 0x2e, 0x65, 0x6e, 0x67, 0x69, 0x6e, 0x65, 0x2e, 0x76, 0x31, 0x2e,
-	0x44, 0x65, 0x61, 0x63, 0x74, 0x69, 0x76, 0x61, 0x74, 0x65, 0x4b, 0x69, 0x6c, 0x6c, 0x53, 0x77,
-	0x69, 0x74, 0x63, 0x68, 0x52, 0x65, 0x70, 0x6c, 0x79, 0x12, 0x73, 0x0a, 0x13, 0x47, 0x65, 0x74,
-	0x4b, 0x69, 0x6c, 0x6c, 0x53, 0x77, 0x69, 0x74, 0x63, 0x68, 0x53, 0x74, 0x61, 0x74, 0x75, 0x73,
-	0x12, 0x2e, 0x2e, 0x73, 0x69, 0x67, 0x6e, 0x61, 0x6c, 0x69, 0x78, 0x2e, 0x65, 0x6e, 0x67, 0x69,
-	0x6e, 0x65, 0x2e, 0x76, 0x31, 0x2e, 0x47, 0x65, 0x74, 0x4b, 0x69, 0x6c, 0x6c, 0x53, 0x77, 0x69,
-	0x74, 0x63, 0x68, 0x53, 0x74, 0x61, 0x74, 0x75, 0x73, 0x52, 0x65, 0x71, 0x75, 0x65, 0x73, 0x74,
-	0x1a, 0x2c, 0x2e, 0x73, 0x69, 0x67, 0x6e, 0x61, 0x6c, 0x69, 0x78, 0x2e, 0x65, 0x6e, 0x67, 0x69,
-	0x6e, 0x65, 0x2e, 0x76, 0x31, 0x2e, 0x47, 0x65, 0x74, 0x4b, 0x69, 0x6c, 0x6c, 0x53, 0x77, 0x69,
-	0x74, 0x63, 0x68, 0x53, 0x74, 0x61, 0x74, 0x75, 0x73, 0x52, 0x65, 0x70, 0x6c, 0x79, 0x42, 0x45,
-	0x5a, 0x43, 0x67, 0x69, 0x74, 0x68, 0x75, 0x62, 0x2e, 0x63, 0x6f, 0x6d, 0x2f, 0x6b, 0x61, 0x69,
-	0x6e, 0x68, 0x75, 0x63, 0x6b, 0x2f, 0x73, 0x69, 0x67, 0x6e, 0x61, 0x6c, 0x69, 0x78, 0x2f, 0x61,
-	0x70, 0x69, 0x2f, 0x67, 0x65, 0x6e, 0x2f, 0x67, 0x6f, 0x2f, 0x73, 0x69, 0x67, 0x6e, 0x61, 0x6c,
-	0x69, 0x78, 0x2f, 0x65, 0x6e, 0x67, 0x69, 0x6e, 0x65, 0x2f, 0x76, 0x31, 0x3b, 0x65, 0x6e, 0x67,
-	0x69, 0x6e, 0x65, 0x76, 0x31, 0x62, 0x06, 0x70, 0x72, 0x6f, 0x74, 0x6f, 0x33,
+	0x74, 0x63, 0x68, 0x52, 0x65, 0x70, 0x6c, 0x79, 0x12, 0x73, 0x0a, 0x13, 0x47, 0x65, 0x74, 0x4b,
+	0x69, 0x6c, 0x6c, 0x53, 0x77, 0x69, 0x74, 0x63, 0x68, 0x53, 0x74, 0x61, 0x74, 0x75, 0x73, 0x12,
+	0x2e, 0x2e, 0x73, 0x69, 0x67, 0x6e, 0x61, 0x6c, 0x69, 0x78, 0x2e, 0x65, 0x6e, 0x67, 0x69, 0x6e,
+	0x65, 0x2e, 0x76, 0x31, 0x2e, 0x47, 0x65, 0x74, 0x4b, 0x69, 0x6c, 0x6c, 0x53, 0x77, 0x69, 0x74,
+	0x63, 0x68, 0x53, 0x74, 0x61, 0x74, 0x75, 0x73, 0x52, 0x65, 0x71, 0x75, 0x65, 0x73, 0x74, 0x1a,
+	0x2c, 0x2e, 0x73, 0x69, 0x67, 0x6e, 0x61, 0x6c, 0x69, 0x78, 0x2e, 0x65, 0x6e, 0x67, 0x69, 0x6e,
+	0x65, 0x2e, 0x76, 0x31, 0x2e, 0x47, 0x65, 0x74, 0x4b, 0x69, 0x6c, 0x6c, 0x53, 0x77, 0x69, 0x74,
+	0x63, 0x68, 0x53, 0x74, 0x61, 0x74, 0x75, 0x73, 0x52, 0x65, 0x70, 0x6c, 0x79, 0x42, 0x45, 0x5a,
+	0x43, 0x67, 0x69, 0x74, 0x68, 0x75, 0x62, 0x2e, 0x63, 0x6f, 0x6d, 0x2f, 0x6b, 0x61, 0x69, 0x6e,
+	0x68, 0x75, 0x63, 0x6b, 0x2f, 0x73, 0x69, 0x67, 0x6e, 0x61, 0x6c, 0x69, 0x78, 0x2f, 0x61, 0x70,
+	0x69, 0x2f, 0x67, 0x65, 0x6e, 0x2f, 0x67, 0x6f, 0x2f, 0x73, 0x69, 0x67, 0x6e, 0x61, 0x6c, 0x69,
+	0x78, 0x2f, 0x65, 0x6e, 0x67, 0x69, 0x6e, 0x65, 0x2f, 0x76, 0x31, 0x3b, 0x65, 0x6e, 0x67, 0x69,
+	0x6e, 0x65, 0x76, 0x31, 0x62, 0x06, 0x70, 0x72, 0x6f, 0x74, 0x6f, 0x33,
 })
 
 var (
@@ -2392,7 +2570,7 @@ func file_signalix_engine_v1_engine_proto_rawDescGZIP() []byte {
 }
 
 var file_signalix_engine_v1_engine_proto_enumTypes = make([]protoimpl.EnumInfo, 2)
-var file_signalix_engine_v1_engine_proto_msgTypes = make([]protoimpl.MessageInfo, 39)
+var file_signalix_engine_v1_engine_proto_msgTypes = make([]protoimpl.MessageInfo, 41)
 var file_signalix_engine_v1_engine_proto_goTypes = []any{
 	(HealthStatus)(0),                   // 0: signalix.engine.v1.HealthStatus
 	(ComponentStatus)(0),                // 1: signalix.engine.v1.ComponentStatus
@@ -2405,89 +2583,94 @@ var file_signalix_engine_v1_engine_proto_goTypes = []any{
 	(*GetEngineInfoReply)(nil),          // 8: signalix.engine.v1.GetEngineInfoReply
 	(*ListStrategiesRequest)(nil),       // 9: signalix.engine.v1.ListStrategiesRequest
 	(*StrategySummary)(nil),             // 10: signalix.engine.v1.StrategySummary
-	(*ListStrategiesReply)(nil),         // 11: signalix.engine.v1.ListStrategiesReply
-	(*StartStrategyRequest)(nil),        // 12: signalix.engine.v1.StartStrategyRequest
-	(*StartStrategyReply)(nil),          // 13: signalix.engine.v1.StartStrategyReply
-	(*StopStrategyRequest)(nil),         // 14: signalix.engine.v1.StopStrategyRequest
-	(*StopStrategyReply)(nil),           // 15: signalix.engine.v1.StopStrategyReply
-	(*ReloadStrategiesRequest)(nil),     // 16: signalix.engine.v1.ReloadStrategiesRequest
-	(*ReloadStrategiesReply)(nil),       // 17: signalix.engine.v1.ReloadStrategiesReply
-	(*Balance)(nil),                     // 18: signalix.engine.v1.Balance
-	(*Position)(nil),                    // 19: signalix.engine.v1.Position
-	(*GetBalanceRequest)(nil),           // 20: signalix.engine.v1.GetBalanceRequest
-	(*GetBalanceReply)(nil),             // 21: signalix.engine.v1.GetBalanceReply
-	(*GetPositionRequest)(nil),          // 22: signalix.engine.v1.GetPositionRequest
-	(*GetPositionReply)(nil),            // 23: signalix.engine.v1.GetPositionReply
-	(*ListPositionsRequest)(nil),        // 24: signalix.engine.v1.ListPositionsRequest
-	(*ListPositionsReply)(nil),          // 25: signalix.engine.v1.ListPositionsReply
-	(*GetOrderRequest)(nil),             // 26: signalix.engine.v1.GetOrderRequest
-	(*GetOrderReply)(nil),               // 27: signalix.engine.v1.GetOrderReply
-	(*ListOpenOrdersRequest)(nil),       // 28: signalix.engine.v1.ListOpenOrdersRequest
-	(*ListOpenOrdersReply)(nil),         // 29: signalix.engine.v1.ListOpenOrdersReply
-	(*CancelOrderRequest)(nil),          // 30: signalix.engine.v1.CancelOrderRequest
-	(*CancelOrderReply)(nil),            // 31: signalix.engine.v1.CancelOrderReply
-	(*SubscribeOrderEventsRequest)(nil), // 32: signalix.engine.v1.SubscribeOrderEventsRequest
-	(*KillSwitchStatus)(nil),            // 33: signalix.engine.v1.KillSwitchStatus
-	(*ActivateKillSwitchRequest)(nil),   // 34: signalix.engine.v1.ActivateKillSwitchRequest
-	(*ActivateKillSwitchReply)(nil),     // 35: signalix.engine.v1.ActivateKillSwitchReply
-	(*DeactivateKillSwitchRequest)(nil), // 36: signalix.engine.v1.DeactivateKillSwitchRequest
-	(*DeactivateKillSwitchReply)(nil),   // 37: signalix.engine.v1.DeactivateKillSwitchReply
-	(*GetKillSwitchStatusRequest)(nil),  // 38: signalix.engine.v1.GetKillSwitchStatusRequest
-	(*GetKillSwitchStatusReply)(nil),    // 39: signalix.engine.v1.GetKillSwitchStatusReply
-	(*Order)(nil),                       // 40: signalix.engine.v1.Order
+	(*GetStrategyStatusRequest)(nil),    // 11: signalix.engine.v1.GetStrategyStatusRequest
+	(*GetStrategyStatusReply)(nil),      // 12: signalix.engine.v1.GetStrategyStatusReply
+	(*ListStrategiesReply)(nil),         // 13: signalix.engine.v1.ListStrategiesReply
+	(*StartStrategyRequest)(nil),        // 14: signalix.engine.v1.StartStrategyRequest
+	(*StartStrategyReply)(nil),          // 15: signalix.engine.v1.StartStrategyReply
+	(*StopStrategyRequest)(nil),         // 16: signalix.engine.v1.StopStrategyRequest
+	(*StopStrategyReply)(nil),           // 17: signalix.engine.v1.StopStrategyReply
+	(*ReloadStrategiesRequest)(nil),     // 18: signalix.engine.v1.ReloadStrategiesRequest
+	(*ReloadStrategiesReply)(nil),       // 19: signalix.engine.v1.ReloadStrategiesReply
+	(*Balance)(nil),                     // 20: signalix.engine.v1.Balance
+	(*Position)(nil),                    // 21: signalix.engine.v1.Position
+	(*GetBalanceRequest)(nil),           // 22: signalix.engine.v1.GetBalanceRequest
+	(*GetBalanceReply)(nil),             // 23: signalix.engine.v1.GetBalanceReply
+	(*GetPositionRequest)(nil),          // 24: signalix.engine.v1.GetPositionRequest
+	(*GetPositionReply)(nil),            // 25: signalix.engine.v1.GetPositionReply
+	(*ListPositionsRequest)(nil),        // 26: signalix.engine.v1.ListPositionsRequest
+	(*ListPositionsReply)(nil),          // 27: signalix.engine.v1.ListPositionsReply
+	(*GetOrderRequest)(nil),             // 28: signalix.engine.v1.GetOrderRequest
+	(*GetOrderReply)(nil),               // 29: signalix.engine.v1.GetOrderReply
+	(*ListOpenOrdersRequest)(nil),       // 30: signalix.engine.v1.ListOpenOrdersRequest
+	(*ListOpenOrdersReply)(nil),         // 31: signalix.engine.v1.ListOpenOrdersReply
+	(*CancelOrderRequest)(nil),          // 32: signalix.engine.v1.CancelOrderRequest
+	(*CancelOrderReply)(nil),            // 33: signalix.engine.v1.CancelOrderReply
+	(*SubscribeOrderEventsRequest)(nil), // 34: signalix.engine.v1.SubscribeOrderEventsRequest
+	(*KillSwitchStatus)(nil),            // 35: signalix.engine.v1.KillSwitchStatus
+	(*ActivateKillSwitchRequest)(nil),   // 36: signalix.engine.v1.ActivateKillSwitchRequest
+	(*ActivateKillSwitchReply)(nil),     // 37: signalix.engine.v1.ActivateKillSwitchReply
+	(*DeactivateKillSwitchRequest)(nil), // 38: signalix.engine.v1.DeactivateKillSwitchRequest
+	(*DeactivateKillSwitchReply)(nil),   // 39: signalix.engine.v1.DeactivateKillSwitchReply
+	(*GetKillSwitchStatusRequest)(nil),  // 40: signalix.engine.v1.GetKillSwitchStatusRequest
+	(*GetKillSwitchStatusReply)(nil),    // 41: signalix.engine.v1.GetKillSwitchStatusReply
+	(*Order)(nil),                       // 42: signalix.engine.v1.Order
 }
 var file_signalix_engine_v1_engine_proto_depIdxs = []int32{
 	1,  // 0: signalix.engine.v1.HealthCheck.status:type_name -> signalix.engine.v1.ComponentStatus
 	0,  // 1: signalix.engine.v1.GetHealthReply.status:type_name -> signalix.engine.v1.HealthStatus
 	5,  // 2: signalix.engine.v1.GetHealthReply.checks:type_name -> signalix.engine.v1.HealthCheck
-	10, // 3: signalix.engine.v1.ListStrategiesReply.strategies:type_name -> signalix.engine.v1.StrategySummary
-	18, // 4: signalix.engine.v1.GetBalanceReply.balance:type_name -> signalix.engine.v1.Balance
-	19, // 5: signalix.engine.v1.GetPositionReply.position:type_name -> signalix.engine.v1.Position
-	19, // 6: signalix.engine.v1.ListPositionsReply.positions:type_name -> signalix.engine.v1.Position
-	40, // 7: signalix.engine.v1.GetOrderReply.order:type_name -> signalix.engine.v1.Order
-	40, // 8: signalix.engine.v1.ListOpenOrdersReply.orders:type_name -> signalix.engine.v1.Order
-	33, // 9: signalix.engine.v1.ActivateKillSwitchReply.status:type_name -> signalix.engine.v1.KillSwitchStatus
-	33, // 10: signalix.engine.v1.DeactivateKillSwitchReply.status:type_name -> signalix.engine.v1.KillSwitchStatus
-	33, // 11: signalix.engine.v1.GetKillSwitchStatusReply.status:type_name -> signalix.engine.v1.KillSwitchStatus
-	2,  // 12: signalix.engine.v1.Engine.Ping:input_type -> signalix.engine.v1.PingRequest
-	4,  // 13: signalix.engine.v1.Engine.GetHealth:input_type -> signalix.engine.v1.GetHealthRequest
-	7,  // 14: signalix.engine.v1.Engine.GetEngineInfo:input_type -> signalix.engine.v1.GetEngineInfoRequest
-	9,  // 15: signalix.engine.v1.Engine.ListStrategies:input_type -> signalix.engine.v1.ListStrategiesRequest
-	12, // 16: signalix.engine.v1.Engine.StartStrategy:input_type -> signalix.engine.v1.StartStrategyRequest
-	14, // 17: signalix.engine.v1.Engine.StopStrategy:input_type -> signalix.engine.v1.StopStrategyRequest
-	16, // 18: signalix.engine.v1.Engine.ReloadStrategies:input_type -> signalix.engine.v1.ReloadStrategiesRequest
-	20, // 19: signalix.engine.v1.Engine.GetBalance:input_type -> signalix.engine.v1.GetBalanceRequest
-	22, // 20: signalix.engine.v1.Engine.GetPosition:input_type -> signalix.engine.v1.GetPositionRequest
-	24, // 21: signalix.engine.v1.Engine.ListPositions:input_type -> signalix.engine.v1.ListPositionsRequest
-	26, // 22: signalix.engine.v1.Engine.GetOrder:input_type -> signalix.engine.v1.GetOrderRequest
-	28, // 23: signalix.engine.v1.Engine.ListOpenOrders:input_type -> signalix.engine.v1.ListOpenOrdersRequest
-	30, // 24: signalix.engine.v1.Engine.CancelOrder:input_type -> signalix.engine.v1.CancelOrderRequest
-	32, // 25: signalix.engine.v1.Engine.SubscribeOrderEvents:input_type -> signalix.engine.v1.SubscribeOrderEventsRequest
-	34, // 26: signalix.engine.v1.Engine.ActivateKillSwitch:input_type -> signalix.engine.v1.ActivateKillSwitchRequest
-	36, // 27: signalix.engine.v1.Engine.DeactivateKillSwitch:input_type -> signalix.engine.v1.DeactivateKillSwitchRequest
-	38, // 28: signalix.engine.v1.Engine.GetKillSwitchStatus:input_type -> signalix.engine.v1.GetKillSwitchStatusRequest
-	3,  // 29: signalix.engine.v1.Engine.Ping:output_type -> signalix.engine.v1.PingReply
-	6,  // 30: signalix.engine.v1.Engine.GetHealth:output_type -> signalix.engine.v1.GetHealthReply
-	8,  // 31: signalix.engine.v1.Engine.GetEngineInfo:output_type -> signalix.engine.v1.GetEngineInfoReply
-	11, // 32: signalix.engine.v1.Engine.ListStrategies:output_type -> signalix.engine.v1.ListStrategiesReply
-	13, // 33: signalix.engine.v1.Engine.StartStrategy:output_type -> signalix.engine.v1.StartStrategyReply
-	15, // 34: signalix.engine.v1.Engine.StopStrategy:output_type -> signalix.engine.v1.StopStrategyReply
-	17, // 35: signalix.engine.v1.Engine.ReloadStrategies:output_type -> signalix.engine.v1.ReloadStrategiesReply
-	21, // 36: signalix.engine.v1.Engine.GetBalance:output_type -> signalix.engine.v1.GetBalanceReply
-	23, // 37: signalix.engine.v1.Engine.GetPosition:output_type -> signalix.engine.v1.GetPositionReply
-	25, // 38: signalix.engine.v1.Engine.ListPositions:output_type -> signalix.engine.v1.ListPositionsReply
-	27, // 39: signalix.engine.v1.Engine.GetOrder:output_type -> signalix.engine.v1.GetOrderReply
-	29, // 40: signalix.engine.v1.Engine.ListOpenOrders:output_type -> signalix.engine.v1.ListOpenOrdersReply
-	31, // 41: signalix.engine.v1.Engine.CancelOrder:output_type -> signalix.engine.v1.CancelOrderReply
-	40, // 42: signalix.engine.v1.Engine.SubscribeOrderEvents:output_type -> signalix.engine.v1.Order
-	35, // 43: signalix.engine.v1.Engine.ActivateKillSwitch:output_type -> signalix.engine.v1.ActivateKillSwitchReply
-	37, // 44: signalix.engine.v1.Engine.DeactivateKillSwitch:output_type -> signalix.engine.v1.DeactivateKillSwitchReply
-	39, // 45: signalix.engine.v1.Engine.GetKillSwitchStatus:output_type -> signalix.engine.v1.GetKillSwitchStatusReply
-	29, // [29:46] is the sub-list for method output_type
-	12, // [12:29] is the sub-list for method input_type
-	12, // [12:12] is the sub-list for extension type_name
-	12, // [12:12] is the sub-list for extension extendee
-	0,  // [0:12] is the sub-list for field type_name
+	10, // 3: signalix.engine.v1.GetStrategyStatusReply.status:type_name -> signalix.engine.v1.StrategySummary
+	10, // 4: signalix.engine.v1.ListStrategiesReply.strategies:type_name -> signalix.engine.v1.StrategySummary
+	20, // 5: signalix.engine.v1.GetBalanceReply.balance:type_name -> signalix.engine.v1.Balance
+	21, // 6: signalix.engine.v1.GetPositionReply.position:type_name -> signalix.engine.v1.Position
+	21, // 7: signalix.engine.v1.ListPositionsReply.positions:type_name -> signalix.engine.v1.Position
+	42, // 8: signalix.engine.v1.GetOrderReply.order:type_name -> signalix.engine.v1.Order
+	42, // 9: signalix.engine.v1.ListOpenOrdersReply.orders:type_name -> signalix.engine.v1.Order
+	35, // 10: signalix.engine.v1.ActivateKillSwitchReply.status:type_name -> signalix.engine.v1.KillSwitchStatus
+	35, // 11: signalix.engine.v1.DeactivateKillSwitchReply.status:type_name -> signalix.engine.v1.KillSwitchStatus
+	35, // 12: signalix.engine.v1.GetKillSwitchStatusReply.status:type_name -> signalix.engine.v1.KillSwitchStatus
+	2,  // 13: signalix.engine.v1.Engine.Ping:input_type -> signalix.engine.v1.PingRequest
+	4,  // 14: signalix.engine.v1.Engine.GetHealth:input_type -> signalix.engine.v1.GetHealthRequest
+	7,  // 15: signalix.engine.v1.Engine.GetEngineInfo:input_type -> signalix.engine.v1.GetEngineInfoRequest
+	9,  // 16: signalix.engine.v1.Engine.ListStrategies:input_type -> signalix.engine.v1.ListStrategiesRequest
+	11, // 17: signalix.engine.v1.Engine.GetStrategyStatus:input_type -> signalix.engine.v1.GetStrategyStatusRequest
+	14, // 18: signalix.engine.v1.Engine.StartStrategy:input_type -> signalix.engine.v1.StartStrategyRequest
+	16, // 19: signalix.engine.v1.Engine.StopStrategy:input_type -> signalix.engine.v1.StopStrategyRequest
+	18, // 20: signalix.engine.v1.Engine.ReloadStrategies:input_type -> signalix.engine.v1.ReloadStrategiesRequest
+	22, // 21: signalix.engine.v1.Engine.GetBalance:input_type -> signalix.engine.v1.GetBalanceRequest
+	24, // 22: signalix.engine.v1.Engine.GetPosition:input_type -> signalix.engine.v1.GetPositionRequest
+	26, // 23: signalix.engine.v1.Engine.ListPositions:input_type -> signalix.engine.v1.ListPositionsRequest
+	28, // 24: signalix.engine.v1.Engine.GetOrder:input_type -> signalix.engine.v1.GetOrderRequest
+	30, // 25: signalix.engine.v1.Engine.ListOpenOrders:input_type -> signalix.engine.v1.ListOpenOrdersRequest
+	32, // 26: signalix.engine.v1.Engine.CancelOrder:input_type -> signalix.engine.v1.CancelOrderRequest
+	34, // 27: signalix.engine.v1.Engine.SubscribeOrderEvents:input_type -> signalix.engine.v1.SubscribeOrderEventsRequest
+	36, // 28: signalix.engine.v1.Engine.ActivateKillSwitch:input_type -> signalix.engine.v1.ActivateKillSwitchRequest
+	38, // 29: signalix.engine.v1.Engine.DeactivateKillSwitch:input_type -> signalix.engine.v1.DeactivateKillSwitchRequest
+	40, // 30: signalix.engine.v1.Engine.GetKillSwitchStatus:input_type -> signalix.engine.v1.GetKillSwitchStatusRequest
+	3,  // 31: signalix.engine.v1.Engine.Ping:output_type -> signalix.engine.v1.PingReply
+	6,  // 32: signalix.engine.v1.Engine.GetHealth:output_type -> signalix.engine.v1.GetHealthReply
+	8,  // 33: signalix.engine.v1.Engine.GetEngineInfo:output_type -> signalix.engine.v1.GetEngineInfoReply
+	13, // 34: signalix.engine.v1.Engine.ListStrategies:output_type -> signalix.engine.v1.ListStrategiesReply
+	12, // 35: signalix.engine.v1.Engine.GetStrategyStatus:output_type -> signalix.engine.v1.GetStrategyStatusReply
+	15, // 36: signalix.engine.v1.Engine.StartStrategy:output_type -> signalix.engine.v1.StartStrategyReply
+	17, // 37: signalix.engine.v1.Engine.StopStrategy:output_type -> signalix.engine.v1.StopStrategyReply
+	19, // 38: signalix.engine.v1.Engine.ReloadStrategies:output_type -> signalix.engine.v1.ReloadStrategiesReply
+	23, // 39: signalix.engine.v1.Engine.GetBalance:output_type -> signalix.engine.v1.GetBalanceReply
+	25, // 40: signalix.engine.v1.Engine.GetPosition:output_type -> signalix.engine.v1.GetPositionReply
+	27, // 41: signalix.engine.v1.Engine.ListPositions:output_type -> signalix.engine.v1.ListPositionsReply
+	29, // 42: signalix.engine.v1.Engine.GetOrder:output_type -> signalix.engine.v1.GetOrderReply
+	31, // 43: signalix.engine.v1.Engine.ListOpenOrders:output_type -> signalix.engine.v1.ListOpenOrdersReply
+	33, // 44: signalix.engine.v1.Engine.CancelOrder:output_type -> signalix.engine.v1.CancelOrderReply
+	42, // 45: signalix.engine.v1.Engine.SubscribeOrderEvents:output_type -> signalix.engine.v1.Order
+	37, // 46: signalix.engine.v1.Engine.ActivateKillSwitch:output_type -> signalix.engine.v1.ActivateKillSwitchReply
+	39, // 47: signalix.engine.v1.Engine.DeactivateKillSwitch:output_type -> signalix.engine.v1.DeactivateKillSwitchReply
+	41, // 48: signalix.engine.v1.Engine.GetKillSwitchStatus:output_type -> signalix.engine.v1.GetKillSwitchStatusReply
+	31, // [31:49] is the sub-list for method output_type
+	13, // [13:31] is the sub-list for method input_type
+	13, // [13:13] is the sub-list for extension type_name
+	13, // [13:13] is the sub-list for extension extendee
+	0,  // [0:13] is the sub-list for field type_name
 }
 
 func init() { file_signalix_engine_v1_engine_proto_init() }
@@ -2501,7 +2684,7 @@ func file_signalix_engine_v1_engine_proto_init() {
 			GoPackagePath: reflect.TypeOf(x{}).PkgPath(),
 			RawDescriptor: unsafe.Slice(unsafe.StringData(file_signalix_engine_v1_engine_proto_rawDesc), len(file_signalix_engine_v1_engine_proto_rawDesc)),
 			NumEnums:      2,
-			NumMessages:   39,
+			NumMessages:   41,
 			NumExtensions: 0,
 			NumServices:   1,
 		},

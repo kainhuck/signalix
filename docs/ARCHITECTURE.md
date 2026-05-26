@@ -190,6 +190,7 @@ flowchart LR
 - **metadata**：`x-request-id`
 - **Readiness**：`GetHealth`（`engine` / `account_projection` / `exchange` 检查；`skip_exchange_ping` 可跳过所探测）
 - **Account**：`GetBalance` / `GetPosition` / `ListPositions`（`AccountProjection` 只读快照）
+- **Strategy**：`ListStrategies`（catalog + 运行时字段，不要求 engine running）、`GetStrategyStatus`（单策略快照，要求 running）
 - **Emergency**：`ActivateKillSwitch` / `DeactivateKillSwitch` / `GetKillSwitchStatus`（EH-3；内存态，重启后默认 OFF）
 - **未实现 / 推迟**：行情只读 RPC、Unix socket
 
