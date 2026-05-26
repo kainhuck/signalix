@@ -131,6 +131,9 @@ symbols:
   - BTC/USDT
 interval: 1m
 history_bars: 200
+# 可选 risk 段：策略级限额（不写则仅用 config.toml [risk]）
+# risk:
+#   max_open_orders: 10
 parameters:
   ma_fast: 10
   ma_slow: 30
@@ -165,11 +168,10 @@ signalix/
 - HTTP 网关（UI 对接层，独立于本仓库）
 - 交易所 REST `rate_limit` 配置项尚未接入限流器
 
-全局风控（`[risk]`）已支持锁仓、日亏、回撤、杠杆、单合约名义上限等规则；策略崩溃后可在 `[strategies.restart]` 配置自动重启；Kill Switch 可通过 gRPC 激活（`[risk.kill_switch]` 配置激活时是否撤挂单）。
+全局风控（`[risk]`）已支持锁仓、日亏、回撤、杠杆、单合约名义上限等；策略可在 `config.yaml` 可选 `risk` 段配置更紧限额（EH-4）。Kill Switch 见 gRPC；策略崩溃后可在 `[strategies.restart]` 配置自动重启。
 
 ## 路线图
 
-- 引擎实盘能力：策略级风控（EH-4）
 - HTTP 网关（OpenAPI + 认证，调用引擎 gRPC）
 - 更多交易所适配、合约元数据缓存、回测 / Paper 模式
 

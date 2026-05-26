@@ -4,7 +4,6 @@ import (
 	"context"
 
 	"github.com/kainhuck/signalix/internal/domain/risk"
-	"github.com/kainhuck/signalix/internal/models"
 	"github.com/kainhuck/signalix/internal/ports"
 )
 
@@ -18,14 +17,13 @@ func NewStaticRiskEvaluator(rules risk.Rules) *StaticRiskEvaluator {
 	return &StaticRiskEvaluator{Rules: rules}
 }
 
-// Evaluate 实现 ports.RiskEvaluator。
-func (s *StaticRiskEvaluator) Evaluate(ctx context.Context, rc *ports.RiskContext) (*risk.Verdict, error) {
-	_ = ctx
+// EvaluateRules 使用指定规则评估 RiskContext（纯映射 + domain Evaluate）。
+func EvaluateRules(rules risk.Rules, rc *ports.RiskContext) *risk.Verdict {
 	if rc == nil || rc.Order == nil {
-		return risk.Allow(), nil
+		return risk.Allow()
 	}
 	in := risk.Input{
-		Rules:                    s.Rules,
+		Rules:                    rules,
 		OrderSize:                rc.Order.Size,
 		SignalOpensExposure:      risk.OpensExposure(rc.Signal),
 		OpenOrderCount:           rc.OpenOrders,
@@ -45,9 +43,11 @@ func (s *StaticRiskEvaluator) Evaluate(ctx context.Context, rc *ports.RiskContex
 		PostLeverage:             rc.PostLeverage,
 		NotionalUSDTPerContract:  rc.NotionalUSDTPerContract,
 	}
-	return risk.Evaluate(in), nil
+	return risk.Evaluate(in)
 }
 
-func signalOpensExposure(sig *models.Signal) bool {
-	return risk.OpensExposure(sig)
+// Evaluate 实现 ports.RiskEvaluator。
+func (s *StaticRiskEvaluator) Evaluate(ctx context.Context, rc *ports.RiskContext) (*risk.Verdict, error) {
+	_ = ctx
+	return EvaluateRules(s.Rules, rc), nil
 }

@@ -7,6 +7,7 @@ import (
 	"path/filepath"
 	"strings"
 
+	"github.com/kainhuck/signalix/internal/domain/risk"
 	"github.com/kainhuck/signalix/pkg/exchange/perp"
 	"github.com/kainhuck/signalix/pkg/logger"
 	"gopkg.in/yaml.v3"
@@ -26,13 +27,15 @@ type StrategyConfig struct {
 	HistoryBars     int                    `yaml:"history_bars"`     // REST 预热根数；0 表示不预热
 	SubscribeTicker bool                   `yaml:"subscribe_ticker"` // 默认 false：引擎仍订 ticker 供定价，不向策略发 tick
 	Parameters      map[string]interface{} `yaml:"parameters"`       // 策略自定义参数
+	Risk            *StrategyRiskConfigRaw `yaml:"risk,omitempty"`   // 可选策略级风控
 }
 
 // Strategy 策略对象
 type Strategy struct {
 	StrategyConfig
 
-	ScriptPath string // 策略脚本完整路径
+	ScriptPath    string // 策略脚本完整路径
+	RiskOverrides *risk.Overrides
 }
 
 // StrategyLoader 策略加载器
@@ -96,6 +99,7 @@ func (sl *StrategyLoader) DiscoverStrategies() (map[string]*Strategy, error) {
 		strategies[config.Name] = &Strategy{
 			StrategyConfig: config,
 			ScriptPath:     scriptPath,
+			RiskOverrides:  RiskOverridesFromRaw(config.Risk),
 		}
 	}
 
@@ -153,6 +157,10 @@ func (sl *StrategyLoader) validateConfig(config StrategyConfig) error {
 	}
 	if config.HistoryBars > 2000 {
 		return fmt.Errorf("history_bars must not exceed 2000")
+	}
+
+	if err := validateRiskConfig(config.Risk); err != nil {
+		return err
 	}
 
 	return nil

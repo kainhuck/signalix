@@ -145,15 +145,45 @@ func (e *Engine) totalExposureUSDT(ctx context.Context) (decimal.Decimal, error)
 }
 
 func (e *Engine) riskNeedsLeverage() bool {
-	if ev, ok := e.riskEvaluator.(*StaticRiskEvaluator); ok {
-		return ev.Rules.MaxLeverage > 0
+	if rulesNeedLeverage(e.globalRules()) {
+		return true
+	}
+	e.strategyMu.RLock()
+	defer e.strategyMu.RUnlock()
+	global := e.globalRules()
+	for _, st := range e.strategies {
+		if st == nil || st.RiskOverrides == nil || !risk.HasEffectiveOverrides(*st.RiskOverrides) {
+			continue
+		}
+		if rulesNeedLeverage(risk.MergeRules(global, *st.RiskOverrides)) {
+			return true
+		}
 	}
 	return false
 }
 
 func (e *Engine) riskNeedsPositionSize() bool {
-	if ev, ok := e.riskEvaluator.(*StaticRiskEvaluator); ok {
-		return ev.Rules.MaxPositionSize.Sign() > 0
+	if rulesNeedPositionSize(e.globalRules()) {
+		return true
+	}
+	e.strategyMu.RLock()
+	defer e.strategyMu.RUnlock()
+	global := e.globalRules()
+	for _, st := range e.strategies {
+		if st == nil || st.RiskOverrides == nil || !risk.HasEffectiveOverrides(*st.RiskOverrides) {
+			continue
+		}
+		if rulesNeedPositionSize(risk.MergeRules(global, *st.RiskOverrides)) {
+			return true
+		}
 	}
 	return false
+}
+
+func rulesNeedLeverage(r risk.Rules) bool {
+	return r.MaxLeverage > 0
+}
+
+func rulesNeedPositionSize(r risk.Rules) bool {
+	return r.MaxPositionSize.Sign() > 0
 }

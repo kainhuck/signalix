@@ -403,6 +403,23 @@ func (e *Engine) dispatchSignal() {
 				continue
 			}
 
+			stratV, riskCtx, err := e.evaluateStrategyRisk(e.ctx, signal.StrategyName, signal.Signal, order, riskCtx)
+			if err != nil {
+				logger.ErrorContext(e.ctx, "strategy risk evaluation failed", logger.Any("error", err))
+				continue
+			}
+			switch stratV.Kind {
+			case risk.KindReject:
+				e.logRiskReject(signal.StrategyName, "strategy", order, stratV)
+				continue
+			case risk.KindReduce:
+				// order.Size 已在 evaluateStrategyRisk 中更新
+			case risk.KindAllow:
+			default:
+				logger.ErrorContext(e.ctx, "unknown strategy risk verdict", logger.String("code", stratV.Code), logger.Any("kind", stratV.Kind))
+				continue
+			}
+
 			v, err := e.riskEvaluator.Evaluate(e.ctx, riskCtx)
 			if err != nil {
 				logger.ErrorContext(e.ctx, "risk evaluation failed", logger.Any("error", err))
@@ -410,12 +427,7 @@ func (e *Engine) dispatchSignal() {
 			}
 			switch v.Kind {
 			case risk.KindReject:
-				logger.WarnContext(e.ctx, "order rejected by risk",
-					logger.String("code", v.Code),
-					logger.String("strategy", signal.StrategyName),
-					logger.String("order_id", order.ID),
-					logger.String("symbol", string(order.Symbol)),
-					logger.String("message", v.Message))
+				e.logRiskReject(signal.StrategyName, "global", order, v)
 				continue
 			case risk.KindReduce:
 				order.Size = v.AdjustedSize

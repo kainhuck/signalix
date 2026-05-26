@@ -6,6 +6,11 @@ symbols:
 interval: "1m"
 history_bars: 100
 subscribe_ticker: false
+# 可选：策略级风控（不写 risk 段则仅使用 config.toml [risk] 全局规则）
+# risk:
+#   max_open_orders: 10
+#   max_daily_loss: 1000
+
 parameters:
   ma_fast: 10
   ma_slow: 30

@@ -105,9 +105,10 @@ sdk/python/           # 策略 SDK
 
 ### 4.3 Risk Evaluator
 
-- `dispatchSignal` 中 Decision 之后、OMS 之前
-- `internal/domain/risk.Evaluate` + `StaticRiskEvaluator`
-- 已实现：单笔上限、最大挂单数、最大持仓合约数、锁仓、日亏、回撤、杠杆、单合约名义上限
+- `dispatchSignal` 中 Decision 之后、OMS 之前；顺序：**Kill Switch → 策略级 → 全局**
+- `internal/domain/risk.Evaluate` + `StaticRiskEvaluator`；策略级使用 `MergeRules` + 策略作用域计数
+- 全局（`config.toml` `[risk]`）：单笔上限、挂单数、持仓数、锁仓、日亏、回撤、杠杆、单合约名义
+- 策略（`config.yaml` 可选 `risk` 段）：未配字段继承全局；不写 `risk` 段则仅走全局
 
 ### 4.4 Decision Service
 
@@ -218,7 +219,8 @@ flowchart LR
 | 主题 | 当前状态 | 方向 |
 |------|----------|------|
 | 策略自动重启 | 已实现 | `[strategies.restart]`：backoff + 滑动窗口熔断 |
-| 风控扩展字段 | 已实现（EH-2/EH-3） | 策略级限额（EH-4） |
+| 风控扩展字段 | 已实现（EH-2/EH-3/EH-4） | — |
+| 策略级风控 | 已实现 | `config.yaml` `risk` 可选段；Kill Switch → 策略 → 全局 |
 | Kill Switch | 已实现 | 不持久化；拒开仓、允 Flat/撤单 |
 | `get_market` RPC | 未实现 | 读 tickerCache |
 | HTTP 网关 | 无 | 独立服务，REST → gRPC |

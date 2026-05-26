@@ -434,8 +434,25 @@ func (e *ExecutionEngine) GetOrdersByStatus(status models.OrderStatus) []*models
 func (e *ExecutionEngine) NonFinalOrderCount() int {
 	e.mu.RLock()
 	defer e.mu.RUnlock()
+	return e.nonFinalOrderCountLocked("")
+}
+
+// NonFinalOrderCountForStrategy 统计指定策略的非终态订单数。
+func (e *ExecutionEngine) NonFinalOrderCountForStrategy(strategyName string) int {
+	e.mu.RLock()
+	defer e.mu.RUnlock()
+	return e.nonFinalOrderCountLocked(strategyName)
+}
+
+func (e *ExecutionEngine) nonFinalOrderCountLocked(strategyName string) int {
 	n := 0
 	for _, o := range e.orders {
+		if o == nil {
+			continue
+		}
+		if strategyName != "" && o.StrategyName != strategyName {
+			continue
+		}
 		switch o.Status {
 		case models.OrderStatusPending, models.OrderStatusSubmitted, models.OrderStatusPartialFilled:
 			n++
