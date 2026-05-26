@@ -153,6 +153,57 @@ func (s *EngineService) CancelOrder(ctx context.Context, req *enginev1.CancelOrd
 	return &enginev1.CancelOrderReply{}, nil
 }
 
+func (s *EngineService) ActivateKillSwitch(ctx context.Context, req *enginev1.ActivateKillSwitchRequest) (*enginev1.ActivateKillSwitchReply, error) {
+	if err := requireRunning(s.eng); err != nil {
+		return nil, err
+	}
+	result, err := s.eng.ActivateKillSwitch(ctx, req.GetReason(), req.GetCancelOpenOrders())
+	if err != nil {
+		return nil, status.Errorf(codes.Internal, "activate kill switch: %v", err)
+	}
+	logger.InfoContext(ctx, "grpc ActivateKillSwitch",
+		logger.String("reason", result.Status.Reason),
+		logger.Bool("active", result.Status.Active),
+		logger.Int("cancel_attempted", result.CancelAttempted),
+		logger.Int("cancel_failed", result.CancelFailed))
+	return &enginev1.ActivateKillSwitchReply{
+		Status:          killSwitchStatusToProto(result.Status),
+		CancelAttempted: int32(result.CancelAttempted),
+		CancelFailed:    int32(result.CancelFailed),
+	}, nil
+}
+
+func (s *EngineService) DeactivateKillSwitch(ctx context.Context, _ *enginev1.DeactivateKillSwitchRequest) (*enginev1.DeactivateKillSwitchReply, error) {
+	if err := requireRunning(s.eng); err != nil {
+		return nil, err
+	}
+	st, err := s.eng.DeactivateKillSwitch(ctx)
+	if err != nil {
+		return nil, status.Errorf(codes.Internal, "deactivate kill switch: %v", err)
+	}
+	logger.InfoContext(ctx, "grpc DeactivateKillSwitch", logger.Bool("active", st.Active))
+	return &enginev1.DeactivateKillSwitchReply{Status: killSwitchStatusToProto(st)}, nil
+}
+
+func (s *EngineService) GetKillSwitchStatus(ctx context.Context, _ *enginev1.GetKillSwitchStatusRequest) (*enginev1.GetKillSwitchStatusReply, error) {
+	if err := requireRunning(s.eng); err != nil {
+		return nil, err
+	}
+	st := s.eng.KillSwitchStatus()
+	return &enginev1.GetKillSwitchStatusReply{Status: killSwitchStatusToProto(st)}, nil
+}
+
+func killSwitchStatusToProto(st engine.KillSwitchStatus) *enginev1.KillSwitchStatus {
+	po := &enginev1.KillSwitchStatus{
+		Active: st.Active,
+		Reason: st.Reason,
+	}
+	if st.Active {
+		po.ActivatedAtUnixMs = st.ActivatedAt.UnixMilli()
+	}
+	return po
+}
+
 func (s *EngineService) SubscribeOrderEvents(req *enginev1.SubscribeOrderEventsRequest, stream grpc.ServerStreamingServer[enginev1.Order]) error {
 	_ = req
 	if err := requireRunning(s.eng); err != nil {

@@ -72,11 +72,6 @@ func computeBackoff(cfg config.RestartSettings, attempt int) time.Duration {
 	return time.Duration(secs * float64(time.Second))
 }
 
-// killSwitchActive 预留 EH-3 Kill Switch 钩子；当前恒为 false。
-func (e *Engine) killSwitchActive() bool {
-	return false
-}
-
 func (e *Engine) resetRestartAttempt(name string) {
 	e.restartMu.Lock()
 	delete(e.restartAttempt, name)

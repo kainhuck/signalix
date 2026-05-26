@@ -97,6 +97,9 @@ max_drawdown = 0.2
 max_leverage = 10
 enable_position_lock = false
 
+[risk.kill_switch]
+cancel_open_orders_on_activate = false
+
 # ------------------------------------------------------------------------------
 # SQLite（路径固定为 $SIGNALIX_WORK_DIR/data/signalix.db）
 # 以下仅连接池/行为参数；path 不在此配置

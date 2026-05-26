@@ -95,6 +95,14 @@ make build && ./bin/signalix
 
 ```bash
 grpcurl -plaintext -d '{}' localhost:50051 signalix.engine.v1.Engine/Ping
+
+# Kill Switch（EH-3）
+grpcurl -plaintext -d '{"reason":"manual drill"}' \
+  localhost:50051 signalix.engine.v1.Engine/ActivateKillSwitch
+grpcurl -plaintext -d '{}' \
+  localhost:50051 signalix.engine.v1.Engine/GetKillSwitchStatus
+grpcurl -plaintext -d '{}' \
+  localhost:50051 signalix.engine.v1.Engine/DeactivateKillSwitch
 ```
 
 修改 Proto 后重新生成：
@@ -157,11 +165,11 @@ signalix/
 - HTTP 网关（UI 对接层，独立于本仓库）
 - 交易所 REST `rate_limit` 配置项尚未接入限流器
 
-全局风控（`[risk]`）已支持锁仓、日亏、回撤、杠杆、单合约名义上限等规则；策略崩溃后可在 `[strategies.restart]` 配置自动重启。
+全局风控（`[risk]`）已支持锁仓、日亏、回撤、杠杆、单合约名义上限等规则；策略崩溃后可在 `[strategies.restart]` 配置自动重启；Kill Switch 可通过 gRPC 激活（`[risk.kill_switch]` 配置激活时是否撤挂单）。
 
 ## 路线图
 
-- 引擎实盘能力：Kill Switch、策略级风控
+- 引擎实盘能力：策略级风控（EH-4）
 - HTTP 网关（OpenAPI + 认证，调用引擎 gRPC）
 - 更多交易所适配、合约元数据缓存、回测 / Paper 模式
 

@@ -187,7 +187,8 @@ flowchart LR
 - **生成**：`make proto`（Buf → `api/gen/go`）
 - **安全**：默认 `127.0.0.1`；可选 static token；`insecure_bind_all` 仅开发使用
 - **metadata**：`x-request-id`
-- **未实现 / 推迟**：Kill switch RPC、行情只读 RPC、Unix socket
+- **Emergency**：`ActivateKillSwitch` / `DeactivateKillSwitch` / `GetKillSwitchStatus`（EH-3；内存态，重启后默认 OFF）
+- **未实现 / 推迟**：行情只读 RPC、Unix socket
 
 ---
 
@@ -217,7 +218,8 @@ flowchart LR
 | 主题 | 当前状态 | 方向 |
 |------|----------|------|
 | 策略自动重启 | 已实现 | `[strategies.restart]`：backoff + 滑动窗口熔断 |
-| 风控扩展字段 | 配置已有，规则未全接入 | leverage、日亏、Kill Switch |
+| 风控扩展字段 | 已实现（EH-2/EH-3） | 策略级限额（EH-4） |
+| Kill Switch | 已实现 | 不持久化；拒开仓、允 Flat/撤单 |
 | `get_market` RPC | 未实现 | 读 tickerCache |
 | HTTP 网关 | 无 | 独立服务，REST → gRPC |
 | 合约元数据 | 无缓存 | 下单前校验 |

@@ -31,6 +31,11 @@ service Engine {
 
   // --- Stream ---
   rpc SubscribeOrderEvents(SubscribeOrderEventsRequest) returns (stream Order);
+
+  // --- Emergency ---
+  rpc ActivateKillSwitch(ActivateKillSwitchRequest) returns (ActivateKillSwitchReply);
+  rpc DeactivateKillSwitch(DeactivateKillSwitchRequest) returns (DeactivateKillSwitchReply);
+  rpc GetKillSwitchStatus(GetKillSwitchStatusRequest) returns (GetKillSwitchStatusReply);
 }
 
 message PingRequest {}
@@ -101,6 +106,35 @@ message CancelOrderRequest {
 message CancelOrderReply {}
 
 message SubscribeOrderEventsRequest {}
+
+message KillSwitchStatus {
+  bool active = 1;
+  int64 activated_at_unix_ms = 2;
+  string reason = 3;
+}
+
+message ActivateKillSwitchRequest {
+  string reason = 1;
+  bool cancel_open_orders = 2;
+}
+
+message ActivateKillSwitchReply {
+  KillSwitchStatus status = 1;
+  int32 cancel_attempted = 2;
+  int32 cancel_failed = 3;
+}
+
+message DeactivateKillSwitchRequest {}
+
+message DeactivateKillSwitchReply {
+  KillSwitchStatus status = 1;
+}
+
+message GetKillSwitchStatusRequest {}
+
+message GetKillSwitchStatusReply {
+  KillSwitchStatus status = 1;
+}
 
 message Order {
   string id = 1;

@@ -88,6 +88,10 @@ type Engine struct {
 	restartWg        sync.WaitGroup
 
 	equityTracker *apprisk.EquityTracker
+
+	killSwitchMu  sync.RWMutex
+	killSwitch    killSwitchState
+	killSwitchCfg config.KillSwitchSettings
 }
 
 // NewEngine 创建策略引擎；可通过 EngineOption 覆盖风控等默认行为。
@@ -135,6 +139,7 @@ func NewEngine(strategyDir string, exchange ports.Exchange, build BuildParams, o
 		restartAttempt:  make(map[string]int),
 		pendingRestart:  make(map[string]time.Time),
 		equityTracker:   equityTracker,
+		killSwitchCfg:   build.KillSwitch,
 		decisionEngine: decision.NewDecisionEngine(proj,
 			decision.WithDefaultSizeDivisor(divisor),
 			decision.WithExchange(exchange),
@@ -372,6 +377,17 @@ func (e *Engine) dispatchSignal() {
 	for {
 		select {
 		case signal := <-e.signalCh:
+			if e.killSwitchActive() && risk.OpensExposure(signal.Signal) {
+				reason := e.KillSwitchStatus().Reason
+				logger.WarnContext(e.ctx, "signal rejected by kill switch",
+					logger.String("code", "KILL_SWITCH_ACTIVE"),
+					logger.String("strategy", signal.StrategyName),
+					logger.String("symbol", string(signal.Signal.Symbol)),
+					logger.String("direction", string(signal.Signal.Direction)),
+					logger.String("kill_switch_reason", reason))
+				continue
+			}
+
 			order, err := e.decisionEngine.ProcessSignal(e.ctx, signal.StrategyName, signal.Signal)
 			if err != nil {
 				logger.ErrorContext(e.ctx, "failed to process signal", logger.Any("error", err))
@@ -380,8 +396,6 @@ func (e *Engine) dispatchSignal() {
 			if order == nil {
 				continue
 			}
-
-			// EH-3: Kill Switch 检查插入点（风控之前）
 
 			riskCtx, err := e.buildRiskContext(e.ctx, signal.StrategyName, signal.Signal, order)
 			if err != nil {

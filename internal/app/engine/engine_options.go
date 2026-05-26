@@ -19,6 +19,7 @@ type BuildParams struct {
 	OMSMaxRetries     int
 	DefaultInterval   string
 	Restart           config.RestartSettings
+	KillSwitch        config.KillSwitchSettings
 }
 
 // BuildParamsFromConfig 从全局配置提取构建参数。
@@ -29,6 +30,7 @@ func BuildParamsFromConfig(c *config.Config) BuildParams {
 			DecisionDivisor:   10,
 			OMSMaxRetries:     3,
 			Restart:           config.DefaultRestartSettings(),
+			KillSwitch:        config.DefaultKillSwitchSettings(),
 		}
 	}
 	return BuildParams{
@@ -38,6 +40,7 @@ func BuildParamsFromConfig(c *config.Config) BuildParams {
 		OMSMaxRetries:     c.Exchange.MaxRetries,
 		DefaultInterval:   c.Strategies.DefaultInterval,
 		Restart:           c.RestartSettings(),
+		KillSwitch:        c.KillSwitchSettings(),
 	}
 }
 

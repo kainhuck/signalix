@@ -36,8 +36,9 @@ type Config struct {
 	Decision DecisionConfig
 	GRPC     GRPCConfig
 
-	projectionRefresh time.Duration
-	restartSettings   RestartSettings
+	projectionRefresh  time.Duration
+	restartSettings    RestartSettings
+	killSwitchSettings KillSwitchSettings
 }
 
 type LogConfig struct {
@@ -109,15 +110,31 @@ type ExchangeConnect struct {
 }
 
 type RiskConfig struct {
-	EnableRiskControl  bool    `mapstructure:"enable_risk_control"`
-	MaxOrderSize       float64 `mapstructure:"max_order_size"`
-	MaxOpenOrders      int     `mapstructure:"max_open_orders"`
-	MaxPositions       int     `mapstructure:"max_positions"`
-	MaxPositionSize    float64 `mapstructure:"max_position_size"`
-	MaxDailyLoss       float64 `mapstructure:"max_daily_loss"`
-	MaxDrawdown        float64 `mapstructure:"max_drawdown"`
-	MaxLeverage        int     `mapstructure:"max_leverage"`
-	EnablePositionLock bool    `mapstructure:"enable_position_lock"`
+	EnableRiskControl  bool                `mapstructure:"enable_risk_control"`
+	MaxOrderSize       float64             `mapstructure:"max_order_size"`
+	MaxOpenOrders      int                 `mapstructure:"max_open_orders"`
+	MaxPositions       int                 `mapstructure:"max_positions"`
+	MaxPositionSize    float64             `mapstructure:"max_position_size"`
+	MaxDailyLoss       float64             `mapstructure:"max_daily_loss"`
+	MaxDrawdown        float64             `mapstructure:"max_drawdown"`
+	MaxLeverage        int                 `mapstructure:"max_leverage"`
+	EnablePositionLock bool                `mapstructure:"enable_position_lock"`
+	KillSwitch         KillSwitchConfigRaw `mapstructure:"kill_switch"`
+}
+
+// KillSwitchConfigRaw TOML Kill Switch 配置。
+type KillSwitchConfigRaw struct {
+	CancelOpenOrdersOnActivate bool `mapstructure:"cancel_open_orders_on_activate"`
+}
+
+// KillSwitchSettings 解析后的 Kill Switch 配置。
+type KillSwitchSettings struct {
+	CancelOpenOrdersOnActivate bool
+}
+
+// DefaultKillSwitchSettings EH-3 默认值。
+func DefaultKillSwitchSettings() KillSwitchSettings {
+	return KillSwitchSettings{CancelOpenOrdersOnActivate: false}
 }
 
 type DatabaseConfig struct {
@@ -209,20 +226,21 @@ func Load() (*Config, error) {
 	}
 
 	cfg := &Config{
-		WorkDir:           workDir,
-		ConfigPath:        configPath,
-		DatabasePath:      filepath.Join(workDir, DatabaseRelPath),
-		StrategiesDir:     strategiesDir,
-		Strategies:        raw.Strategies,
-		Log:               raw.Log,
-		Exchange:          raw.Exchange,
-		Risk:              raw.Risk,
-		Database:          raw.Database,
-		Channels:          raw.Channels,
-		Decision:          raw.Decision,
-		GRPC:              normalizeGRPC(raw.GRPC),
-		projectionRefresh: refresh,
-		restartSettings:   restart,
+		WorkDir:            workDir,
+		ConfigPath:         configPath,
+		DatabasePath:       filepath.Join(workDir, DatabaseRelPath),
+		StrategiesDir:      strategiesDir,
+		Strategies:         raw.Strategies,
+		Log:                raw.Log,
+		Exchange:           raw.Exchange,
+		Risk:               raw.Risk,
+		Database:           raw.Database,
+		Channels:           raw.Channels,
+		Decision:           raw.Decision,
+		GRPC:               normalizeGRPC(raw.GRPC),
+		projectionRefresh:  refresh,
+		restartSettings:    restart,
+		killSwitchSettings: parseKillSwitchSettings(raw.Risk.KillSwitch),
 	}
 	cfg.Log.File = logFile
 
@@ -246,6 +264,20 @@ func (c *Config) RestartSettings() RestartSettings {
 		return DefaultRestartSettings()
 	}
 	return c.restartSettings
+}
+
+// KillSwitchSettings 返回 Kill Switch 配置。
+func (c *Config) KillSwitchSettings() KillSwitchSettings {
+	if c == nil {
+		return DefaultKillSwitchSettings()
+	}
+	return c.killSwitchSettings
+}
+
+func parseKillSwitchSettings(raw KillSwitchConfigRaw) KillSwitchSettings {
+	out := DefaultKillSwitchSettings()
+	out.CancelOpenOrdersOnActivate = raw.CancelOpenOrdersOnActivate
+	return out
 }
 
 func parseRestartSettings(raw RestartConfigRaw) (RestartSettings, error) {
@@ -380,6 +412,7 @@ func setDefaults(v *viper.Viper) {
 	v.SetDefault("risk.max_order_size", 100000.0)
 	v.SetDefault("risk.max_open_orders", 50)
 	v.SetDefault("risk.max_positions", 20)
+	v.SetDefault("risk.kill_switch.cancel_open_orders_on_activate", false)
 
 	v.SetDefault("database.max_open_conns", 1)
 

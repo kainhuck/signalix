@@ -95,6 +95,14 @@ Enable gRPC (`[grpc] enabled = true` in `config.toml`):
 
 ```bash
 grpcurl -plaintext -d '{}' localhost:50051 signalix.engine.v1.Engine/Ping
+
+# Kill Switch
+grpcurl -plaintext -d '{"reason":"manual drill"}' \
+  localhost:50051 signalix.engine.v1.Engine/ActivateKillSwitch
+grpcurl -plaintext -d '{}' \
+  localhost:50051 signalix.engine.v1.Engine/GetKillSwitchStatus
+grpcurl -plaintext -d '{}' \
+  localhost:50051 signalix.engine.v1.Engine/DeactivateKillSwitch
 ```
 
 Regenerate after editing protos:

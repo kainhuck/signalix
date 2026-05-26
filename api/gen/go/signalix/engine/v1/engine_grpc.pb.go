@@ -29,6 +29,9 @@ const (
 	Engine_ListOpenOrders_FullMethodName       = "/signalix.engine.v1.Engine/ListOpenOrders"
 	Engine_CancelOrder_FullMethodName          = "/signalix.engine.v1.Engine/CancelOrder"
 	Engine_SubscribeOrderEvents_FullMethodName = "/signalix.engine.v1.Engine/SubscribeOrderEvents"
+	Engine_ActivateKillSwitch_FullMethodName   = "/signalix.engine.v1.Engine/ActivateKillSwitch"
+	Engine_DeactivateKillSwitch_FullMethodName = "/signalix.engine.v1.Engine/DeactivateKillSwitch"
+	Engine_GetKillSwitchStatus_FullMethodName  = "/signalix.engine.v1.Engine/GetKillSwitchStatus"
 )
 
 // EngineClient is the client API for Engine service.
@@ -51,6 +54,10 @@ type EngineClient interface {
 	CancelOrder(ctx context.Context, in *CancelOrderRequest, opts ...grpc.CallOption) (*CancelOrderReply, error)
 	// --- Stream ---
 	SubscribeOrderEvents(ctx context.Context, in *SubscribeOrderEventsRequest, opts ...grpc.CallOption) (grpc.ServerStreamingClient[Order], error)
+	// --- Emergency ---
+	ActivateKillSwitch(ctx context.Context, in *ActivateKillSwitchRequest, opts ...grpc.CallOption) (*ActivateKillSwitchReply, error)
+	DeactivateKillSwitch(ctx context.Context, in *DeactivateKillSwitchRequest, opts ...grpc.CallOption) (*DeactivateKillSwitchReply, error)
+	GetKillSwitchStatus(ctx context.Context, in *GetKillSwitchStatusRequest, opts ...grpc.CallOption) (*GetKillSwitchStatusReply, error)
 }
 
 type engineClient struct {
@@ -170,6 +177,36 @@ func (c *engineClient) SubscribeOrderEvents(ctx context.Context, in *SubscribeOr
 // This type alias is provided for backwards compatibility with existing code that references the prior non-generic stream type by name.
 type Engine_SubscribeOrderEventsClient = grpc.ServerStreamingClient[Order]
 
+func (c *engineClient) ActivateKillSwitch(ctx context.Context, in *ActivateKillSwitchRequest, opts ...grpc.CallOption) (*ActivateKillSwitchReply, error) {
+	cOpts := append([]grpc.CallOption{grpc.StaticMethod()}, opts...)
+	out := new(ActivateKillSwitchReply)
+	err := c.cc.Invoke(ctx, Engine_ActivateKillSwitch_FullMethodName, in, out, cOpts...)
+	if err != nil {
+		return nil, err
+	}
+	return out, nil
+}
+
+func (c *engineClient) DeactivateKillSwitch(ctx context.Context, in *DeactivateKillSwitchRequest, opts ...grpc.CallOption) (*DeactivateKillSwitchReply, error) {
+	cOpts := append([]grpc.CallOption{grpc.StaticMethod()}, opts...)
+	out := new(DeactivateKillSwitchReply)
+	err := c.cc.Invoke(ctx, Engine_DeactivateKillSwitch_FullMethodName, in, out, cOpts...)
+	if err != nil {
+		return nil, err
+	}
+	return out, nil
+}
+
+func (c *engineClient) GetKillSwitchStatus(ctx context.Context, in *GetKillSwitchStatusRequest, opts ...grpc.CallOption) (*GetKillSwitchStatusReply, error) {
+	cOpts := append([]grpc.CallOption{grpc.StaticMethod()}, opts...)
+	out := new(GetKillSwitchStatusReply)
+	err := c.cc.Invoke(ctx, Engine_GetKillSwitchStatus_FullMethodName, in, out, cOpts...)
+	if err != nil {
+		return nil, err
+	}
+	return out, nil
+}
+
 // EngineServer is the server API for Engine service.
 // All implementations must embed UnimplementedEngineServer
 // for forward compatibility.
@@ -190,6 +227,10 @@ type EngineServer interface {
 	CancelOrder(context.Context, *CancelOrderRequest) (*CancelOrderReply, error)
 	// --- Stream ---
 	SubscribeOrderEvents(*SubscribeOrderEventsRequest, grpc.ServerStreamingServer[Order]) error
+	// --- Emergency ---
+	ActivateKillSwitch(context.Context, *ActivateKillSwitchRequest) (*ActivateKillSwitchReply, error)
+	DeactivateKillSwitch(context.Context, *DeactivateKillSwitchRequest) (*DeactivateKillSwitchReply, error)
+	GetKillSwitchStatus(context.Context, *GetKillSwitchStatusRequest) (*GetKillSwitchStatusReply, error)
 	mustEmbedUnimplementedEngineServer()
 }
 
@@ -229,6 +270,15 @@ func (UnimplementedEngineServer) CancelOrder(context.Context, *CancelOrderReques
 }
 func (UnimplementedEngineServer) SubscribeOrderEvents(*SubscribeOrderEventsRequest, grpc.ServerStreamingServer[Order]) error {
 	return status.Errorf(codes.Unimplemented, "method SubscribeOrderEvents not implemented")
+}
+func (UnimplementedEngineServer) ActivateKillSwitch(context.Context, *ActivateKillSwitchRequest) (*ActivateKillSwitchReply, error) {
+	return nil, status.Errorf(codes.Unimplemented, "method ActivateKillSwitch not implemented")
+}
+func (UnimplementedEngineServer) DeactivateKillSwitch(context.Context, *DeactivateKillSwitchRequest) (*DeactivateKillSwitchReply, error) {
+	return nil, status.Errorf(codes.Unimplemented, "method DeactivateKillSwitch not implemented")
+}
+func (UnimplementedEngineServer) GetKillSwitchStatus(context.Context, *GetKillSwitchStatusRequest) (*GetKillSwitchStatusReply, error) {
+	return nil, status.Errorf(codes.Unimplemented, "method GetKillSwitchStatus not implemented")
 }
 func (UnimplementedEngineServer) mustEmbedUnimplementedEngineServer() {}
 func (UnimplementedEngineServer) testEmbeddedByValue()                {}
@@ -424,6 +474,60 @@ func _Engine_SubscribeOrderEvents_Handler(srv interface{}, stream grpc.ServerStr
 // This type alias is provided for backwards compatibility with existing code that references the prior non-generic stream type by name.
 type Engine_SubscribeOrderEventsServer = grpc.ServerStreamingServer[Order]
 
+func _Engine_ActivateKillSwitch_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+	in := new(ActivateKillSwitchRequest)
+	if err := dec(in); err != nil {
+		return nil, err
+	}
+	if interceptor == nil {
+		return srv.(EngineServer).ActivateKillSwitch(ctx, in)
+	}
+	info := &grpc.UnaryServerInfo{
+		Server:     srv,
+		FullMethod: Engine_ActivateKillSwitch_FullMethodName,
+	}
+	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
+		return srv.(EngineServer).ActivateKillSwitch(ctx, req.(*ActivateKillSwitchRequest))
+	}
+	return interceptor(ctx, in, info, handler)
+}
+
+func _Engine_DeactivateKillSwitch_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+	in := new(DeactivateKillSwitchRequest)
+	if err := dec(in); err != nil {
+		return nil, err
+	}
+	if interceptor == nil {
+		return srv.(EngineServer).DeactivateKillSwitch(ctx, in)
+	}
+	info := &grpc.UnaryServerInfo{
+		Server:     srv,
+		FullMethod: Engine_DeactivateKillSwitch_FullMethodName,
+	}
+	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
+		return srv.(EngineServer).DeactivateKillSwitch(ctx, req.(*DeactivateKillSwitchRequest))
+	}
+	return interceptor(ctx, in, info, handler)
+}
+
+func _Engine_GetKillSwitchStatus_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+	in := new(GetKillSwitchStatusRequest)
+	if err := dec(in); err != nil {
+		return nil, err
+	}
+	if interceptor == nil {
+		return srv.(EngineServer).GetKillSwitchStatus(ctx, in)
+	}
+	info := &grpc.UnaryServerInfo{
+		Server:     srv,
+		FullMethod: Engine_GetKillSwitchStatus_FullMethodName,
+	}
+	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
+		return srv.(EngineServer).GetKillSwitchStatus(ctx, req.(*GetKillSwitchStatusRequest))
+	}
+	return interceptor(ctx, in, info, handler)
+}
+
 // Engine_ServiceDesc is the grpc.ServiceDesc for Engine service.
 // It's only intended for direct use with grpc.RegisterService,
 // and not to be introspected or modified (even as a copy)
@@ -466,6 +570,18 @@ var Engine_ServiceDesc = grpc.ServiceDesc{
 		{
 			MethodName: "CancelOrder",
 			Handler:    _Engine_CancelOrder_Handler,
+		},
+		{
+			MethodName: "ActivateKillSwitch",
+			Handler:    _Engine_ActivateKillSwitch_Handler,
+		},
+		{
+			MethodName: "DeactivateKillSwitch",
+			Handler:    _Engine_DeactivateKillSwitch_Handler,
+		},
+		{
+			MethodName: "GetKillSwitchStatus",
+			Handler:    _Engine_GetKillSwitchStatus_Handler,
 		},
 	},
 	Streams: []grpc.StreamDesc{

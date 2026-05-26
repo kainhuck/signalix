@@ -129,7 +129,7 @@ Signalix 是一个 **本地化量化交易引擎**：Go 负责行情、路由、
 | E-RK-01 | 事前风控管道 | 已实现 | Signal → Risk → OMS |
 | E-RK-02 | 全局限额 | 已实现 | 含日亏/回撤/杠杆/名义上限/锁仓 |
 | E-RK-03 | 策略级限额 | 规划中 | |
-| E-RK-04 | Kill Switch | 规划中 | |
+| E-RK-04 | Kill Switch | 已实现 | gRPC + 信号路径短路；不持久化 |
 | E-RK-05 | 风控审计 | 部分 | 结构化日志；可选落库 |
 
 ### 5.5 持久化与恢复
@@ -167,7 +167,7 @@ Signalix 是一个 **本地化量化交易引擎**：Go 负责行情、路由、
 | Strategies | 启停、列表 | StartStrategy / ListStrategies |
 | Orders | 查单、撤单 | GetOrder / CancelOrder / 事件流 |
 | Positions | 持仓汇总 | AccountProjection |
-| Emergency | Kill Switch | 规划中 |
+| Emergency | Kill Switch | 已实现 |
 
 ---
 
@@ -199,7 +199,7 @@ Signalix 是一个 **本地化量化交易引擎**：Go 负责行情、路由、
 | 阶段 | 目标 |
 |------|------|
 | **当前** | 引擎主干 + Gate.io + Python 策略 + gRPC 控制面 |
-| **近期** | 实盘加固：Kill Switch、策略级风控 |
+| **近期** | 实盘加固：策略级风控（EH-4） |
 | **中期** | HTTP 网关、合约元数据、观测增强 |
 | **长期** | 多交易所、回测 / Paper 统一语义 |
 
