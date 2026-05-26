@@ -96,6 +96,11 @@ make build && ./bin/signalix
 ```bash
 grpcurl -plaintext -d '{}' localhost:50051 signalix.engine.v1.Engine/Ping
 
+# Readiness（GR-1）
+grpcurl -plaintext -d '{}' localhost:50051 signalix.engine.v1.Engine/GetHealth
+grpcurl -plaintext -d '{"skip_exchange_ping":true}' \
+  localhost:50051 signalix.engine.v1.Engine/GetHealth
+
 # Kill Switch（EH-3）
 grpcurl -plaintext -d '{"reason":"manual drill"}' \
   localhost:50051 signalix.engine.v1.Engine/ActivateKillSwitch

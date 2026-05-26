@@ -166,7 +166,7 @@ flowchart LR
   ENG --> STRAT[Strategy lifecycle]
 ```
 
-已实现 RPC 见 `api/proto/signalix/engine/v1/engine.proto`（Ping、策略启停、订单查询与事件流等）。
+已实现 RPC 见 `api/proto/signalix/engine/v1/engine.proto`（Ping、**GetHealth**、策略启停、订单查询与事件流等）。
 
 ### 5.4 启动顺序（当前）
 
@@ -188,6 +188,7 @@ flowchart LR
 - **生成**：`make proto`（Buf → `api/gen/go`）
 - **安全**：默认 `127.0.0.1`；可选 static token；`insecure_bind_all` 仅开发使用
 - **metadata**：`x-request-id`
+- **Readiness**：`GetHealth`（`engine` / `account_projection` / `exchange` 检查；`skip_exchange_ping` 可跳过所探测）
 - **Emergency**：`ActivateKillSwitch` / `DeactivateKillSwitch` / `GetKillSwitchStatus`（EH-3；内存态，重启后默认 OFF）
 - **未实现 / 推迟**：行情只读 RPC、Unix socket
 

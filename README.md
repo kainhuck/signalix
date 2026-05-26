@@ -96,6 +96,11 @@ Enable gRPC (`[grpc] enabled = true` in `config.toml`):
 ```bash
 grpcurl -plaintext -d '{}' localhost:50051 signalix.engine.v1.Engine/Ping
 
+# Readiness
+grpcurl -plaintext -d '{}' localhost:50051 signalix.engine.v1.Engine/GetHealth
+grpcurl -plaintext -d '{"skip_exchange_ping":true}' \
+  localhost:50051 signalix.engine.v1.Engine/GetHealth
+
 # Kill Switch
 grpcurl -plaintext -d '{"reason":"manual drill"}' \
   localhost:50051 signalix.engine.v1.Engine/ActivateKillSwitch

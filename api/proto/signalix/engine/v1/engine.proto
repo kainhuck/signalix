@@ -10,6 +10,9 @@ option go_package = "github.com/kainhuck/signalix/api/gen/go/signalix/engine/v1;
 service Engine {
   rpc Ping(PingRequest) returns (PingReply);
 
+  // GetHealth 返回引擎就绪状态（readiness）；与 Ping（liveness）互补。
+  rpc GetHealth(GetHealthRequest) returns (GetHealthReply);
+
   rpc GetEngineInfo(GetEngineInfoRequest) returns (GetEngineInfoReply);
 
   // ListStrategies 返回 catalog（Discover 结果），含未运行条目。
@@ -43,6 +46,37 @@ message PingRequest {}
 message PingReply {
   string pong = 1;
   int64 server_time_unix_ms = 2;
+}
+
+enum HealthStatus {
+  HEALTH_STATUS_UNSPECIFIED = 0;
+  HEALTH_STATUS_HEALTHY = 1;
+  HEALTH_STATUS_DEGRADED = 2;
+  HEALTH_STATUS_UNHEALTHY = 3;
+}
+
+enum ComponentStatus {
+  COMPONENT_STATUS_UNSPECIFIED = 0;
+  COMPONENT_STATUS_PASS = 1;
+  COMPONENT_STATUS_FAIL = 2;
+}
+
+message GetHealthRequest {
+  // true 时不探测交易所（checks 中省略 exchange）。
+  bool skip_exchange_ping = 1;
+}
+
+message HealthCheck {
+  string name = 1;
+  ComponentStatus status = 2;
+  string message = 3;
+}
+
+message GetHealthReply {
+  HealthStatus status = 1;
+  int64 server_time_unix_ms = 2;
+  repeated HealthCheck checks = 3;
+  bool kill_switch_active = 4;
 }
 
 message GetEngineInfoRequest {}

@@ -20,6 +20,7 @@ const _ = grpc.SupportPackageIsVersion9
 
 const (
 	Engine_Ping_FullMethodName                 = "/signalix.engine.v1.Engine/Ping"
+	Engine_GetHealth_FullMethodName            = "/signalix.engine.v1.Engine/GetHealth"
 	Engine_GetEngineInfo_FullMethodName        = "/signalix.engine.v1.Engine/GetEngineInfo"
 	Engine_ListStrategies_FullMethodName       = "/signalix.engine.v1.Engine/ListStrategies"
 	Engine_StartStrategy_FullMethodName        = "/signalix.engine.v1.Engine/StartStrategy"
@@ -41,6 +42,8 @@ const (
 // --- Control ---
 type EngineClient interface {
 	Ping(ctx context.Context, in *PingRequest, opts ...grpc.CallOption) (*PingReply, error)
+	// GetHealth 返回引擎就绪状态（readiness）；与 Ping（liveness）互补。
+	GetHealth(ctx context.Context, in *GetHealthRequest, opts ...grpc.CallOption) (*GetHealthReply, error)
 	GetEngineInfo(ctx context.Context, in *GetEngineInfoRequest, opts ...grpc.CallOption) (*GetEngineInfoReply, error)
 	// ListStrategies 返回 catalog（Discover 结果），含未运行条目。
 	ListStrategies(ctx context.Context, in *ListStrategiesRequest, opts ...grpc.CallOption) (*ListStrategiesReply, error)
@@ -72,6 +75,16 @@ func (c *engineClient) Ping(ctx context.Context, in *PingRequest, opts ...grpc.C
 	cOpts := append([]grpc.CallOption{grpc.StaticMethod()}, opts...)
 	out := new(PingReply)
 	err := c.cc.Invoke(ctx, Engine_Ping_FullMethodName, in, out, cOpts...)
+	if err != nil {
+		return nil, err
+	}
+	return out, nil
+}
+
+func (c *engineClient) GetHealth(ctx context.Context, in *GetHealthRequest, opts ...grpc.CallOption) (*GetHealthReply, error) {
+	cOpts := append([]grpc.CallOption{grpc.StaticMethod()}, opts...)
+	out := new(GetHealthReply)
+	err := c.cc.Invoke(ctx, Engine_GetHealth_FullMethodName, in, out, cOpts...)
 	if err != nil {
 		return nil, err
 	}
@@ -214,6 +227,8 @@ func (c *engineClient) GetKillSwitchStatus(ctx context.Context, in *GetKillSwitc
 // --- Control ---
 type EngineServer interface {
 	Ping(context.Context, *PingRequest) (*PingReply, error)
+	// GetHealth 返回引擎就绪状态（readiness）；与 Ping（liveness）互补。
+	GetHealth(context.Context, *GetHealthRequest) (*GetHealthReply, error)
 	GetEngineInfo(context.Context, *GetEngineInfoRequest) (*GetEngineInfoReply, error)
 	// ListStrategies 返回 catalog（Discover 结果），含未运行条目。
 	ListStrategies(context.Context, *ListStrategiesRequest) (*ListStrategiesReply, error)
@@ -243,6 +258,9 @@ type UnimplementedEngineServer struct{}
 
 func (UnimplementedEngineServer) Ping(context.Context, *PingRequest) (*PingReply, error) {
 	return nil, status.Errorf(codes.Unimplemented, "method Ping not implemented")
+}
+func (UnimplementedEngineServer) GetHealth(context.Context, *GetHealthRequest) (*GetHealthReply, error) {
+	return nil, status.Errorf(codes.Unimplemented, "method GetHealth not implemented")
 }
 func (UnimplementedEngineServer) GetEngineInfo(context.Context, *GetEngineInfoRequest) (*GetEngineInfoReply, error) {
 	return nil, status.Errorf(codes.Unimplemented, "method GetEngineInfo not implemented")
@@ -315,6 +333,24 @@ func _Engine_Ping_Handler(srv interface{}, ctx context.Context, dec func(interfa
 	}
 	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
 		return srv.(EngineServer).Ping(ctx, req.(*PingRequest))
+	}
+	return interceptor(ctx, in, info, handler)
+}
+
+func _Engine_GetHealth_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+	in := new(GetHealthRequest)
+	if err := dec(in); err != nil {
+		return nil, err
+	}
+	if interceptor == nil {
+		return srv.(EngineServer).GetHealth(ctx, in)
+	}
+	info := &grpc.UnaryServerInfo{
+		Server:     srv,
+		FullMethod: Engine_GetHealth_FullMethodName,
+	}
+	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
+		return srv.(EngineServer).GetHealth(ctx, req.(*GetHealthRequest))
 	}
 	return interceptor(ctx, in, info, handler)
 }
@@ -538,6 +574,10 @@ var Engine_ServiceDesc = grpc.ServiceDesc{
 		{
 			MethodName: "Ping",
 			Handler:    _Engine_Ping_Handler,
+		},
+		{
+			MethodName: "GetHealth",
+			Handler:    _Engine_GetHealth_Handler,
 		},
 		{
 			MethodName: "GetEngineInfo",

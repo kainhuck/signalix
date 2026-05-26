@@ -146,7 +146,7 @@ Signalix 是一个 **本地化量化交易引擎**：Go 负责行情、路由、
 |----|------|------|------|
 | E-OB-01 | 结构化日志 + trace | 部分 | tick 路径可采样 / Debug |
 | E-OB-02 | Prometheus | 规划中 | |
-| E-OB-03 | 健康检查 | 规划中 | 供未来网关 `/health` |
+| E-OB-03 | 健康检查 | 已实现 | gRPC `GetHealth`（readiness）；`Ping` 为 liveness |
 
 ### 5.7 回测与仿真
 
@@ -163,7 +163,7 @@ Signalix 是一个 **本地化量化交易引擎**：Go 负责行情、路由、
 
 | 分组 | 示例能力 | 引擎对应 |
 |------|----------|----------|
-| System | 健康、版本 | gRPC Ping / GetEngineInfo |
+| System | 健康、版本 | gRPC `Ping` / `GetHealth` / GetEngineInfo |
 | Strategies | 启停、列表 | StartStrategy / ListStrategies |
 | Orders | 查单、撤单 | GetOrder / CancelOrder / 事件流 |
 | Positions | 持仓汇总 | AccountProjection |

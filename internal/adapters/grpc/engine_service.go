@@ -31,6 +31,18 @@ func (s *EngineService) Ping(ctx context.Context, _ *enginev1.PingRequest) (*eng
 	return &enginev1.PingReply{Pong: "pong", ServerTimeUnixMs: time.Now().UnixMilli()}, nil
 }
 
+func (s *EngineService) GetHealth(ctx context.Context, req *enginev1.GetHealthRequest) (*enginev1.GetHealthReply, error) {
+	if s.eng == nil {
+		return nil, status.Error(codes.Internal, "nil engine")
+	}
+	skip := false
+	if req != nil {
+		skip = req.GetSkipExchangePing()
+	}
+	report := s.eng.HealthReport(ctx, skip)
+	return healthReportToProto(report), nil
+}
+
 func (s *EngineService) GetEngineInfo(ctx context.Context, _ *enginev1.GetEngineInfoRequest) (*enginev1.GetEngineInfoReply, error) {
 	_ = ctx
 	return &enginev1.GetEngineInfoReply{
