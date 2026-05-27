@@ -85,6 +85,35 @@ func (e *Engine) rpcGetKlines(strategyName string, params map[string]interface{}
 	return e.ClosedKlines(contract, interval, limit)
 }
 
+func (e *Engine) rpcGetTicker(symbol string) (interface{}, error) {
+	snap, err := e.TickerSnapshot(perp.Contract(strings.TrimSpace(symbol)))
+	if err != nil {
+		return nil, err
+	}
+	return tickerToRPC(snap), nil
+}
+
+func tickerToRPC(s *perp.TickerSnapshot) map[string]interface{} {
+	if s == nil {
+		return nil
+	}
+	return map[string]interface{}{
+		"contract":         string(s.Contract),
+		"last":             s.Last,
+		"mark_price":       s.MarkPrice,
+		"index_price":      s.IndexPrice,
+		"funding_rate":     s.FundingRate,
+		"change_pct_24h":   s.ChangePct24h,
+		"volume_24h":       s.Volume24h,
+		"volume_24h_base":  s.Volume24hBase,
+		"volume_24h_quote": s.Volume24hQuote,
+		"open_interest":    s.OpenInterest,
+		"low_24h":          s.Low24h,
+		"high_24h":         s.High24h,
+		"timestamp_millis": s.TimestampMillis,
+	}
+}
+
 func balanceToRPC(b *perp.BalanceView) map[string]interface{} {
 	if b == nil {
 		return nil

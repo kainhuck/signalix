@@ -2,6 +2,7 @@ package engine
 
 import (
 	"context"
+	"errors"
 	"testing"
 	"time"
 
@@ -88,5 +89,57 @@ func TestEngine_rpcGetKlines(t *testing.T) {
 	kl, ok := out.([]*models.Kline)
 	if !ok || len(kl) != 2 {
 		t.Fatalf("got %#v", out)
+	}
+}
+
+func TestEngine_rpcGetTicker_ok(t *testing.T) {
+	ex := testutil.NewStubExchange()
+	router := market.NewMarketRouter(ex)
+	e := &Engine{router: router}
+	tick, err := perp.NewPublicEvent(perp.PublicTicker, &perp.TickerSnapshot{
+		Contract:        "BTC/USDT",
+		Last:            "42000",
+		MarkPrice:       "42001",
+		TimestampMillis: 1000,
+	})
+	if err != nil {
+		t.Fatal(err)
+	}
+	router.OnPublicEvent(tick)
+
+	out, err := e.rpcGetTicker("BTC/USDT")
+	if err != nil {
+		t.Fatal(err)
+	}
+	m, ok := out.(map[string]interface{})
+	if !ok || m["contract"] != "BTC/USDT" || m["last"] != "42000" || m["mark_price"] != "42001" {
+		t.Fatalf("ticker: %+v", out)
+	}
+	if m["timestamp_millis"] != int64(1000) {
+		t.Fatalf("timestamp_millis = %v", m["timestamp_millis"])
+	}
+}
+
+func TestEngine_rpcGetTicker_notInCache(t *testing.T) {
+	e := &Engine{router: market.NewMarketRouter(testutil.NewStubExchange())}
+	_, err := e.rpcGetTicker("BTC/USDT")
+	if !errors.Is(err, ErrTickerNotInCache) {
+		t.Fatalf("err = %v", err)
+	}
+}
+
+func TestEngine_rpcGetTicker_symbolRequired(t *testing.T) {
+	e := &Engine{router: market.NewMarketRouter(testutil.NewStubExchange())}
+	_, err := e.rpcGetTicker("")
+	if err == nil || err.Error() != "symbol is required" {
+		t.Fatalf("err = %v", err)
+	}
+}
+
+func TestEngine_rpcGetTicker_routerNil(t *testing.T) {
+	e := &Engine{}
+	_, err := e.rpcGetTicker("BTC/USDT")
+	if !errors.Is(err, ErrMarketRouterNotConfigured) {
+		t.Fatalf("err = %v", err)
 	}
 }

@@ -835,20 +835,12 @@ func (e *Engine) handleRPCRequest(sp strategy.StrategyRuntime, msg strategy.IpcM
 	case "get_balance":
 		result, err = e.rpcGetBalance()
 
-	case "get_market":
-		err = fmt.Errorf("method not implemented: get_market")
+	case "get_ticker":
+		symbol, _ := params["symbol"].(string)
+		result, err = e.rpcGetTicker(symbol)
 
 	case "get_klines":
 		result, err = e.rpcGetKlines(sp.Name(), params)
-
-	case "get_markets":
-		// TODO
-		//symbols, _ := params["symbols"].([]interface{})
-		//symbolStrs := make([]string, len(symbols))
-		//for i, s := range symbols {
-		//	symbolStrs[i], _ = s.(string)
-		//}
-		//result, err = e.stateProvider.GetMarkets(symbolStrs)
 
 	case "get_state":
 		key, _ := params["key"].(string)
