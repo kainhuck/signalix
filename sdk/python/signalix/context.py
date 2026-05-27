@@ -10,7 +10,7 @@ from typing import Optional, Any, Dict, List, TYPE_CHECKING
 if TYPE_CHECKING:
     from .runtime import StrategyRuntime
 
-from .models import BalanceData, PositionData, KlineBar
+from .models import BalanceData, PositionData, KlineBar, Ticker
 
 
 class Context:
@@ -18,7 +18,7 @@ class Context:
     策略上下文
 
     提供以下功能：
-    - 数据查询：持仓、余额、市场数据、K线
+    - 数据查询：持仓、余额、ticker、K 线
     - 状态管理：保存和读取策略状态
     - 信号发送：发送交易信号
     - 日志记录：记录策略日志
@@ -80,6 +80,18 @@ class Context:
         if not result:
             return []
         return [KlineBar.from_dict(b) for b in result]
+
+    def get_ticker(self, symbol: str) -> Ticker:
+        """查询引擎缓存的最新 ticker 快照（IPC get_ticker）。
+
+        与 on_tick 推送的 ticker 字段相同；无需 subscribe_ticker。
+
+        Raises:
+            RuntimeError: RPC 失败（含 symbol 无效、ticker 不在缓存等）
+            TimeoutError: RPC 超时
+        """
+        result = self._runtime.rpc_call("get_ticker", {"symbol": symbol})
+        return Ticker.from_dict(result)
 
     def set_state(self, key: str, value: Any) -> None:
         """

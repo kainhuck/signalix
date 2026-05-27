@@ -25,7 +25,7 @@ Signalix orchestrates market data, account projection, decision-making, risk che
 - **Gate.io adapter**: REST / WebSocket with testnet and live configuration
 - **Multi-strategy isolation**: one Python process per strategy; a single crash does not take down the engine
 - **Full trading pipeline**: MarketRouter → strategy IPC → DecisionEngine → risk → OMS
-- **K-line driven**: closed-bar IPC, REST `on_history` warmup, strategy RPCs (`get_balance` / `get_position` / `get_klines`)
+- **K-line driven**: closed-bar IPC, REST `on_history` warmup, strategy RPCs (`get_balance` / `get_position` / `get_ticker` / `get_klines`)
 - **Account projection**: REST refresh + private WS patches to cut REST on the hot path
 - **Local persistence**: SQLite for open orders and strategy `set_state`; reconcile on startup
 - **Optional gRPC**: `signalix.engine.v1.Engine` (start/stop strategies, query orders, order event stream)

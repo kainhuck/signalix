@@ -123,7 +123,7 @@ sdk/python/           # 策略 SDK
 ### 4.6 AccountProjection
 
 - 定时 REST 全量 + 私有 WS 增量（持仓、余额）
-- 读者：Decision、Risk、策略 RPC `get_balance` / `get_position`
+- 读者：Decision、Risk、策略 RPC `get_balance` / `get_position` / `get_ticker`
 
 ### 4.7 Persistence
 
@@ -227,7 +227,7 @@ flowchart LR
 | 风控扩展字段 | 已实现（EH-2/EH-3/EH-4） | — |
 | 策略级风控 | 已实现 | `config.yaml` `risk` 可选段；Kill Switch → 策略 → 全局 |
 | Kill Switch | 已实现 | 不持久化；拒开仓、允 Flat/撤单 |
-| `get_market` RPC | 未实现 | 读 tickerCache；gRPC `GetTicker`/`ListTickers` 已暴露缓存 |
+| 策略 IPC `get_ticker` | 已实现 | 读 tickerCache；与 gRPC `GetTicker` 同源 |
 | HTTP 网关 | 无 | 独立服务，REST → gRPC |
 | 合约元数据 | 无缓存 | 下单前校验 |
 | REST rate_limit | 配置占位 | adapter 层限流 |

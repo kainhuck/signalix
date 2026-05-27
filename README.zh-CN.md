@@ -25,7 +25,7 @@ Signalix 将行情接入、账户投影、决策、风控、OMS 与策略生命�
 - **Gate.io 适配**：REST / WebSocket，支持模拟盘与实盘配置切换
 - **多策略隔离**：每策略独立 Python 进程；单策略崩溃不拖垮引擎
 - **完整交易管线**：MarketRouter → 策略 IPC → DecisionEngine → 风控 → OMS
-- **K 线驱动**：收盘 K 线 IPC、`on_history` REST 预热、策略侧 RPC（`get_balance` / `get_position` / `get_klines`）
+- **K 线驱动**：收盘 K 线 IPC、`on_history` REST 预热、策略侧 RPC（`get_balance` / `get_position` / `get_ticker` / `get_klines`）
 - **账户投影**：REST 校准 + 私有 WS 增量，决策路径减少 REST 往返
 - **本地持久化**：SQLite 保存未完成订单与策略 `set_state`；启动时对账
 - **可选 gRPC**：`signalix.engine.v1.Engine`（启停策略、查单、订单事件流等）

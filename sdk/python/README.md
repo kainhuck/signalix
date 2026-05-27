@@ -164,16 +164,17 @@ ctx.debug("debug")
 ```python
 bal = ctx.get_balance()
 pos = ctx.get_position("ETH/USDT")  # 无仓为 None
+tick = ctx.get_ticker("ETH/USDT")  # 读引擎 ticker 缓存；未命中抛 RuntimeError
 bars = ctx.get_klines("ETH/USDT", limit=50)  # interval 省略则用策略 config 顶层 interval
 ```
 
-运行时采用 **Reader + Worker** 双线程：`on_kline` / `on_tick` / `on_history` 内可同步调用上述 API。`get_market` 尚未实现。
+运行时采用 **Reader + Worker** 双线程：`on_kline` / `on_tick` / `on_history` 内可同步调用上述 API。`get_ticker` 与 `on_tick` 内 `tick.ticker` 字段相同，无需开启 `subscribe_ticker`；缓存未命中时 RPC 报错（非 `None`）。
 
 ## 数据模型
 
 ### TickData / Ticker
 
-`subscribe_ticker: true` 时推送；字段与 Gate `futures.tickers` 对齐（`last`、`mark_price` 等为 string）。
+`subscribe_ticker: true` 时通过 `on_tick` 推送；亦可用 `ctx.get_ticker(symbol)` 主动拉取同一结构。字段与 Gate `futures.tickers` 对齐（`last`、`mark_price` 等为 string）。
 
 ### KlineData / KlineBar
 
