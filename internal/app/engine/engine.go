@@ -13,6 +13,7 @@ import (
 	"github.com/google/uuid"
 	"github.com/kainhuck/signalix/internal/adapters/strategy/pythonipc"
 	"github.com/kainhuck/signalix/internal/app/decision"
+	"github.com/kainhuck/signalix/internal/app/instrument"
 	"github.com/kainhuck/signalix/internal/app/market"
 	"github.com/kainhuck/signalix/internal/app/oms"
 	"github.com/kainhuck/signalix/internal/app/projection"
@@ -38,14 +39,15 @@ type Engine struct {
 	processMu       sync.RWMutex
 
 	// 依赖
-	exchange          ports.Exchange
-	loader            *strategy.StrategyLoader
-	router            *market.MarketRouter
-	decisionEngine    *decision.DecisionEngine
-	executionEngine   *oms.ExecutionEngine
-	accountProjection *projection.AccountProjection
-	riskEvaluator     ports.RiskEvaluator
-	store             ports.PersistenceStore
+	exchange           ports.Exchange
+	loader             *strategy.StrategyLoader
+	router             *market.MarketRouter
+	decisionEngine     *decision.DecisionEngine
+	executionEngine    *oms.ExecutionEngine
+	instrumentRegistry *instrument.Registry
+	accountProjection  *projection.AccountProjection
+	riskEvaluator      ports.RiskEvaluator
+	store              ports.PersistenceStore
 
 	// persistenceSettings 资产快照/策略日志保留与清理周期。
 	persistenceSettings config.PersistenceSettings
@@ -181,6 +183,13 @@ func NewEngine(strategyDir string, exchange ports.Exchange, build BuildParams, o
 		oms.WithChannelBuffers(omsBuf, cmdBuf),
 		oms.WithMaxRetries(omsRetries),
 	)
+
+	reg := instrument.NewRegistry()
+	if err := reg.LoadFrom(ctx, exchange); err != nil {
+		logger.WarnContext(ctx, "contract meta registry load failed", logger.Any("error", err))
+	}
+	e.instrumentRegistry = reg
+
 	return e
 }
 
