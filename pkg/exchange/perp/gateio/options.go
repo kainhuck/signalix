@@ -6,6 +6,7 @@ import (
 
 	"github.com/kainhuck/signalix/pkg/exchange"
 	"github.com/kainhuck/signalix/pkg/exchange/perp"
+	"github.com/kainhuck/signalix/pkg/exchange/ratelimit"
 
 	"github.com/gate/gateapi-go/v7"
 )
@@ -48,6 +49,13 @@ func WithRESTBasePath(base string) Option {
 	}
 }
 
+// WithRateLimit sets a global REST rate limit (requests per second); <=0 disables.
+func WithRateLimit(requestsPerSecond int) Option {
+	return func(c *Client) {
+		c.restLimiter = ratelimit.New(requestsPerSecond)
+	}
+}
+
 // WithChannelBuffers 设置公共/私有 WS 事件通道容量。
 func WithChannelBuffers(publicBuf, privateBuf int) Option {
 	return func(c *Client) {
@@ -71,6 +79,8 @@ type Client struct {
 	log exchange.Logger
 
 	gate *gateapi.APIClient
+
+	restLimiter *ratelimit.Limiter
 
 	mu        sync.RWMutex
 	restReady bool
