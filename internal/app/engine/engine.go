@@ -140,11 +140,17 @@ func NewEngine(strategyDir string, exchange ports.Exchange, build BuildParams, o
 	)
 	router := market.NewMarketRouter(exchange, market.WithBufferSize(marketBuf))
 
+	reg := instrument.NewRegistry()
+	if err := reg.LoadFrom(ctx, exchange); err != nil {
+		logger.WarnContext(ctx, "contract meta registry load failed", logger.Any("error", err))
+	}
+
 	e := &Engine{
 		strategyProcess:     make(map[string]strategy.StrategyRuntime),
 		exchange:            exchange,
 		loader:              loader,
 		router:              router,
+		instrumentRegistry:  reg,
 		defaultInterval:     build.DefaultInterval,
 		restartCfg:          build.Restart,
 		crashTracker:        newCrashTracker(),
@@ -155,7 +161,7 @@ func NewEngine(strategyDir string, exchange ports.Exchange, build BuildParams, o
 		persistenceSettings: build.Persistence,
 		decisionEngine: decision.NewDecisionEngine(proj,
 			decision.WithDefaultSizeDivisor(divisor),
-			decision.WithExchange(exchange),
+			decision.WithContractMetaLookup(reg),
 			decision.WithTickerLookup(router),
 		),
 		accountProjection: proj,
@@ -183,12 +189,6 @@ func NewEngine(strategyDir string, exchange ports.Exchange, build BuildParams, o
 		oms.WithChannelBuffers(omsBuf, cmdBuf),
 		oms.WithMaxRetries(omsRetries),
 	)
-
-	reg := instrument.NewRegistry()
-	if err := reg.LoadFrom(ctx, exchange); err != nil {
-		logger.WarnContext(ctx, "contract meta registry load failed", logger.Any("error", err))
-	}
-	e.instrumentRegistry = reg
 
 	return e
 }

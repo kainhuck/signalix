@@ -2,8 +2,10 @@ package decision
 
 import (
 	"context"
+	"strings"
 	"testing"
 
+	"github.com/kainhuck/signalix/internal/app/instrument"
 	"github.com/kainhuck/signalix/internal/app/projection"
 	"github.com/kainhuck/signalix/internal/models"
 	"github.com/kainhuck/signalix/internal/testutil"
@@ -20,6 +22,15 @@ func (s *stubTickerLookup) GetCachedTicker(c perp.Contract) (*perp.TickerSnapsho
 	return t, ok
 }
 
+func testRegistryFromExchange(t *testing.T, ex perp.InstrumentSource) instrument.ContractMetaLookup {
+	t.Helper()
+	reg := instrument.NewRegistry()
+	if err := reg.LoadFrom(context.Background(), ex); err != nil {
+		t.Fatalf("LoadFrom: %v", err)
+	}
+	return reg
+}
+
 func TestNotionalUSDTToContracts(t *testing.T) {
 	ex := testutil.NewStubExchange()
 	ex.ContractMetas = []*perp.ContractMeta{{
@@ -31,13 +42,28 @@ func TestNotionalUSDTToContracts(t *testing.T) {
 	lookup := &stubTickerLookup{tickers: map[perp.Contract]*perp.TickerSnapshot{
 		"BTC/USDT": {Contract: "BTC/USDT", MarkPrice: "50000"},
 	}}
-	de := NewDecisionEngine(nil, WithExchange(ex), WithTickerLookup(lookup))
+	de := NewDecisionEngine(nil, WithContractMetaLookup(testRegistryFromExchange(t, ex)), WithTickerLookup(lookup))
 	got, err := de.notionalUSDTToContracts(context.Background(), "BTC/USDT", decimal.NewFromInt(1000))
 	if err != nil {
 		t.Fatal(err)
 	}
 	if got.String() != "200" {
 		t.Fatalf("got %s want 200", got)
+	}
+}
+
+func TestNotionalUSDTToContracts_noLookup(t *testing.T) {
+	t.Parallel()
+	lookup := &stubTickerLookup{tickers: map[perp.Contract]*perp.TickerSnapshot{
+		"BTC/USDT": {Contract: "BTC/USDT", MarkPrice: "50000"},
+	}}
+	de := NewDecisionEngine(nil, WithTickerLookup(lookup))
+	_, err := de.notionalUSDTToContracts(context.Background(), "BTC/USDT", decimal.NewFromInt(1000))
+	if err == nil {
+		t.Fatal("expected error")
+	}
+	if !strings.Contains(err.Error(), "contract meta lookup not configured") {
+		t.Fatalf("err = %v", err)
 	}
 }
 
@@ -61,7 +87,7 @@ func TestDecisionEngine_ProcessSignal_PercentUsesContracts(t *testing.T) {
 	if err := proj.Start(ctx); err != nil {
 		t.Fatal(err)
 	}
-	de := NewDecisionEngine(proj, WithExchange(ex), WithTickerLookup(lookup))
+	de := NewDecisionEngine(proj, WithContractMetaLookup(testRegistryFromExchange(t, ex)), WithTickerLookup(lookup))
 	pct := models.SizingModePercent
 	v := "0.1"
 	sig := &models.Signal{

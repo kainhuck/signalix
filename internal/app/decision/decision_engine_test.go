@@ -29,7 +29,7 @@ func TestDecisionEngine_ProcessSignal_LongNoPositionUsesStubExchange(t *testing.
 	if err := proj.Start(ctx); err != nil {
 		t.Fatal(err)
 	}
-	de := NewDecisionEngine(proj, WithExchange(ex), WithTickerLookup(lookup))
+	de := NewDecisionEngine(proj, WithContractMetaLookup(testRegistryFromExchange(t, ex)), WithTickerLookup(lookup))
 
 	sig := &models.Signal{
 		Symbol:    "BTC/USDT",

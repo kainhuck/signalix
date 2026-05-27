@@ -15,10 +15,10 @@ func (de *DecisionEngine) NotionalForContracts(ctx context.Context, contract per
 	if size.IsZero() {
 		return decimal.Zero, nil
 	}
-	if err := de.ensureContractMeta(ctx); err != nil {
-		return decimal.Zero, err
+	if de.metaLookup == nil {
+		return decimal.Zero, fmt.Errorf("contract meta lookup not configured")
 	}
-	meta, err := de.contractMeta(contract)
+	meta, err := de.metaLookup.ContractMeta(contract)
 	if err != nil {
 		return decimal.Zero, err
 	}

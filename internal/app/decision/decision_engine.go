@@ -7,9 +7,9 @@ import (
 	"time"
 
 	"github.com/google/uuid"
+	"github.com/kainhuck/signalix/internal/app/instrument"
 	"github.com/kainhuck/signalix/internal/app/projection"
 	"github.com/kainhuck/signalix/internal/models"
-	"github.com/kainhuck/signalix/internal/ports"
 	"github.com/kainhuck/signalix/pkg/exchange/perp"
 	"github.com/shopspring/decimal"
 )
@@ -18,11 +18,8 @@ import (
 // 负责将策略信号转换为交易订单
 type DecisionEngine struct {
 	acct               *projection.AccountProjection
-	exchange           ports.Exchange
+	metaLookup         instrument.ContractMetaLookup
 	tickerLookup       TickerLookup
-	metaByContract     map[perp.Contract]*perp.ContractMeta
-	metaLoaded         bool
-	metaMu             sync.RWMutex
 	defaultSizeDivisor int
 	mu                 sync.RWMutex
 	stats              DecisionStats
@@ -123,11 +120,11 @@ func (de *DecisionEngine) ProcessSignal(ctx context.Context, strategyName string
 	return order, nil
 }
 
-func (de *DecisionEngine) formatSizeForOrder(ctx context.Context, contract perp.Contract, size decimal.Decimal) string {
-	if err := de.ensureContractMeta(ctx); err != nil {
+func (de *DecisionEngine) formatSizeForOrder(_ context.Context, contract perp.Contract, size decimal.Decimal) string {
+	if de.metaLookup == nil {
 		return size.String()
 	}
-	meta, err := de.contractMeta(contract)
+	meta, err := de.metaLookup.ContractMeta(contract)
 	if err != nil {
 		return size.String()
 	}

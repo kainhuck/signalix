@@ -1,7 +1,7 @@
 package decision
 
 import (
-	"github.com/kainhuck/signalix/internal/ports"
+	"github.com/kainhuck/signalix/internal/app/instrument"
 )
 
 // Option 决策引擎可选配置。
@@ -16,11 +16,11 @@ func WithDefaultSizeDivisor(divisor int) Option {
 	}
 }
 
-// WithExchange 用于加载合约元数据（quanto_multiplier 等）。
-func WithExchange(ex ports.Exchange) Option {
+// WithContractMetaLookup 注入进程内合约元数据 lookup（Engine Registry）。
+func WithContractMetaLookup(lookup instrument.ContractMetaLookup) Option {
 	return func(de *DecisionEngine) {
 		if de != nil {
-			de.exchange = ex
+			de.metaLookup = lookup
 		}
 	}
 }

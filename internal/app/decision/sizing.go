@@ -33,55 +33,15 @@ func tickerMarkPrice(t *perp.TickerSnapshot) (decimal.Decimal, error) {
 	return decimal.Zero, fmt.Errorf("no positive mark/last price for %s", t.Contract)
 }
 
-func (de *DecisionEngine) ensureContractMeta(ctx context.Context) error {
-	de.metaMu.RLock()
-	ready := de.metaLoaded
-	de.metaMu.RUnlock()
-	if ready {
-		return nil
-	}
-	if de.exchange == nil {
-		return fmt.Errorf("exchange not configured for contract meta")
-	}
-	list, err := de.exchange.ListContractMeta(ctx)
-	if err != nil {
-		return err
-	}
-	m := make(map[perp.Contract]*perp.ContractMeta, len(list))
-	for _, meta := range list {
-		if meta == nil || meta.Contract == "" {
-			continue
-		}
-		cp := *meta
-		m[meta.Contract] = &cp
-	}
-	de.metaMu.Lock()
-	de.metaByContract = m
-	de.metaLoaded = true
-	de.metaMu.Unlock()
-	return nil
-}
-
-func (de *DecisionEngine) contractMeta(contract perp.Contract) (*perp.ContractMeta, error) {
-	de.metaMu.RLock()
-	meta, ok := de.metaByContract[contract]
-	de.metaMu.RUnlock()
-	if !ok || meta == nil {
-		return nil, fmt.Errorf("contract meta not found for %s", contract)
-	}
-	cp := *meta
-	return &cp, nil
-}
-
 // notionalUSDTToContracts 将 USDT 名义金额换算为 Gate 永续下单张数。
 func (de *DecisionEngine) notionalUSDTToContracts(ctx context.Context, contract perp.Contract, notional decimal.Decimal) (decimal.Decimal, error) {
 	if notional.IsZero() {
 		return decimal.Zero, nil
 	}
-	if err := de.ensureContractMeta(ctx); err != nil {
-		return decimal.Zero, err
+	if de.metaLookup == nil {
+		return decimal.Zero, fmt.Errorf("contract meta lookup not configured")
 	}
-	meta, err := de.contractMeta(contract)
+	meta, err := de.metaLookup.ContractMeta(contract)
 	if err != nil {
 		return decimal.Zero, err
 	}
