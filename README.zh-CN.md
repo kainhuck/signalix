@@ -223,7 +223,6 @@ signalix/
 以下能力在配置或文档中已有占位，**尚未完全接入**，使用前请阅读 [config.example.toml](config.example.toml) 注释：
 
 - HTTP 网关（UI 对接层，独立于本仓库）
-- 交易所 REST `rate_limit` 配置项尚未接入限流器
 
 全局风控（`[risk]`）已支持锁仓、日亏、回撤、杠杆、单合约名义上限等；策略可在 `config.yaml` 可选 `risk` 段配置更紧限额（EH-4）。Kill Switch 见 gRPC；策略崩溃后可在 `[strategies.restart]` 配置自动重启。
 

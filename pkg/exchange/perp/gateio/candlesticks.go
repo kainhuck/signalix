@@ -61,6 +61,9 @@ func (c *Client) ListCandlesticks(ctx context.Context, q *perp.ListCandlesticksQ
 		opts.Limit = optional.NewInt32(int32(limit))
 	}
 
+	if err := c.waitREST(ctx); err != nil {
+		return nil, err
+	}
 	rows, _, err := c.gate.FuturesApi.ListFuturesCandlesticks(
 		c.publicCtx(ctx), c.settleStr(), gateContract, opts)
 	if err != nil {

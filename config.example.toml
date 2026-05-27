@@ -62,6 +62,7 @@ user_id = ""
 settle = "usdt"
 # 覆盖 REST 根路径（留空则 paper=true 时用官方测试网默认地址）
 # rest_base_path = "https://api-testnet.gateapi.io/api/v4"
+# REST 全局限速：每秒请求数；0 = 禁用（仅 Gate REST，不含 WebSocket）
 rate_limit = 10
 max_retries = 3
 # 公共 WS 事件通道容量

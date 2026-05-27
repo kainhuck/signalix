@@ -41,6 +41,7 @@ func main() {
 		perpgate.WithUserID(ex.UserID),
 		perpgate.WithLogger(logger.With("exchange", "gateio")),
 		perpgate.WithChannelBuffers(ex.PublicWSBuffer, ex.PrivateWSBuffer),
+		perpgate.WithRateLimit(ex.RateLimit),
 	}
 	if ex.RESTBasePath != "" {
 		gateOpts = append(gateOpts, perpgate.WithRESTBasePath(ex.RESTBasePath))

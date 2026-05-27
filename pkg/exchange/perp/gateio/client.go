@@ -93,11 +93,17 @@ func (c *Client) Ping(ctx context.Context) error {
 	if err := c.requireREST(); err != nil {
 		return err
 	}
+	if err := c.waitREST(ctx); err != nil {
+		return err
+	}
 	_, _, err := c.gate.FuturesApi.ListFuturesAccounts(c.authCtx(ctx), c.settleStr())
 	return mapGateAPIError(err)
 }
 
 func (c *Client) connectREST(ctx context.Context) error {
+	if err := c.waitREST(ctx); err != nil {
+		return err
+	}
 	if _, _, err := c.gate.FuturesApi.ListFuturesAccounts(c.authCtx(ctx), c.settleStr()); err != nil {
 		return mapGateAPIError(err)
 	}
@@ -106,6 +112,9 @@ func (c *Client) connectREST(ctx context.Context) error {
 	offset := int32(0)
 	const page = int32(100)
 	for {
+		if err := c.waitREST(ctx); err != nil {
+			return err
+		}
 		contractPage, _, err := c.gate.FuturesApi.ListFuturesContracts(
 			c.publicCtx(ctx), c.settleStr(), &gateapi.ListFuturesContractsOpts{
 				Limit: optional.NewInt32(page), Offset: optional.NewInt32(offset),
@@ -222,6 +231,9 @@ func (c *Client) Place(ctx context.Context, req *perp.PlaceRequest) (*perp.Order
 		fo.Text = normalizeClientOrderID(cid)
 	}
 
+	if err := c.waitREST(ctx); err != nil {
+		return nil, err
+	}
 	out, _, err := c.gate.FuturesApi.CreateFuturesOrder(c.authCtx(ctx), c.settleStr(), fo, nil)
 	if err != nil {
 		return nil, mapGateAPIError(err)
@@ -241,6 +253,9 @@ func (c *Client) Cancel(ctx context.Context, p *perp.CancelParams) error {
 	if id == "" {
 		return perp.NewError(perp.ErrInvalidParameter, "OrderID or ClientOrderID required", nil)
 	}
+	if err := c.waitREST(ctx); err != nil {
+		return err
+	}
 	_, _, err := c.gate.FuturesApi.CancelFuturesOrder(c.authCtx(ctx), c.settleStr(), id, nil)
 	return mapGateAPIError(err)
 }
@@ -253,6 +268,9 @@ func (c *Client) GetOrder(ctx context.Context, contract perp.Contract, orderID s
 	id := strings.TrimSpace(orderID)
 	if id == "" {
 		return nil, perp.NewError(perp.ErrInvalidParameter, "orderID required", nil)
+	}
+	if err := c.waitREST(ctx); err != nil {
+		return nil, err
 	}
 	fo, _, err := c.gate.FuturesApi.GetFuturesOrder(c.authCtx(ctx), c.settleStr(), id)
 	if err != nil {
@@ -271,6 +289,9 @@ func (c *Client) Positions(ctx context.Context) ([]*perp.PositionSnapshot, error
 		return nil, err
 	}
 	hold := true
+	if err := c.waitREST(ctx); err != nil {
+		return nil, err
+	}
 	list, _, err := c.gate.FuturesApi.ListPositions(c.authCtx(ctx), c.settleStr(), &gateapi.ListPositionsOpts{
 		Holding: optional.NewBool(hold),
 	})
@@ -297,6 +318,9 @@ func (c *Client) Position(ctx context.Context, contract perp.Contract) (*perp.Po
 		return nil, err
 	}
 	ct := toGateContract(contract.Canonical())
+	if err := c.waitREST(ctx); err != nil {
+		return nil, err
+	}
 	pos, _, err := c.gate.FuturesApi.GetPosition(c.authCtx(ctx), c.settleStr(), ct)
 	if err != nil {
 		return nil, mapGateAPIError(err)
@@ -307,6 +331,9 @@ func (c *Client) Position(ctx context.Context, contract perp.Contract) (*perp.Po
 // Balance 结算币种账户视图。
 func (c *Client) Balance(ctx context.Context) (*perp.BalanceView, error) {
 	if err := c.requireREST(); err != nil {
+		return nil, err
+	}
+	if err := c.waitREST(ctx); err != nil {
 		return nil, err
 	}
 	ac, _, err := c.gate.FuturesApi.ListFuturesAccounts(c.authCtx(ctx), c.settleStr())

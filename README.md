@@ -220,7 +220,6 @@ signalix/
 These are partially stubbed in config or docs — read [config.example.toml](config.example.toml) before relying on them:
 
 - HTTP gateway (UI layer, separate from this repo)
-- Exchange REST `rate_limit` config is not wired to a limiter yet
 
 Global risk rules in `[risk]` include position lock, daily loss, drawdown, leverage, and per-contract notional limits. Auto-restart is configured via `[strategies.restart]`.
 
