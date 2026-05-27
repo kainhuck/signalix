@@ -7,6 +7,7 @@ import (
 	"sync/atomic"
 	"time"
 
+	"github.com/kainhuck/signalix/internal/app/instrument"
 	"github.com/kainhuck/signalix/internal/app/projection"
 	"github.com/kainhuck/signalix/internal/models"
 	"github.com/kainhuck/signalix/internal/ports"
@@ -16,11 +17,12 @@ import (
 
 // ExecutionEngine 执行引擎（OMS：单 goroutine 串行处理提交、撤单、同步与用户流更新）。
 type ExecutionEngine struct {
-	exchange ports.Exchange
-	acctProj *projection.AccountProjection
-	store    ports.OrderStore
-	orders   map[string]*models.Order // order ID -> order
-	mu       sync.RWMutex
+	exchange   ports.Exchange
+	acctProj   *projection.AccountProjection
+	store      ports.OrderStore
+	metaLookup instrument.ContractMetaLookup
+	orders     map[string]*models.Order // order ID -> order
+	mu         sync.RWMutex
 
 	orderUpdateCh chan *models.Order
 	cmdCh         chan *omsCmd
@@ -286,6 +288,11 @@ func (e *ExecutionEngine) SubmitOrder(ctx context.Context, order *models.Order) 
 
 // submitWithRetry 仅在 OMS run goroutine 内调用。
 func (e *ExecutionEngine) submitWithRetry(ctx context.Context, order *models.Order) error {
+	if err := e.validateOrderForPlace(order); err != nil {
+		e.handleSubmitError(order, err)
+		return err
+	}
+
 	var lastErr error
 
 	for attempt := 0; attempt <= e.maxRetries; attempt++ {

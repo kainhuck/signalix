@@ -188,6 +188,7 @@ func NewEngine(strategyDir string, exchange ports.Exchange, build BuildParams, o
 	e.executionEngine = oms.NewExecutionEngine(exchange, proj, e.store,
 		oms.WithChannelBuffers(omsBuf, cmdBuf),
 		oms.WithMaxRetries(omsRetries),
+		oms.WithContractMetaLookup(reg),
 	)
 
 	return e

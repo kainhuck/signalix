@@ -229,7 +229,7 @@ flowchart LR
 | Kill Switch | 已实现 | 不持久化；拒开仓、允 Flat/撤单 |
 | 策略 IPC `get_ticker` | 已实现 | 读 tickerCache；与 gRPC `GetTicker` 同源 |
 | HTTP 网关 | 无 | 独立服务，REST → gRPC |
-| 合约元数据 | 无缓存 | 下单前校验 |
+| 合约元数据 | **已实现** | Connect 后 Registry；Decision sizing + OMS Place 前校验 → [spec-driven-dev/archive/contract-metadata-cache/](../spec-driven-dev/archive/contract-metadata-cache/) |
 | REST rate_limit | 已实现 | `exchange.rate_limit` req/s → gateio `waitREST` |
 
 ---

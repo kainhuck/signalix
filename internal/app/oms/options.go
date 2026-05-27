@@ -3,6 +3,7 @@ package oms
 import (
 	"time"
 
+	"github.com/kainhuck/signalix/internal/app/instrument"
 	"github.com/kainhuck/signalix/internal/models"
 )
 
@@ -38,6 +39,15 @@ func WithRetryInterval(d time.Duration) Option {
 	return func(e *ExecutionEngine) {
 		if e != nil && d > 0 {
 			e.retryInterval = d
+		}
+	}
+}
+
+// WithContractMetaLookup 注入进程内合约元数据 lookup（Place 前校验）。
+func WithContractMetaLookup(lookup instrument.ContractMetaLookup) Option {
+	return func(e *ExecutionEngine) {
+		if e != nil {
+			e.metaLookup = lookup
 		}
 	}
 }

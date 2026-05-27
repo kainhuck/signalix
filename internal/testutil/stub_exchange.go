@@ -20,6 +20,7 @@ type StubExchange struct {
 	PositionErr      error
 	PositionsList    []*perp.PositionSnapshot
 	ContractMetas    []*perp.ContractMeta
+	PlaceCalls       int
 
 	// GetOrderHook 若非 nil 则替代默认 GetOrder（默认可返回 ORDER_NOT_FOUND）。
 	GetOrderHook func(ctx context.Context, contract perp.Contract, orderID string) (*perp.OrderSnapshot, error)
@@ -71,6 +72,9 @@ func (s *StubExchange) PublicEvents() <-chan *perp.PublicEvent {
 }
 
 func (s *StubExchange) Place(ctx context.Context, req *perp.PlaceRequest) (*perp.OrderSnapshot, error) {
+	s.Mu.Lock()
+	s.PlaceCalls++
+	s.Mu.Unlock()
 	return &perp.OrderSnapshot{
 		ExchangeOrderID: "stub-ex-1",
 		Contract:        req.Contract,
