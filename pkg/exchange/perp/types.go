@@ -149,56 +149,56 @@ type (
 
 	// BalanceUpdateSnapshot 余额变更推送（Gate futures.balances）。
 	BalanceUpdateSnapshot struct {
-		Currency   string    `json:"currency"`
-		Balance    string    `json:"balance"`
-		Change     string    `json:"change"`
-		ChangeType string    `json:"change_type"`
-		Text       string    `json:"text"`
-		UserID     string    `json:"user_id"`
-		UpdatedAt  time.Time `json:"updated_at"`
+		Currency   string
+		Balance    string
+		Change     string
+		ChangeType string
+		Text       string
+		UserID     string
+		UpdatedAt  time.Time
 	}
 
 	// TradeSnapshot 用户私有成交（Gate futures.usertrades）。
 	TradeSnapshot struct {
-		TradeID         string    `json:"trade_id"`
-		ExchangeOrderID string    `json:"exchange_order_id"`
-		Contract        Contract  `json:"contract"`
-		Side            Side      `json:"side"`
-		Size            string    `json:"size"`
-		Price           string    `json:"price"`
-		Role            string    `json:"role"`
-		Fee             string    `json:"fee"`
-		PointFee        string    `json:"point_fee"`
-		Text            string    `json:"text"`
-		CreatedAt       time.Time `json:"created_at"`
+		TradeID         string
+		ExchangeOrderID string
+		Contract        Contract
+		Side            Side
+		Size            string
+		Price           string
+		Role            string
+		Fee             string
+		PointFee        string
+		Text            string
+		CreatedAt       time.Time
 	}
 
 	// OrderSnapshot 订单快照。
 	OrderSnapshot struct {
-		OrderID         string      `json:"order_id"`
-		ExchangeOrderID string      `json:"exchange_order_id"`
-		Contract        Contract    `json:"contract"`
-		Side            Side        `json:"side"`
-		Type            OrderType   `json:"type"`
-		Size            string      `json:"size"`
-		Price           string      `json:"price"`
-		FilledSize      string      `json:"filled_size"`
-		AvgPrice        string      `json:"avg_price"`
-		Status          OrderStatus `json:"status"`
-		CreatedAt       time.Time   `json:"created_at"`
-		UpdatedAt       time.Time   `json:"updated_at"`
+		OrderID         string
+		ExchangeOrderID string
+		Contract        Contract
+		Side            Side
+		Type            OrderType
+		Size            string
+		Price           string
+		FilledSize      string
+		AvgPrice        string
+		Status          OrderStatus
+		CreatedAt       time.Time
+		UpdatedAt       time.Time
 	}
 
 	// PositionSnapshot 持仓快照。
 	PositionSnapshot struct {
-		Contract      Contract     `json:"contract"`
-		Side          PositionSide `json:"side"`
-		Size          string       `json:"size"`
-		EntryPrice    string       `json:"entry_price"`
-		MarkPrice     string       `json:"mark_price"`
-		UnrealizedPnl string       `json:"unrealized_pnl"`
-		Leverage      int          `json:"leverage"`
-		UpdatedAt     time.Time    `json:"updated_at"`
+		Contract      Contract
+		Side          PositionSide
+		Size          string
+		EntryPrice    string
+		MarkPrice     string
+		UnrealizedPnl string
+		Leverage      int
+		UpdatedAt     time.Time
 	}
 )
 
@@ -221,32 +221,32 @@ type (
 
 	// TickerSnapshot ticker 聚合。
 	TickerSnapshot struct {
-		Contract        Contract `json:"contract"`
-		Last            string   `json:"last"`
-		MarkPrice       string   `json:"mark_price"`
-		IndexPrice      string   `json:"index_price"`
-		FundingRate     string   `json:"funding_rate"`
-		ChangePct24h    string   `json:"change_pct_24h"`
-		Volume24h       string   `json:"volume_24h"`
-		Volume24hBase   string   `json:"volume_24h_base"`
-		Volume24hQuote  string   `json:"volume_24h_quote"`
-		OpenInterest    string   `json:"open_interest"`
-		Low24h          string   `json:"low_24h"`
-		High24h         string   `json:"high_24h"`
-		TimestampMillis int64    `json:"timestamp_millis"`
+		Contract        Contract
+		Last            string
+		MarkPrice       string
+		IndexPrice      string
+		FundingRate     string
+		ChangePct24h    string
+		Volume24h       string
+		Volume24hBase   string
+		Volume24hQuote  string
+		OpenInterest    string
+		Low24h          string
+		High24h         string
+		TimestampMillis int64
 	}
 
-	// CandlestickSnapshot K 线快照（与 Gate futures.candlesticks 推送字段对齐）。
+	// CandlestickSnapshot K 线快照（字段语义与 Gate futures.candlesticks 推送对齐）。
 	CandlestickSnapshot struct {
-		Contract     Contract `json:"contract"`
-		Interval     string   `json:"interval"` // 10s, 1m, 5m, 15m, 30m, 1h, 4h, 8h, 1d, 7d
-		Open         string   `json:"open"`
-		High         string   `json:"high"`
-		Low          string   `json:"low"`
-		Close        string   `json:"close"`
-		Volume       string   `json:"volume"`
-		VolumeBase   string   `json:"volume_base"`
-		TimestampSec int64    `json:"timestamp_sec"`
-		WindowClosed bool     `json:"window_closed"`
+		Contract     Contract
+		Interval     string // 10s, 1m, 5m, 15m, 30m, 1h, 4h, 8h, 1d, 7d
+		Open         string
+		High         string
+		Low          string
+		Close        string
+		Volume       string
+		VolumeBase   string
+		TimestampSec int64
+		WindowClosed bool
 	}
 )
