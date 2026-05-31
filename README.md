@@ -115,6 +115,9 @@ signalix strategy create my_strategy
 
 # Shell completion (bash)
 source <(signalix completion bash)
+
+# Shell completion (zsh)
+source <(signalix completion zsh)
 ```
 
 See `signalix --help` for the full command tree. Default output is **table**; use `--output json|yaml` for machine-readable output.

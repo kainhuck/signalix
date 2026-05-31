@@ -115,6 +115,9 @@ signalix strategy create my_strategy
 
 # Shell 补全（bash）
 source <(signalix completion bash)
+
+# Shell 补全 (zsh)
+source <(signalix completion zsh)
 ```
 
 完整命令树见 `signalix --help`。默认输出为 **table**；可用 `--output json|yaml` 获取机器可读格式。
