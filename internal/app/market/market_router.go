@@ -92,8 +92,8 @@ func (mr *MarketRouter) Stop() error {
 	return nil
 }
 
-// Subscribe 订阅 K 线；引擎始终订 ticker 写缓存，subscribeTicker 为 true 时额外向策略推送 tick。
-func (mr *MarketRouter) Subscribe(strategyName string, symbols []perp.Contract, interval string, subscribeTicker bool) error {
+// SubscribeContracts 订阅 K 线（perp 合约）；引擎始终订 ticker 写缓存，subscribeTicker 为 true 时额外向策略推送 tick。
+func (mr *MarketRouter) SubscribeContracts(strategyName string, symbols []perp.Contract, interval string, subscribeTicker bool) error {
 	mr.subMu.Lock()
 	defer mr.subMu.Unlock()
 
@@ -155,8 +155,8 @@ func (mr *MarketRouter) Subscribe(strategyName string, symbols []perp.Contract, 
 	return nil
 }
 
-// Unsubscribe 取消订阅（需与 Subscribe 使用相同 interval）。
-func (mr *MarketRouter) Unsubscribe(strategyName string, symbols []perp.Contract, interval string) error {
+// UnsubscribeContracts 取消订阅（需与 SubscribeContracts 使用相同 interval）。
+func (mr *MarketRouter) UnsubscribeContracts(strategyName string, symbols []perp.Contract, interval string) error {
 	mr.subMu.Lock()
 	defer mr.subMu.Unlock()
 
@@ -319,7 +319,7 @@ func (mr *MarketRouter) onTicker(ev *perp.PublicEvent) {
 		mr.emit(MarketUpdate{
 			StrategyName: strategyName,
 			Kind:         MarketUpdateTicker,
-			Ticker:       ticker,
+			Ticker:       models.TickerFromSnapshot(ticker),
 		})
 	}
 }
@@ -355,7 +355,7 @@ func (mr *MarketRouter) onCandlestick(ev *perp.PublicEvent) {
 		mr.emit(MarketUpdate{
 			StrategyName: strategyName,
 			Kind:         MarketUpdateKline,
-			Kline:        snap,
+			Kline:        models.KlineFromSnapshot(snap),
 		})
 	}
 }

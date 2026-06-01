@@ -75,12 +75,14 @@ func TestHandleProcessExitNoDoubleHandle(t *testing.T) {
 	ctx, cancel := context.WithCancel(context.Background())
 	defer cancel()
 
+	router := market.NewMarketRouter(nil)
 	e := &Engine{
 		ctx:             ctx,
 		restartCfg:      config.RestartSettings{Enabled: false, CrashWindow: time.Minute, MaxCrashes: 3},
 		crashTracker:    newCrashTracker(),
 		strategyProcess: map[string]strategy.StrategyRuntime{},
-		router:          market.NewMarketRouter(nil),
+		feed:            router,
+		router:          router,
 	}
 
 	sp := &recordingStrategyRuntime{name: "s1", ctx: ctx}

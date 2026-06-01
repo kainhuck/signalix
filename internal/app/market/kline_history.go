@@ -1,14 +1,54 @@
 package market
 
 import (
+	"context"
 	"sort"
 
 	"github.com/kainhuck/signalix/internal/models"
 	"github.com/kainhuck/signalix/pkg/exchange/perp"
+	"github.com/kainhuck/signalix/pkg/logger"
 )
 
 // DefaultKlineHistoryMax 单 (contract, interval) 缓冲上限（与 Gate REST 上限一致）。
 const DefaultKlineHistoryMax = 2000
+
+// WarmupHistory 拉取 REST 历史 K 线并灌入缓冲，返回中性 HistoryPayload（满足 MarketFeed）。
+// bars <= 0 或无可用数据时返回 (nil, nil)。
+func (mr *MarketRouter) WarmupHistory(ctx context.Context, req SubscribeRequest, bars int) (*models.HistoryPayload, error) {
+	if bars <= 0 {
+		return nil, nil
+	}
+	series := make([]*models.KlineSeries, 0, len(req.Symbols))
+	for _, sym := range req.Symbols {
+		contract := perp.Contract(sym)
+		snaps, err := mr.exchange.ListCandlesticks(ctx, &perp.ListCandlesticksQuery{
+			Contract: contract,
+			Interval: req.Interval,
+			Limit:    bars,
+		})
+		if err != nil {
+			logger.ErrorContext(ctx, "list candlesticks for history failed",
+				logger.String("strategy", req.Strategy),
+				logger.String("contract", string(contract)),
+				logger.String("interval", req.Interval),
+				logger.Any("error", err))
+			continue
+		}
+		barList := models.KlinesFromSnapshots(snaps)
+		if len(barList) == 0 {
+			continue
+		}
+		series = append(series, &models.KlineSeries{
+			Contract: contract,
+			Bars:     barList,
+		})
+	}
+	if len(series) == 0 {
+		return nil, nil
+	}
+	mr.IngestHistoryKlines(req.Interval, series)
+	return &models.HistoryPayload{Interval: req.Interval, Series: series}, nil
+}
 
 func (mr *MarketRouter) appendClosedKline(snap *perp.CandlestickSnapshot) {
 	if snap == nil || !snap.WindowClosed {

@@ -40,8 +40,9 @@ type Engine struct {
 
 	// 依赖
 	exchange           ports.Exchange
+	feed               market.MarketFeed
+	router             *market.MarketRouter // 过渡：decision TickerLookup + RPC 缓存读取
 	loader             *strategy.StrategyLoader
-	router             *market.MarketRouter
 	decisionEngine     *decision.DecisionEngine
 	executionEngine    *oms.ExecutionEngine
 	instrumentRegistry *instrument.Registry
@@ -148,6 +149,7 @@ func NewEngine(strategyDir string, exchange ports.Exchange, build BuildParams, o
 	e := &Engine{
 		strategyProcess:     make(map[string]strategy.StrategyRuntime),
 		exchange:            exchange,
+		feed:                router,
 		loader:              loader,
 		router:              router,
 		instrumentRegistry:  reg,
@@ -346,17 +348,12 @@ func (e *Engine) Start() error {
 func (e *Engine) dispatchMarket() {
 	for {
 		select {
-		case marketUpdate := <-e.router.GetMarketChannel():
+		case marketUpdate := <-e.feed.Updates():
 			switch marketUpdate.Kind {
 			case market.MarketUpdateTicker:
 				e.dispatchTickerUpdate(marketUpdate)
 			case market.MarketUpdateKline:
 				e.dispatchKlineUpdate(marketUpdate)
-			default:
-				if marketUpdate.Ticker != nil {
-					marketUpdate.Kind = market.MarketUpdateTicker
-					e.dispatchTickerUpdate(marketUpdate)
-				}
 			}
 		case <-e.ctx.Done():
 			return
@@ -371,7 +368,7 @@ func (e *Engine) dispatchTickerUpdate(marketUpdate market.MarketUpdate) {
 		return
 	}
 
-	if err := e.SendTick(marketUpdate.StrategyName, models.TickerFromSnapshot(ticker), traceID); err != nil {
+	if err := e.SendTick(marketUpdate.StrategyName, ticker, traceID); err != nil {
 		logger.ErrorContext(e.ctx, "failed to send tick",
 			logger.String("strategy", marketUpdate.StrategyName),
 			logger.Any("error", err),
@@ -386,12 +383,11 @@ func (e *Engine) dispatchTickerUpdate(marketUpdate market.MarketUpdate) {
 }
 
 func (e *Engine) dispatchKlineUpdate(marketUpdate market.MarketUpdate) {
-	snap := marketUpdate.Kline
-	if snap == nil || snap.Contract == "" {
+	bar := marketUpdate.Kline
+	if bar == nil || bar.Contract == "" {
 		return
 	}
 	traceID := uuid.New().String()
-	bar := models.KlineFromSnapshot(snap)
 	if err := e.SendKline(marketUpdate.StrategyName, bar, traceID); err != nil {
 		logger.ErrorContext(e.ctx, "failed to send kline",
 			logger.String("strategy", marketUpdate.StrategyName),
@@ -401,10 +397,10 @@ func (e *Engine) dispatchKlineUpdate(marketUpdate market.MarketUpdate) {
 	}
 	logger.DebugContext(e.ctx, "send kline success",
 		logger.String("strategy", marketUpdate.StrategyName),
-		logger.String("contract", string(snap.Contract)),
-		logger.String("interval", snap.Interval),
-		logger.String("close", snap.Close),
-		logger.Int64("timestamp_sec", snap.TimestampSec),
+		logger.String("contract", string(bar.Contract)),
+		logger.String("interval", bar.Interval),
+		logger.String("close", bar.Close),
+		logger.Int64("timestamp_sec", bar.TimestampSec),
 		logger.String("trace", traceID))
 }
 
@@ -577,7 +573,12 @@ func (e *Engine) launchStrategy(st *strategy.Strategy) error {
 	if err != nil {
 		return fmt.Errorf("strategy %q: %w", st.Name, err)
 	}
-	if err := e.router.Subscribe(st.Name, st.Symbols, interval, st.SubscribeTicker); err != nil {
+	if err := e.feed.Subscribe(e.ctx, market.SubscribeRequest{
+		Strategy:   st.Name,
+		Symbols:    contractsToStrings(st.Symbols),
+		Interval:   interval,
+		PushTicker: st.SubscribeTicker,
+	}); err != nil {
 		return fmt.Errorf("failed to subscribe strategy %q: %v", st.Name, err)
 	}
 
@@ -637,57 +638,42 @@ func (e *Engine) warmupHistory(st *strategy.Strategy, sp strategy.StrategyRuntim
 		return nil
 	}
 
-	series := make([]*models.KlineSeries, 0, len(st.Symbols))
-	for _, sym := range st.Symbols {
-		snaps, err := e.exchange.ListCandlesticks(e.ctx, &perp.ListCandlesticksQuery{
-			Contract: sym,
-			Interval: interval,
-			Limit:    st.HistoryBars,
-		})
-		if err != nil {
-			logger.ErrorContext(e.ctx, "list candlesticks for history failed",
-				logger.String("strategy", st.Name),
-				logger.String("contract", string(sym)),
-				logger.String("interval", interval),
-				logger.Any("error", err))
-			continue
-		}
-		bars := models.KlinesFromSnapshots(snaps)
-		if len(bars) == 0 {
-			continue
-		}
-		series = append(series, &models.KlineSeries{
-			Contract: sym,
-			Bars:     bars,
-		})
+	payload, err := e.feed.WarmupHistory(e.ctx, market.SubscribeRequest{
+		Strategy: st.Name,
+		Symbols:  contractsToStrings(st.Symbols),
+		Interval: interval,
+	}, st.HistoryBars)
+	if err != nil {
+		return err
 	}
-
-	if len(series) == 0 {
+	if payload == nil {
 		logger.WarnContext(e.ctx, "history warmup skipped: no bars",
 			logger.String("strategy", st.Name))
 		return nil
 	}
-
-	payload := &models.HistoryPayload{
-		Interval: interval,
-		Series:   series,
-	}
-	e.router.IngestHistoryKlines(interval, series)
 
 	if err := sp.SendHistory(payload); err != nil {
 		return err
 	}
 
 	barCount := 0
-	for _, s := range series {
+	for _, s := range payload.Series {
 		barCount += len(s.Bars)
 	}
 	logger.InfoContext(e.ctx, "send history success",
 		logger.String("strategy", st.Name),
 		logger.String("interval", interval),
-		logger.Int("series", len(series)),
+		logger.Int("series", len(payload.Series)),
 		logger.Int("bars", barCount))
 	return nil
+}
+
+func contractsToStrings(cs []perp.Contract) []string {
+	out := make([]string, 0, len(cs))
+	for _, c := range cs {
+		out = append(out, string(c))
+	}
+	return out
 }
 
 // StopStrategy 停止策略
@@ -700,7 +686,7 @@ func (e *Engine) StopStrategy(name string) error {
 	}
 	delete(e.strategyProcess, name)
 
-	_ = e.router.UnsubscribeAll(name)
+	_ = e.feed.Unsubscribe(name)
 	e.removeStrategyInterval(name)
 
 	e.processMu.Unlock()
@@ -916,7 +902,7 @@ func (e *Engine) handleProcessExit(sp strategy.StrategyRuntime) {
 	_, stillRegistered := e.strategyProcess[name]
 	if stillRegistered {
 		delete(e.strategyProcess, name)
-		_ = e.router.UnsubscribeAll(name)
+		_ = e.feed.Unsubscribe(name)
 	}
 	e.processMu.Unlock()
 

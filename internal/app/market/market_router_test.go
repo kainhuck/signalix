@@ -89,7 +89,7 @@ func TestSubscribeWithoutTicker(t *testing.T) {
 
 	ex := newRecordingExchange()
 	mr := NewMarketRouter(ex)
-	if err := mr.Subscribe("s1", []perp.Contract{"BTC/USDT"}, "5m", false); err != nil {
+	if err := mr.SubscribeContracts("s1", []perp.Contract{"BTC/USDT"}, "5m", false); err != nil {
 		t.Fatal(err)
 	}
 	if got := ex.tickerSubscribeCount(); got != 1 {
@@ -105,7 +105,7 @@ func TestSubscribeWithoutTicker(t *testing.T) {
 	})
 	mr.OnPublicEvent(tick)
 	select {
-	case <-mr.GetMarketChannel():
+	case <-mr.Updates():
 		t.Fatal("expected no tick fan-out when subscribe_ticker=false")
 	default:
 	}
@@ -119,7 +119,7 @@ func TestSubscribeWithTickerPushesToStrategy(t *testing.T) {
 
 	ex := newRecordingExchange()
 	mr := NewMarketRouter(ex, WithBufferSize(4))
-	if err := mr.Subscribe("s1", []perp.Contract{"BTC/USDT"}, "5m", true); err != nil {
+	if err := mr.SubscribeContracts("s1", []perp.Contract{"BTC/USDT"}, "5m", true); err != nil {
 		t.Fatal(err)
 	}
 	tick, _ := perp.NewPublicEvent(perp.PublicTicker, &perp.TickerSnapshot{
@@ -128,7 +128,7 @@ func TestSubscribeWithTickerPushesToStrategy(t *testing.T) {
 	})
 	mr.OnPublicEvent(tick)
 	select {
-	case u := <-mr.GetMarketChannel():
+	case u := <-mr.Updates():
 		if u.Kind != MarketUpdateTicker || u.StrategyName != "s1" {
 			t.Fatalf("unexpected update: %+v", u)
 		}
@@ -143,10 +143,10 @@ func TestSubscribeCandlesticksDedup(t *testing.T) {
 	ex := newRecordingExchange()
 	mr := NewMarketRouter(ex)
 
-	if err := mr.Subscribe("s1", []perp.Contract{"BTC/USDT"}, "5m", true); err != nil {
+	if err := mr.SubscribeContracts("s1", []perp.Contract{"BTC/USDT"}, "5m", true); err != nil {
 		t.Fatal(err)
 	}
-	if err := mr.Subscribe("s2", []perp.Contract{"BTC/USDT"}, "5m", true); err != nil {
+	if err := mr.SubscribeContracts("s2", []perp.Contract{"BTC/USDT"}, "5m", true); err != nil {
 		t.Fatal(err)
 	}
 	if got := ex.candlestickSubscribeCount(); got != 1 {
@@ -159,7 +159,7 @@ func TestOnCandlestickClosedOnlyFanout(t *testing.T) {
 
 	ex := newRecordingExchange()
 	mr := NewMarketRouter(ex, WithBufferSize(8))
-	if err := mr.Subscribe("s1", []perp.Contract{"BTC/USDT"}, "1m", true); err != nil {
+	if err := mr.SubscribeContracts("s1", []perp.Contract{"BTC/USDT"}, "1m", true); err != nil {
 		t.Fatal(err)
 	}
 
@@ -183,7 +183,7 @@ func TestOnCandlestickClosedOnlyFanout(t *testing.T) {
 drain:
 	for {
 		select {
-		case u := <-mr.GetMarketChannel():
+		case u := <-mr.Updates():
 			updates = append(updates, u)
 		default:
 			break drain
@@ -206,7 +206,7 @@ func TestUnsubscribeAllClearsCandleSubs(t *testing.T) {
 
 	ex := newRecordingExchange()
 	mr := NewMarketRouter(ex)
-	if err := mr.Subscribe("s1", []perp.Contract{"ETH/USDT"}, "5m", true); err != nil {
+	if err := mr.SubscribeContracts("s1", []perp.Contract{"ETH/USDT"}, "5m", true); err != nil {
 		t.Fatal(err)
 	}
 	if err := mr.UnsubscribeAll("s1"); err != nil {
@@ -221,7 +221,7 @@ func TestUnsubscribeAllClearsCandleSubs(t *testing.T) {
 	mr.OnPublicEvent(closed)
 
 	select {
-	case u := <-mr.GetMarketChannel():
+	case u := <-mr.Updates():
 		t.Fatalf("unexpected update after unsubscribe: %+v", u)
 	default:
 	}

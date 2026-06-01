@@ -8,7 +8,6 @@ import (
 	"github.com/kainhuck/signalix/internal/app/market"
 	"github.com/kainhuck/signalix/internal/app/strategy"
 	"github.com/kainhuck/signalix/internal/models"
-	"github.com/kainhuck/signalix/pkg/exchange/perp"
 )
 
 type recordingStrategyRuntime struct {
@@ -56,7 +55,7 @@ func TestDispatchKlineUpdateSendKline(t *testing.T) {
 	e.dispatchKlineUpdate(market.MarketUpdate{
 		StrategyName: "s1",
 		Kind:         market.MarketUpdateKline,
-		Kline: &perp.CandlestickSnapshot{
+		Kline: &models.Kline{
 			Contract:     "BTC/USDT",
 			Interval:     "1m",
 			Close:        "100",

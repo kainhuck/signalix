@@ -79,10 +79,12 @@ func TestWarmupHistorySendHistory(t *testing.T) {
 		},
 	}
 	rec := &historyRuntime{recordingStrategyRuntime: recordingStrategyRuntime{name: "s1", ctx: context.Background()}}
+	router := market.NewMarketRouter(ex)
 	e := &Engine{
 		ctx:      context.Background(),
 		exchange: ex,
-		router:   market.NewMarketRouter(ex),
+		feed:     router,
+		router:   router,
 	}
 	st := &strategy.Strategy{
 		StrategyConfig: strategy.StrategyConfig{
