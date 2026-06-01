@@ -20,16 +20,16 @@ type Input struct {
 	OpensExposure      bool
 	IncreasingExposure bool
 
-	OrderNotionalUSDT        decimal.Decimal
-	PositionNotionalUSDT     decimal.Decimal
-	PostPositionNotionalUSDT decimal.Decimal
-	TotalExposureUSDT        decimal.Decimal
-	PostTotalExposureUSDT    decimal.Decimal
-	AccountEquityUSDT        decimal.Decimal
-	DailyLossUSDT            decimal.Decimal
-	DrawdownRatio            decimal.Decimal
-	PostLeverage             decimal.Decimal
-	NotionalUSDTPerContract  decimal.Decimal
+	OrderNotional        decimal.Decimal
+	PositionNotional     decimal.Decimal
+	PostPositionNotional decimal.Decimal
+	TotalExposure        decimal.Decimal
+	PostTotalExposure    decimal.Decimal
+	AccountEquity        decimal.Decimal
+	DailyLoss            decimal.Decimal
+	DrawdownRatio        decimal.Decimal
+	PostLeverage         decimal.Decimal
+	NotionalPerUnit      decimal.Decimal
 }
 
 // Evaluate 执行规则链；始终返回非 nil Verdict。
@@ -63,7 +63,7 @@ func Evaluate(in Input) *Verdict {
 		}
 	}
 
-	if in.OpensExposure && in.AccountEquityUSDT.Sign() <= 0 {
+	if in.OpensExposure && in.AccountEquity.Sign() <= 0 {
 		return &Verdict{
 			Kind:    KindReject,
 			Code:    "RISK_INVALID_EQUITY",
@@ -71,11 +71,11 @@ func Evaluate(in Input) *Verdict {
 		}
 	}
 
-	if in.OpensExposure && in.Rules.MaxDailyLoss.Sign() > 0 && in.DailyLossUSDT.GreaterThanOrEqual(in.Rules.MaxDailyLoss) {
+	if in.OpensExposure && in.Rules.MaxDailyLoss.Sign() > 0 && in.DailyLoss.GreaterThanOrEqual(in.Rules.MaxDailyLoss) {
 		return &Verdict{
 			Kind:    KindReject,
 			Code:    "RISK_MAX_DAILY_LOSS",
-			Message: fmt.Sprintf("daily loss %s >= limit %s", in.DailyLossUSDT.String(), in.Rules.MaxDailyLoss.String()),
+			Message: fmt.Sprintf("daily loss %s >= limit %s", in.DailyLoss.String(), in.Rules.MaxDailyLoss.String()),
 		}
 	}
 
@@ -139,23 +139,23 @@ func Evaluate(in Input) *Verdict {
 				Message: "notional metrics unavailable for position size check",
 			}
 		}
-		if in.PostPositionNotionalUSDT.GreaterThan(in.Rules.MaxPositionSize) {
-			allowedDelta := in.Rules.MaxPositionSize.Sub(in.PositionNotionalUSDT)
+		if in.PostPositionNotional.GreaterThan(in.Rules.MaxPositionSize) {
+			allowedDelta := in.Rules.MaxPositionSize.Sub(in.PositionNotional)
 			if allowedDelta.Sign() <= 0 {
 				return &Verdict{
 					Kind:    KindReject,
 					Code:    "RISK_MAX_POSITION_SIZE",
-					Message: fmt.Sprintf("position notional %s already at or above limit %s", in.PositionNotionalUSDT.String(), in.Rules.MaxPositionSize.String()),
+					Message: fmt.Sprintf("position notional %s already at or above limit %s", in.PositionNotional.String(), in.Rules.MaxPositionSize.String()),
 				}
 			}
-			if in.NotionalUSDTPerContract.Sign() <= 0 {
+			if in.NotionalPerUnit.Sign() <= 0 {
 				return &Verdict{
 					Kind:    KindReject,
 					Code:    "RISK_NOTIONAL_UNAVAILABLE",
 					Message: "cannot convert position limit to contract size",
 				}
 			}
-			allowedQty := allowedDelta.Div(in.NotionalUSDTPerContract).Floor()
+			allowedQty := allowedDelta.Div(in.NotionalPerUnit).Floor()
 			if allowedQty.Sign() <= 0 {
 				return &Verdict{
 					Kind:    KindReject,
@@ -167,7 +167,7 @@ func Evaluate(in Input) *Verdict {
 				return &Verdict{
 					Kind:         KindReduce,
 					Code:         "RISK_MAX_POSITION_SIZE",
-					Message:      fmt.Sprintf("post position notional %s exceeds max %s", in.PostPositionNotionalUSDT.String(), in.Rules.MaxPositionSize.String()),
+					Message:      fmt.Sprintf("post position notional %s exceeds max %s", in.PostPositionNotional.String(), in.Rules.MaxPositionSize.String()),
 					AdjustedSize: allowedQty.String(),
 				}
 			}

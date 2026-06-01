@@ -134,11 +134,11 @@ func TestEvaluate_PositionLock(t *testing.T) {
 	r := DefaultRules()
 	r.EnablePositionLock = true
 	in := Input{
-		Rules:             r,
-		OrderSize:         "1",
-		OpensExposure:     true,
-		ProjectionReady:   true,
-		AccountEquityUSDT: decimal.NewFromInt(1000),
+		Rules:           r,
+		OrderSize:       "1",
+		OpensExposure:   true,
+		ProjectionReady: true,
+		AccountEquity:   decimal.NewFromInt(1000),
 	}
 	v := Evaluate(in)
 	if v.Code != "RISK_POSITION_LOCK" {
@@ -150,12 +150,12 @@ func TestEvaluate_MaxDailyLoss(t *testing.T) {
 	r := DefaultRules()
 	r.MaxDailyLoss = decimal.NewFromInt(500)
 	in := Input{
-		Rules:             r,
-		OrderSize:         "1",
-		OpensExposure:     true,
-		ProjectionReady:   true,
-		AccountEquityUSDT: decimal.NewFromInt(1000),
-		DailyLossUSDT:     decimal.NewFromInt(500),
+		Rules:           r,
+		OrderSize:       "1",
+		OpensExposure:   true,
+		ProjectionReady: true,
+		AccountEquity:   decimal.NewFromInt(1000),
+		DailyLoss:       decimal.NewFromInt(500),
 	}
 	v := Evaluate(in)
 	if v.Code != "RISK_MAX_DAILY_LOSS" {
@@ -167,12 +167,12 @@ func TestEvaluate_MaxDrawdown(t *testing.T) {
 	r := DefaultRules()
 	r.MaxDrawdown = decimal.RequireFromString("0.2")
 	in := Input{
-		Rules:             r,
-		OrderSize:         "1",
-		OpensExposure:     true,
-		ProjectionReady:   true,
-		AccountEquityUSDT: decimal.NewFromInt(1000),
-		DrawdownRatio:     decimal.RequireFromString("0.25"),
+		Rules:           r,
+		OrderSize:       "1",
+		OpensExposure:   true,
+		ProjectionReady: true,
+		AccountEquity:   decimal.NewFromInt(1000),
+		DrawdownRatio:   decimal.RequireFromString("0.25"),
 	}
 	v := Evaluate(in)
 	if v.Code != "RISK_MAX_DRAWDOWN" {
@@ -189,7 +189,7 @@ func TestEvaluate_MaxLeverage(t *testing.T) {
 		OpensExposure:     true,
 		ProjectionReady:   true,
 		NotionalAvailable: true,
-		AccountEquityUSDT: decimal.NewFromInt(1000),
+		AccountEquity:     decimal.NewFromInt(1000),
 		PostLeverage:      decimal.NewFromInt(6),
 	}
 	v := Evaluate(in)
@@ -202,15 +202,15 @@ func TestEvaluate_MaxPositionSizeReduce(t *testing.T) {
 	r := DefaultRules()
 	r.MaxPositionSize = decimal.NewFromInt(1000)
 	in := Input{
-		Rules:                    r,
-		OrderSize:                "10",
-		IncreasingExposure:       true,
-		NotionalAvailable:        true,
-		ProjectionReady:          true,
-		AccountEquityUSDT:        decimal.NewFromInt(10000),
-		PositionNotionalUSDT:     decimal.NewFromInt(500),
-		PostPositionNotionalUSDT: decimal.NewFromInt(1500),
-		NotionalUSDTPerContract:  decimal.NewFromInt(100),
+		Rules:                r,
+		OrderSize:            "10",
+		IncreasingExposure:   true,
+		NotionalAvailable:    true,
+		ProjectionReady:      true,
+		AccountEquity:        decimal.NewFromInt(10000),
+		PositionNotional:     decimal.NewFromInt(500),
+		PostPositionNotional: decimal.NewFromInt(1500),
+		NotionalPerUnit:      decimal.NewFromInt(100),
 	}
 	v := Evaluate(in)
 	if v.Kind != KindReduce || v.AdjustedSize != "5" {

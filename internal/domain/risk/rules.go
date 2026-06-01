@@ -8,8 +8,8 @@ type Rules struct {
 	MaxOrderSize       decimal.Decimal // 张数；零值：不限制
 	MaxOpenOrders      int             // 0：不限制
 	MaxPositions       int             // 0：不限制
-	MaxPositionSize    decimal.Decimal // USDT 名义；零：不限
-	MaxDailyLoss       decimal.Decimal // USDT；零：不限
+	MaxPositionSize    decimal.Decimal // 计价币名义（perp 下为 USDT）；零：不限
+	MaxDailyLoss       decimal.Decimal // 计价币；零：不限
 	MaxDrawdown        decimal.Decimal // 0~1；零：不限
 	MaxLeverage        int             // 0：不限
 	EnablePositionLock bool

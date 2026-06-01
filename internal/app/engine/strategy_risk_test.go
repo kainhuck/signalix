@@ -53,14 +53,14 @@ func TestEvaluateStrategyRiskMaxOpenOrders(t *testing.T) {
 	order := &models.Order{ID: "o2", Symbol: "BTC/USDT", Size: "1"}
 	sig := &models.Signal{Symbol: "BTC/USDT", Direction: models.DirectionLong}
 	base := &ports.RiskContext{
-		StrategyName:      "s1",
-		Signal:            sig,
-		Order:             order,
-		OpenOrders:        ee.NonFinalOrderCount(),
-		Positions:         0,
-		ProjectionReady:   true,
-		OpensExposure:     true,
-		AccountEquityUSDT: decimal.NewFromInt(100000),
+		StrategyName:    "s1",
+		Signal:          sig,
+		Order:           order,
+		OpenOrders:      ee.NonFinalOrderCount(),
+		Positions:       0,
+		ProjectionReady: true,
+		OpensExposure:   true,
+		AccountEquity:   decimal.NewFromInt(100000),
 	}
 
 	v, _, err := e.evaluateStrategyRisk(context.Background(), "s1", sig, order, base)
@@ -127,11 +127,11 @@ func TestEvaluateRulesReduceStack(t *testing.T) {
 	})
 	order := &models.Order{Size: "10"}
 	rc := &ports.RiskContext{
-		Order:             order,
-		Signal:            &models.Signal{Direction: models.DirectionLong},
-		ProjectionReady:   true,
-		OpensExposure:     true,
-		AccountEquityUSDT: decimal.NewFromInt(100000),
+		Order:           order,
+		Signal:          &models.Signal{Direction: models.DirectionLong},
+		ProjectionReady: true,
+		OpensExposure:   true,
+		AccountEquity:   decimal.NewFromInt(100000),
 	}
 	v1 := EvaluateRules(strat, rc)
 	if v1.AdjustedSize != "3" {

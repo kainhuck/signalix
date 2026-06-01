@@ -43,8 +43,8 @@ type Engine struct {
 	feed               market.MarketFeed
 	router             *market.MarketRouter // 过渡：decision TickerLookup + RPC 缓存读取
 	loader             *strategy.StrategyLoader
-	decider            market.MarketDecider     // perp 决策
-	decisionEngine     *decision.DecisionEngine // 过渡：MA-4 前供 NotionalForContracts
+	decider            market.MarketDecider
+	perpRisk           market.MarketRisk
 	executionEngine    *oms.ExecutionEngine
 	instrumentRegistry *instrument.Registry
 	accountProjection  *projection.AccountProjection
@@ -160,7 +160,6 @@ func NewEngine(strategyDir string, exchange ports.Exchange, build BuildParams, o
 		loader:              loader,
 		router:              router,
 		decider:             market.NewPerpDecider(de),
-		decisionEngine:      de,
 		instrumentRegistry:  reg,
 		defaultInterval:     build.DefaultInterval,
 		restartCfg:          build.Restart,
@@ -196,6 +195,13 @@ func NewEngine(strategyDir string, exchange ports.Exchange, build BuildParams, o
 		oms.WithMaxRetries(omsRetries),
 		oms.WithContractMetaLookup(reg),
 	)
+	e.perpRisk = market.NewPerpRisk(market.PerpRiskConfig{
+		Proj:          proj,
+		Decision:      de,
+		Execution:     e.executionEngine,
+		Equity:        equityTracker,
+		NeedsNotional: e,
+	})
 
 	return e
 }
