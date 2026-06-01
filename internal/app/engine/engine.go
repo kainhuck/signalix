@@ -43,7 +43,8 @@ type Engine struct {
 	feed               market.MarketFeed
 	router             *market.MarketRouter // 过渡：decision TickerLookup + RPC 缓存读取
 	loader             *strategy.StrategyLoader
-	decisionEngine     *decision.DecisionEngine
+	decider            market.MarketDecider     // perp 决策
+	decisionEngine     *decision.DecisionEngine // 过渡：MA-4 前供 NotionalForContracts
 	executionEngine    *oms.ExecutionEngine
 	instrumentRegistry *instrument.Registry
 	accountProjection  *projection.AccountProjection
@@ -146,12 +147,20 @@ func NewEngine(strategyDir string, exchange ports.Exchange, build BuildParams, o
 		logger.WarnContext(ctx, "contract meta registry load failed", logger.Any("error", err))
 	}
 
+	de := decision.NewDecisionEngine(proj,
+		decision.WithDefaultSizeDivisor(divisor),
+		decision.WithContractMetaLookup(reg),
+		decision.WithTickerLookup(router),
+	)
+
 	e := &Engine{
 		strategyProcess:     make(map[string]strategy.StrategyRuntime),
 		exchange:            exchange,
 		feed:                router,
 		loader:              loader,
 		router:              router,
+		decider:             market.NewPerpDecider(de),
+		decisionEngine:      de,
 		instrumentRegistry:  reg,
 		defaultInterval:     build.DefaultInterval,
 		restartCfg:          build.Restart,
@@ -161,20 +170,15 @@ func NewEngine(strategyDir string, exchange ports.Exchange, build BuildParams, o
 		equityTracker:       equityTracker,
 		killSwitchCfg:       build.KillSwitch,
 		persistenceSettings: build.Persistence,
-		decisionEngine: decision.NewDecisionEngine(proj,
-			decision.WithDefaultSizeDivisor(divisor),
-			decision.WithContractMetaLookup(reg),
-			decision.WithTickerLookup(router),
-		),
-		accountProjection: proj,
-		riskEvaluator:     NewStaticRiskEvaluator(risk.DefaultRules()),
-		signalCh:          make(chan *models.StrategySignal, signalBuf),
-		orderCh:           make(chan *models.Order, orderBuf),
-		ctx:               ctx,
-		cancel:            cancel,
-		strategyStates:    make(map[string]map[string]interface{}),
-		mainOrderCh:       make(chan *models.Order, mainBuf),
-		orderStreamSubs:   make(map[uint64]chan *models.Order),
+		accountProjection:   proj,
+		riskEvaluator:       NewStaticRiskEvaluator(risk.DefaultRules()),
+		signalCh:            make(chan *models.StrategySignal, signalBuf),
+		orderCh:             make(chan *models.Order, orderBuf),
+		ctx:                 ctx,
+		cancel:              cancel,
+		strategyStates:      make(map[string]map[string]interface{}),
+		mainOrderCh:         make(chan *models.Order, mainBuf),
+		orderStreamSubs:     make(map[uint64]chan *models.Order),
 	}
 	for _, o := range opts {
 		o(e)
@@ -419,7 +423,7 @@ func (e *Engine) dispatchSignal() {
 				continue
 			}
 
-			order, err := e.decisionEngine.ProcessSignal(e.ctx, signal.StrategyName, signal.Signal)
+			order, err := e.decider.Decide(e.ctx, signal.StrategyName, signal.Signal)
 			if err != nil {
 				logger.ErrorContext(e.ctx, "failed to process signal", logger.Any("error", err))
 				continue
