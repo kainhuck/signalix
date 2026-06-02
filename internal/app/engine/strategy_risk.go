@@ -35,7 +35,7 @@ func (e *Engine) evaluateStrategyRisk(ctx context.Context, strategyName string, 
 	v = risk.PrefixStrategyVerdict(v)
 	if v.Kind == risk.KindReduce {
 		order.Size = v.AdjustedSize
-		rebuilt, err := e.buildRiskContext(ctx, strategyName, signal, order)
+		rebuilt, err := e.buildRiskContext(ctx, e.strategyMarket(strategyName), strategyName, signal, order)
 		if err != nil {
 			return v, base, err
 		}

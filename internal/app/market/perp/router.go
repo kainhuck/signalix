@@ -317,6 +317,7 @@ func (mr *MarketRouter) onTicker(ev *perp.PublicEvent) {
 
 	for _, strategyName := range strategyList {
 		mr.emit(market.MarketUpdate{
+			Market:       models.MarketPerp,
 			StrategyName: strategyName,
 			Kind:         market.MarketUpdateTicker,
 			Ticker:       models.TickerFromSnapshot(ticker),
@@ -353,6 +354,7 @@ func (mr *MarketRouter) onCandlestick(ev *perp.PublicEvent) {
 
 	for _, strategyName := range strategyList {
 		mr.emit(market.MarketUpdate{
+			Market:       models.MarketPerp,
 			StrategyName: strategyName,
 			Kind:         market.MarketUpdateKline,
 			Kline:        models.KlineFromSnapshot(snap),

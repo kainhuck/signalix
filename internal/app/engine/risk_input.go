@@ -9,10 +9,10 @@ import (
 	"github.com/kainhuck/signalix/internal/ports"
 )
 
-func (e *Engine) buildRiskContext(ctx context.Context, strategyName string, signal *models.Signal, order *models.Order) (*ports.RiskContext, error) {
-	m := e.markets[models.MarketPerp]
+func (e *Engine) buildRiskContext(ctx context.Context, mk models.Market, strategyName string, signal *models.Signal, order *models.Order) (*ports.RiskContext, error) {
+	m := e.marketFor(mk)
 	if m == nil {
-		return nil, fmt.Errorf("market %q not registered", models.MarketPerp)
+		return nil, fmt.Errorf("market %q not registered", mk)
 	}
 	return m.BuildRiskContext(ctx, strategyName, signal, order)
 }

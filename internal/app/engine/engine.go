@@ -166,11 +166,15 @@ func NewEngine(strategyDir string, markets map[models.Market]market.Market, buil
 	if cmdBuf <= 0 {
 		cmdBuf = 100
 	}
-	executors := map[models.Market]market.MarketExecutor{}
+	executors := make(map[models.Market]market.MarketExecutor)
 	metaLookup := instrument.NewRegistry()
+	for mk, m := range markets {
+		if m != nil {
+			executors[mk] = m
+		}
+	}
 	if pm != nil {
 		e.accountProjection = pm.Projection()
-		executors[models.MarketPerp] = pm.Executor()
 		metaLookup = pm.Registry()
 	}
 	e.executionEngine = oms.NewExecutionEngine(executors, e.store,
@@ -195,20 +199,6 @@ func (e *Engine) perp() *mktperp.PerpMarket {
 	}
 	pm, _ := e.markets[models.MarketPerp].(*mktperp.PerpMarket)
 	return pm
-}
-
-func (e *Engine) perpFeed() market.MarketFeed {
-	if m := e.markets[models.MarketPerp]; m != nil {
-		return m
-	}
-	return nil
-}
-
-func (e *Engine) perpDecider() market.MarketDecider {
-	if m := e.markets[models.MarketPerp]; m != nil {
-		return m
-	}
-	return nil
 }
 
 func (e *Engine) SetAllStrategy(strategies map[string]*strategy.Strategy) {
@@ -326,11 +316,16 @@ func (e *Engine) Start() error {
 	})
 
 	// 获取市场路由信息并发送到对应的策略
-	e.wg.Add(1)
-	go func() {
-		defer e.wg.Done()
-		e.dispatchMarket()
-	}()
+	for mk, m := range e.markets {
+		if m == nil {
+			continue
+		}
+		e.wg.Add(1)
+		go func(kind models.Market, mkt market.Market) {
+			defer e.wg.Done()
+			e.pumpMarketUpdates(kind, mkt)
+		}(mk, m)
+	}
 
 	// 获取交易信号并交决策引擎，决策引擎将交易信号转为交易订单
 	e.wg.Add(1)
@@ -359,27 +354,6 @@ func (e *Engine) Start() error {
 	}
 
 	return nil
-}
-
-func (e *Engine) dispatchMarket() {
-	feed := e.perpFeed()
-	if feed == nil {
-		<-e.ctx.Done()
-		return
-	}
-	for {
-		select {
-		case marketUpdate := <-feed.Updates():
-			switch marketUpdate.Kind {
-			case market.MarketUpdateTicker:
-				e.dispatchTickerUpdate(marketUpdate)
-			case market.MarketUpdateKline:
-				e.dispatchKlineUpdate(marketUpdate)
-			}
-		case <-e.ctx.Done():
-			return
-		}
-	}
 }
 
 func (e *Engine) dispatchTickerUpdate(marketUpdate market.MarketUpdate) {
@@ -440,7 +414,16 @@ func (e *Engine) dispatchSignal() {
 				continue
 			}
 
-			order, err := e.perpDecider().Decide(e.ctx, signal.StrategyName, signal.Signal)
+			mk := e.strategyMarket(signal.StrategyName)
+			m := e.marketFor(mk)
+			if m == nil {
+				logger.ErrorContext(e.ctx, "market not registered for signal",
+					logger.String("strategy", signal.StrategyName),
+					logger.String("market", string(mk)))
+				continue
+			}
+
+			order, err := m.Decide(e.ctx, signal.StrategyName, signal.Signal)
 			if err != nil {
 				logger.ErrorContext(e.ctx, "failed to process signal", logger.Any("error", err))
 				continue
@@ -448,8 +431,11 @@ func (e *Engine) dispatchSignal() {
 			if order == nil {
 				continue
 			}
+			if !order.Market.Valid() {
+				order.Market = mk
+			}
 
-			riskCtx, err := e.buildRiskContext(e.ctx, signal.StrategyName, signal.Signal, order)
+			riskCtx, err := e.buildRiskContext(e.ctx, mk, signal.StrategyName, signal.Signal, order)
 			if err != nil {
 				logger.ErrorContext(e.ctx, "failed to build risk context", logger.Any("error", err))
 				continue
@@ -600,12 +586,7 @@ func (e *Engine) launchStrategy(st *strategy.Strategy) error {
 	if err != nil {
 		return fmt.Errorf("strategy %q: %w", st.Name, err)
 	}
-	if err := e.perpFeed().Subscribe(e.ctx, market.SubscribeRequest{
-		Strategy:   st.Name,
-		Symbols:    contractsToStrings(st.Symbols),
-		Interval:   interval,
-		PushTicker: st.SubscribeTicker,
-	}); err != nil {
+	if err := e.subscribeStrategy(st, interval); err != nil {
 		return fmt.Errorf("failed to subscribe strategy %q: %v", st.Name, err)
 	}
 
@@ -665,7 +646,16 @@ func (e *Engine) warmupHistory(st *strategy.Strategy, sp strategy.StrategyRuntim
 		return nil
 	}
 
-	payload, err := e.perpFeed().WarmupHistory(e.ctx, market.SubscribeRequest{
+	mk := st.Market
+	if !mk.Valid() {
+		mk = models.MarketPerp
+	}
+	m := e.marketFor(mk)
+	if m == nil {
+		return fmt.Errorf("market %q not registered for strategy %q", mk, st.Name)
+	}
+
+	payload, err := m.WarmupHistory(e.ctx, market.SubscribeRequest{
 		Strategy: st.Name,
 		Symbols:  contractsToStrings(st.Symbols),
 		Interval: interval,
@@ -713,7 +703,7 @@ func (e *Engine) StopStrategy(name string) error {
 	}
 	delete(e.strategyProcess, name)
 
-	_ = e.perpFeed().Unsubscribe(name)
+	e.unsubscribeStrategy(name)
 	e.removeStrategyInterval(name)
 
 	e.processMu.Unlock()
@@ -929,7 +919,7 @@ func (e *Engine) handleProcessExit(sp strategy.StrategyRuntime) {
 	_, stillRegistered := e.strategyProcess[name]
 	if stillRegistered {
 		delete(e.strategyProcess, name)
-		_ = e.perpFeed().Unsubscribe(name)
+		e.unsubscribeStrategy(name)
 	}
 	e.processMu.Unlock()
 

@@ -16,12 +16,16 @@ type recordingStrategyRuntime struct {
 	lastKline  *models.Kline
 	lastTrace  string
 	sendKlineN int
+	sendTickN  int
 }
 
-func (r *recordingStrategyRuntime) Name() string                                     { return r.name }
-func (r *recordingStrategyRuntime) Context() context.Context                         { return r.ctx }
-func (r *recordingStrategyRuntime) SendInit(*strategy.Strategy) error                { return nil }
-func (r *recordingStrategyRuntime) SendTick(*models.Ticker, string) error            { return nil }
+func (r *recordingStrategyRuntime) Name() string                      { return r.name }
+func (r *recordingStrategyRuntime) Context() context.Context          { return r.ctx }
+func (r *recordingStrategyRuntime) SendInit(*strategy.Strategy) error { return nil }
+func (r *recordingStrategyRuntime) SendTick(*models.Ticker, string) error {
+	r.sendTickN++
+	return nil
+}
 func (r *recordingStrategyRuntime) SendStop() error                                  { return nil }
 func (r *recordingStrategyRuntime) ReadMessages(func(strategy.IpcMessage)) error     { return nil }
 func (r *recordingStrategyRuntime) ReadStderr()                                      {}

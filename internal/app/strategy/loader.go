@@ -8,6 +8,7 @@ import (
 	"strings"
 
 	"github.com/kainhuck/signalix/internal/domain/risk"
+	"github.com/kainhuck/signalix/internal/models"
 	"github.com/kainhuck/signalix/pkg/exchange/perp"
 	"github.com/kainhuck/signalix/pkg/logger"
 	"gopkg.in/yaml.v3"
@@ -26,6 +27,7 @@ type StrategyConfig struct {
 	Interval        string                 `yaml:"interval"`         // K 线周期（引擎订阅）
 	HistoryBars     int                    `yaml:"history_bars"`     // REST 预热根数；0 表示不预热
 	SubscribeTicker bool                   `yaml:"subscribe_ticker"` // 默认 false：引擎仍订 ticker 供定价，不向策略发 tick
+	Market          string                 `yaml:"market,omitempty"` // 缺省 perp
 	Parameters      map[string]interface{} `yaml:"parameters"`       // 策略自定义参数
 	Risk            *StrategyRiskConfigRaw `yaml:"risk,omitempty"`   // 可选策略级风控
 }
@@ -34,7 +36,8 @@ type StrategyConfig struct {
 type Strategy struct {
 	StrategyConfig
 
-	ScriptPath    string // 策略脚本完整路径
+	Market        models.Market // 自 config.market 解析，非 yaml 直出
+	ScriptPath    string        // 策略脚本完整路径
 	RiskOverrides *risk.Overrides
 }
 
@@ -96,8 +99,17 @@ func (sl *StrategyLoader) DiscoverStrategies() (map[string]*Strategy, error) {
 			logger.WarnContext(sl.ctx, "strategy duplicate naming", logger.String("strategy", config.Name))
 		}
 
+		mk, err := models.ParseMarket(config.Market)
+		if err != nil {
+			return nil, fmt.Errorf("failed to load strategy %s: %w", entry.Name(), err)
+		}
+		if mk == models.MarketSpot {
+			return nil, fmt.Errorf("failed to load strategy %s: market %q not supported in this build", entry.Name(), mk)
+		}
+
 		strategies[config.Name] = &Strategy{
 			StrategyConfig: config,
+			Market:         mk,
 			ScriptPath:     scriptPath,
 			RiskOverrides:  RiskOverridesFromRaw(config.Risk),
 		}
@@ -161,6 +173,16 @@ func (sl *StrategyLoader) validateConfig(config StrategyConfig) error {
 
 	if err := validateRiskConfig(config.Risk); err != nil {
 		return err
+	}
+
+	if strings.TrimSpace(config.Market) != "" {
+		mk, err := models.ParseMarket(config.Market)
+		if err != nil {
+			return err
+		}
+		if mk == models.MarketSpot {
+			return fmt.Errorf("market %q not supported in this build", mk)
+		}
 	}
 
 	return nil

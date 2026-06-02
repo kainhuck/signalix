@@ -12,6 +12,7 @@ const (
 
 // MarketUpdate 分发给引擎的行情更新（市场中性：携带 models 层 IPC 载荷）。
 type MarketUpdate struct {
+	Market       models.Market
 	StrategyName string
 	Kind         MarketUpdateKind
 	Ticker       *models.Ticker
