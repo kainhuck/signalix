@@ -5,12 +5,13 @@ import (
 	"strings"
 
 	"github.com/kainhuck/signalix/internal/app/market"
+	mktperp "github.com/kainhuck/signalix/internal/app/market/perp"
 	"github.com/kainhuck/signalix/internal/models"
 	"github.com/kainhuck/signalix/pkg/exchange/perp"
 )
 
 // ErrTickerNotInCache 表示 ticker 不在缓存中（与 market 包同源语义）。
-var ErrTickerNotInCache = market.ErrTickerNotInCache
+var ErrTickerNotInCache = mktperp.ErrTickerNotInCache
 
 func (e *Engine) perpAccount() (market.MarketAccount, error) {
 	return e.marketAccount(models.MarketPerp)
@@ -37,7 +38,7 @@ func (e *Engine) TickerSnapshot(contract perp.Contract) (*perp.TickerSnapshot, e
 func (e *Engine) ListCachedTickers() (map[perp.Contract]*perp.TickerSnapshot, error) {
 	pm := e.perp()
 	if pm == nil || pm.Router() == nil {
-		return nil, market.ErrMarketRouterNotConfigured
+		return nil, mktperp.ErrMarketRouterNotConfigured
 	}
 	raw := pm.Router().GetAllCachedTickers()
 	out := make(map[perp.Contract]*perp.TickerSnapshot, len(raw))

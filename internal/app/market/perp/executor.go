@@ -1,10 +1,11 @@
-package market
+package perp
 
 import (
 	"context"
 	"fmt"
 	"sync"
 
+	"github.com/kainhuck/signalix/internal/app/market"
 	"github.com/kainhuck/signalix/internal/app/projection"
 	"github.com/kainhuck/signalix/internal/models"
 	"github.com/kainhuck/signalix/internal/ports"
@@ -13,13 +14,13 @@ import (
 
 const perpOrderEventBuf = 64
 
-// PerpExecutorConfig perp MarketExecutor 依赖。
+// PerpExecutorConfig perp market.MarketExecutor 依赖。
 type PerpExecutorConfig struct {
 	Exchange ports.Exchange
 	Proj     *projection.AccountProjection
 }
 
-// PerpExecutor 实现 perp 的 MarketExecutor（含用户流泵与 projection 更新）。
+// PerpExecutor 实现 perp 的 market.MarketExecutor（含用户流泵与 projection 更新）。
 type PerpExecutor struct {
 	exchange    ports.Exchange
 	proj        *projection.AccountProjection
@@ -82,7 +83,7 @@ func (p *PerpExecutor) Stop() error {
 	return nil
 }
 
-// Place 满足 MarketExecutor。
+// Place 满足 market.MarketExecutor。
 func (p *PerpExecutor) Place(ctx context.Context, o *models.Order) (string, error) {
 	if p == nil || p.exchange == nil {
 		return "", fmt.Errorf("perp executor not configured")
@@ -110,7 +111,7 @@ func (p *PerpExecutor) Place(ctx context.Context, o *models.Order) (string, erro
 	return resp.ExchangeOrderID, nil
 }
 
-// Cancel 满足 MarketExecutor。
+// Cancel 满足 market.MarketExecutor。
 func (p *PerpExecutor) Cancel(ctx context.Context, o *models.Order) error {
 	if p == nil || p.exchange == nil {
 		return fmt.Errorf("perp executor not configured")
@@ -124,7 +125,7 @@ func (p *PerpExecutor) Cancel(ctx context.Context, o *models.Order) error {
 	})
 }
 
-// Sync 满足 MarketExecutor。
+// Sync 满足 market.MarketExecutor。
 func (p *PerpExecutor) Sync(ctx context.Context, o *models.Order) (*models.OrderEvent, error) {
 	if p == nil || p.exchange == nil {
 		return nil, fmt.Errorf("perp executor not configured")
@@ -150,7 +151,7 @@ func (p *PerpExecutor) Sync(ctx context.Context, o *models.Order) (*models.Order
 	}, nil
 }
 
-// OrderEvents 满足 MarketExecutor。
+// OrderEvents 满足 market.MarketExecutor。
 func (p *PerpExecutor) OrderEvents() <-chan *models.OrderEvent {
 	if p == nil {
 		ch := make(chan *models.OrderEvent)
@@ -202,4 +203,4 @@ func orderEventFromUserEvent(ev *perp.UserEvent) *models.OrderEvent {
 	}
 }
 
-var _ MarketExecutor = (*PerpExecutor)(nil)
+var _ market.MarketExecutor = (*PerpExecutor)(nil)

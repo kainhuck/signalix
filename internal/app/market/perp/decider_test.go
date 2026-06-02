@@ -1,16 +1,17 @@
-package market
+package perp
 
 import (
 	"context"
 	"testing"
 
 	"github.com/kainhuck/signalix/internal/app/decision"
+	"github.com/kainhuck/signalix/internal/app/market"
 	"github.com/kainhuck/signalix/internal/models"
 )
 
 func TestPerpDeciderNotConfigured(t *testing.T) {
 	t.Parallel()
-	var d MarketDecider = &perpDecider{}
+	var d market.MarketDecider = &perpDecider{}
 	_, err := d.Decide(context.Background(), "s1", &models.Signal{})
 	if err == nil {
 		t.Fatal("expected error")

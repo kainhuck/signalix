@@ -11,6 +11,6 @@
 //   - MarketExecutor 仅做无状态翻译（中性 Order -> 所侧请求、Place/Cancel/Sync），
 //     不持有/不修改订单状态机——订单状态机仍由 OMS 单写者集中管理。
 //
-// 本包当前同时容纳既有的 MarketRouter（perp 行情路由）。Market 抽象的逐步接线见
-// spec-driven-dev/progress/market-abstraction（MA-2~MA-6）。
+// 具体实现：
+//   - perp：[perp/](./perp/)（PerpMarket、MarketRouter、Executor 等）
 package market

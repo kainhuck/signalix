@@ -1,10 +1,11 @@
-package market
+package perp
 
 import (
 	"context"
 	"sync"
 	"testing"
 
+	"github.com/kainhuck/signalix/internal/app/market"
 	"github.com/kainhuck/signalix/pkg/exchange/perp"
 )
 
@@ -129,7 +130,7 @@ func TestSubscribeWithTickerPushesToStrategy(t *testing.T) {
 	mr.OnPublicEvent(tick)
 	select {
 	case u := <-mr.Updates():
-		if u.Kind != MarketUpdateTicker || u.StrategyName != "s1" {
+		if u.Kind != market.MarketUpdateTicker || u.StrategyName != "s1" {
 			t.Fatalf("unexpected update: %+v", u)
 		}
 	default:
@@ -179,7 +180,7 @@ func TestOnCandlestickClosedOnlyFanout(t *testing.T) {
 	})
 	mr.OnPublicEvent(closed)
 
-	var updates []MarketUpdate
+	var updates []market.MarketUpdate
 drain:
 	for {
 		select {
@@ -193,7 +194,7 @@ drain:
 	if len(updates) != 1 {
 		t.Fatalf("got %d updates, want 1 closed kline", len(updates))
 	}
-	if updates[0].Kind != MarketUpdateKline {
+	if updates[0].Kind != market.MarketUpdateKline {
 		t.Fatalf("kind = %v, want kline", updates[0].Kind)
 	}
 	if updates[0].StrategyName != "s1" || updates[0].Kline.Close != "2" {

@@ -12,6 +12,7 @@ import (
 	"github.com/kainhuck/signalix/internal/adapters/store/sqlite"
 	"github.com/kainhuck/signalix/internal/app/engine"
 	"github.com/kainhuck/signalix/internal/app/market"
+	mktperp "github.com/kainhuck/signalix/internal/app/market/perp"
 	"github.com/kainhuck/signalix/internal/config"
 	"github.com/kainhuck/signalix/internal/models"
 	"github.com/kainhuck/signalix/pkg/exchange/perp"
@@ -77,7 +78,7 @@ func main() {
 	for _, m := range enabled {
 		switch m {
 		case models.MarketPerp:
-			pm, err := market.NewPerpMarket(context.Background(), market.PerpMarketConfig{
+			pm, err := mktperp.NewPerpMarket(context.Background(), mktperp.PerpMarketConfig{
 				Exchange:          c,
 				MarketBuf:         cfg.Channels.Market,
 				DecisionDivisor:   cfg.Decision.DefaultSizeDivisor,

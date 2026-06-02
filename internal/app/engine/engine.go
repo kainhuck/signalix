@@ -14,6 +14,7 @@ import (
 	"github.com/kainhuck/signalix/internal/adapters/strategy/pythonipc"
 	"github.com/kainhuck/signalix/internal/app/instrument"
 	"github.com/kainhuck/signalix/internal/app/market"
+	mktperp "github.com/kainhuck/signalix/internal/app/market/perp"
 	"github.com/kainhuck/signalix/internal/app/oms"
 	"github.com/kainhuck/signalix/internal/app/projection"
 	apprisk "github.com/kainhuck/signalix/internal/app/risk"
@@ -102,7 +103,7 @@ type Engine struct {
 	strategyLogSubs    map[uint64]*strategyLogSubscription
 }
 
-// NewEngine 创建策略引擎；markets 须包含 models.MarketPerp 的 *market.PerpMarket。
+// NewEngine 创建策略引擎；markets 须包含 models.MarketPerp 的 *mktperp.PerpMarket。
 func NewEngine(strategyDir string, markets map[models.Market]market.Market, build BuildParams, opts ...EngineOption) *Engine {
 	ctx, cancel := context.WithCancel(context.Background())
 	ch := build.Channels
@@ -121,7 +122,7 @@ func NewEngine(strategyDir string, markets map[models.Market]market.Market, buil
 		omsRetries = 3
 	}
 
-	pm, err := market.PerpFromMarkets(markets)
+	pm, err := mktperp.PerpFromMarkets(markets)
 	if err != nil {
 		logger.WarnContext(ctx, "perp market missing from registry", logger.Any("error", err))
 	}
@@ -178,7 +179,7 @@ func NewEngine(strategyDir string, markets map[models.Market]market.Market, buil
 		oms.WithContractMetaLookup(metaLookup),
 	)
 	if pm != nil {
-		pm.BindRisk(market.PerpRiskConfig{
+		pm.BindRisk(mktperp.PerpRiskConfig{
 			Execution:     e.executionEngine,
 			Equity:        equityTracker,
 			NeedsNotional: e,
@@ -188,11 +189,11 @@ func NewEngine(strategyDir string, markets map[models.Market]market.Market, buil
 	return e
 }
 
-func (e *Engine) perp() *market.PerpMarket {
+func (e *Engine) perp() *mktperp.PerpMarket {
 	if e == nil {
 		return nil
 	}
-	pm, _ := e.markets[models.MarketPerp].(*market.PerpMarket)
+	pm, _ := e.markets[models.MarketPerp].(*mktperp.PerpMarket)
 	return pm
 }
 

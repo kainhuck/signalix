@@ -1,4 +1,4 @@
-package market
+package perp
 
 import (
 	"context"
@@ -12,7 +12,7 @@ import (
 
 const perpBalanceAnchorContract = "BTC/USDT"
 
-// Balance 满足 MarketAccount（perp）。
+// Balance 满足 market.MarketAccount（perp）。
 func (p *PerpMarket) Balance(ctx context.Context, currency string) (*models.BalanceView, error) {
 	_ = ctx
 	_ = currency
@@ -26,7 +26,7 @@ func (p *PerpMarket) Balance(ctx context.Context, currency string) (*models.Bala
 	return balanceViewFromPerp(bal), nil
 }
 
-// Position 满足 MarketAccount（perp）。
+// Position 满足 market.MarketAccount（perp）。
 func (p *PerpMarket) Position(ctx context.Context, symbol string) (*models.PositionView, error) {
 	_ = ctx
 	if p == nil || p.proj == nil {
@@ -46,7 +46,7 @@ func (p *PerpMarket) Position(ctx context.Context, symbol string) (*models.Posit
 	return positionViewFromPerp(pos), nil
 }
 
-// Ticker 满足 MarketAccount（perp）。
+// Ticker 满足 market.MarketAccount（perp）。
 func (p *PerpMarket) Ticker(symbol string) (*models.Ticker, error) {
 	if p == nil || p.router == nil {
 		return nil, ErrMarketRouterNotConfigured
@@ -62,7 +62,7 @@ func (p *PerpMarket) Ticker(symbol string) (*models.Ticker, error) {
 	return models.TickerFromSnapshot(snap), nil
 }
 
-// Klines 满足 MarketAccount（perp）。
+// Klines 满足 market.MarketAccount（perp）。
 func (p *PerpMarket) Klines(symbol, interval string, limit int) ([]*models.Kline, error) {
 	if p == nil || p.router == nil {
 		return nil, ErrMarketRouterNotConfigured

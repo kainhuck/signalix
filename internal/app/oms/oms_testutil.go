@@ -4,19 +4,20 @@ import (
 	"context"
 
 	"github.com/kainhuck/signalix/internal/app/market"
+	mktperp "github.com/kainhuck/signalix/internal/app/market/perp"
 	"github.com/kainhuck/signalix/internal/models"
 	"github.com/kainhuck/signalix/internal/ports"
 )
 
 // testPerpExecutors 为 OMS 测试构造仅含 perp 的 executor map。
-func testPerpExecutors(exchange ports.Exchange) (map[models.Market]market.MarketExecutor, *market.PerpExecutor) {
-	pe := market.NewPerpExecutor(market.PerpExecutorConfig{Exchange: exchange})
+func testPerpExecutors(exchange ports.Exchange) (map[models.Market]market.MarketExecutor, *mktperp.PerpExecutor) {
+	pe := mktperp.NewPerpExecutor(mktperp.PerpExecutorConfig{Exchange: exchange})
 	return map[models.Market]market.MarketExecutor{
 		models.MarketPerp: pe,
 	}, pe
 }
 
-func startTestOMS(ctx context.Context, ee *ExecutionEngine, pe *market.PerpExecutor) error {
+func startTestOMS(ctx context.Context, ee *ExecutionEngine, pe *mktperp.PerpExecutor) error {
 	if pe != nil {
 		if err := pe.Start(ctx); err != nil {
 			return err
@@ -25,7 +26,7 @@ func startTestOMS(ctx context.Context, ee *ExecutionEngine, pe *market.PerpExecu
 	return ee.Start(ctx)
 }
 
-func stopTestOMS(ee *ExecutionEngine, pe *market.PerpExecutor) {
+func stopTestOMS(ee *ExecutionEngine, pe *mktperp.PerpExecutor) {
 	if ee != nil {
 		_ = ee.Stop()
 	}

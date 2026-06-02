@@ -1,4 +1,4 @@
-package market
+package perp
 
 import (
 	"context"
@@ -8,6 +8,7 @@ import (
 
 	"github.com/kainhuck/signalix/internal/app/decision"
 	"github.com/kainhuck/signalix/internal/app/instrument"
+	"github.com/kainhuck/signalix/internal/app/market"
 	"github.com/kainhuck/signalix/internal/app/projection"
 	"github.com/kainhuck/signalix/internal/models"
 	"github.com/kainhuck/signalix/internal/ports"
@@ -27,9 +28,9 @@ type PerpMarketConfig struct {
 type PerpMarket struct {
 	exchange ports.Exchange
 	router   *MarketRouter
-	decider  MarketDecider
+	decider  market.MarketDecider
 	executor *PerpExecutor
-	risk     MarketRisk
+	risk     market.MarketRisk
 	proj     *projection.AccountProjection
 	reg      *instrument.Registry
 	de       *decision.DecisionEngine
@@ -37,9 +38,9 @@ type PerpMarket struct {
 	routerWg sync.WaitGroup
 }
 
-var _ Market = (*PerpMarket)(nil)
+var _ market.Market = (*PerpMarket)(nil)
 
-// NewPerpMarket 构造 perp 市场（不含 MarketRisk；须再调用 BindRisk）。
+// NewPerpMarket 构造 perp 市场（不含 market.MarketRisk；须再调用 BindRisk）。
 func NewPerpMarket(ctx context.Context, cfg PerpMarketConfig) (*PerpMarket, error) {
 	if cfg.Exchange == nil {
 		return nil, fmt.Errorf("exchange is required")
@@ -87,7 +88,7 @@ func NewPerpMarket(ctx context.Context, cfg PerpMarketConfig) (*PerpMarket, erro
 	}, nil
 }
 
-// BindRisk 在 OMS 就绪后绑定 MarketRisk（依赖 ExecutionEngine）。
+// BindRisk 在 OMS 就绪后绑定 market.MarketRisk（依赖 ExecutionEngine）。
 func (p *PerpMarket) BindRisk(cfg PerpRiskConfig) {
 	if p == nil {
 		return
@@ -140,8 +141,8 @@ func (p *PerpMarket) AttachEquityHook(h projection.EquityHook) {
 	p.proj.SetEquityHook(h)
 }
 
-func (p *PerpMarket) Executor() MarketExecutor { return p.executor }
-func (p *PerpMarket) Risk() MarketRisk         { return p.risk }
+func (p *PerpMarket) Executor() market.MarketExecutor { return p.executor }
+func (p *PerpMarket) Risk() market.MarketRisk         { return p.risk }
 func (p *PerpMarket) Projection() *projection.AccountProjection {
 	return p.proj
 }
@@ -149,9 +150,9 @@ func (p *PerpMarket) Registry() *instrument.Registry { return p.reg }
 func (p *PerpMarket) Exchange() ports.Exchange       { return p.exchange }
 func (p *PerpMarket) Router() *MarketRouter          { return p.router }
 
-// --- MarketFeed ---
+// --- market.MarketFeed ---
 
-func (p *PerpMarket) Subscribe(ctx context.Context, req SubscribeRequest) error {
+func (p *PerpMarket) Subscribe(ctx context.Context, req market.SubscribeRequest) error {
 	return p.router.Subscribe(ctx, req)
 }
 
@@ -159,21 +160,21 @@ func (p *PerpMarket) Unsubscribe(strategy string) error {
 	return p.router.Unsubscribe(strategy)
 }
 
-func (p *PerpMarket) WarmupHistory(ctx context.Context, req SubscribeRequest, bars int) (*models.HistoryPayload, error) {
+func (p *PerpMarket) WarmupHistory(ctx context.Context, req market.SubscribeRequest, bars int) (*models.HistoryPayload, error) {
 	return p.router.WarmupHistory(ctx, req, bars)
 }
 
-func (p *PerpMarket) Updates() <-chan MarketUpdate {
+func (p *PerpMarket) Updates() <-chan market.MarketUpdate {
 	return p.router.Updates()
 }
 
-// --- MarketDecider ---
+// --- market.MarketDecider ---
 
 func (p *PerpMarket) Decide(ctx context.Context, strategy string, sig *models.Signal) (*models.Order, error) {
 	return p.decider.Decide(ctx, strategy, sig)
 }
 
-// --- MarketExecutor ---
+// --- market.MarketExecutor ---
 
 func (p *PerpMarket) Place(ctx context.Context, o *models.Order) (string, error) {
 	return p.executor.Place(ctx, o)
@@ -191,7 +192,7 @@ func (p *PerpMarket) OrderEvents() <-chan *models.OrderEvent {
 	return p.executor.OrderEvents()
 }
 
-// --- MarketRisk ---
+// --- market.MarketRisk ---
 
 func (p *PerpMarket) BuildRiskContext(ctx context.Context, strategy string, sig *models.Signal, o *models.Order) (*ports.RiskContext, error) {
 	if p.risk == nil {
@@ -201,7 +202,7 @@ func (p *PerpMarket) BuildRiskContext(ctx context.Context, strategy string, sig 
 }
 
 // PerpFromMarkets 从注册表取出 perp 市场实现。
-func PerpFromMarkets(markets map[models.Market]Market) (*PerpMarket, error) {
+func PerpFromMarkets(markets map[models.Market]market.Market) (*PerpMarket, error) {
 	m, ok := markets[models.MarketPerp]
 	if !ok || m == nil {
 		return nil, fmt.Errorf("market %q not registered", models.MarketPerp)

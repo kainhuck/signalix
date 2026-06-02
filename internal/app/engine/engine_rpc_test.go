@@ -6,7 +6,7 @@ import (
 	"testing"
 	"time"
 
-	"github.com/kainhuck/signalix/internal/app/market"
+	mktperp "github.com/kainhuck/signalix/internal/app/market/perp"
 	"github.com/kainhuck/signalix/internal/models"
 	"github.com/kainhuck/signalix/internal/testutil"
 	"github.com/kainhuck/signalix/pkg/exchange/perp"
@@ -23,7 +23,7 @@ func TestEngine_rpcGetBalanceAndPosition(t *testing.T) {
 	}}
 	ctx, cancel := context.WithCancel(context.Background())
 	markets := testPerpMarkets(t, ex)
-	pm, _ := market.PerpFromMarkets(markets)
+	pm, _ := mktperp.PerpFromMarkets(markets)
 	proj := pm.Projection()
 	if err := proj.Start(ctx); err != nil {
 		t.Fatal(err)
@@ -65,7 +65,7 @@ func TestEngine_rpcGetBalanceAndPosition(t *testing.T) {
 func TestEngine_rpcGetKlines(t *testing.T) {
 	ex := testutil.NewStubExchange()
 	markets := testPerpMarkets(t, ex)
-	pm, _ := market.PerpFromMarkets(markets)
+	pm, _ := mktperp.PerpFromMarkets(markets)
 	router := pm.Router()
 	e := &Engine{markets: markets}
 	e.setStrategyInterval("s1", "5m")
@@ -94,7 +94,7 @@ func TestEngine_rpcGetKlines(t *testing.T) {
 func TestEngine_rpcGetTicker_ok(t *testing.T) {
 	ex := testutil.NewStubExchange()
 	markets := testPerpMarkets(t, ex)
-	pm, _ := market.PerpFromMarkets(markets)
+	pm, _ := mktperp.PerpFromMarkets(markets)
 	router := pm.Router()
 	e := &Engine{markets: markets}
 	tick, err := perp.NewPublicEvent(perp.PublicTicker, &perp.TickerSnapshot{
@@ -124,7 +124,7 @@ func TestEngine_rpcGetTicker_ok(t *testing.T) {
 func TestEngine_rpcGetTicker_notInCache(t *testing.T) {
 	e := &Engine{markets: testPerpMarkets(t, testutil.NewStubExchange())}
 	_, err := e.rpcGetTicker("BTC/USDT")
-	if !errors.Is(err, market.ErrTickerNotInCache) {
+	if !errors.Is(err, mktperp.ErrTickerNotInCache) {
 		t.Fatalf("err = %v", err)
 	}
 }

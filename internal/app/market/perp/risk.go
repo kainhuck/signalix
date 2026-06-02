@@ -1,4 +1,4 @@
-package market
+package perp
 
 import (
 	"context"
@@ -6,6 +6,7 @@ import (
 	"strings"
 
 	"github.com/kainhuck/signalix/internal/app/decision"
+	"github.com/kainhuck/signalix/internal/app/market"
 	"github.com/kainhuck/signalix/internal/app/projection"
 	"github.com/kainhuck/signalix/internal/domain/risk"
 	"github.com/kainhuck/signalix/internal/models"
@@ -31,7 +32,7 @@ type PerpRiskNotionalGate interface {
 	NeedsNotional(increasingExposure bool) bool
 }
 
-// PerpRiskConfig perp MarketRisk 依赖。
+// PerpRiskConfig perp market.MarketRisk 依赖。
 type PerpRiskConfig struct {
 	Proj          *projection.AccountProjection
 	Decision      *decision.DecisionEngine
@@ -48,8 +49,8 @@ type perpRisk struct {
 	needsNotional PerpRiskNotionalGate
 }
 
-// NewPerpRisk 构造 perp 的 MarketRisk。
-func NewPerpRisk(cfg PerpRiskConfig) MarketRisk {
+// NewPerpRisk 构造 perp 的 market.MarketRisk。
+func NewPerpRisk(cfg PerpRiskConfig) market.MarketRisk {
 	return &perpRisk{
 		proj:          cfg.Proj,
 		decision:      cfg.Decision,
@@ -204,4 +205,4 @@ func (p *perpRisk) totalExposure(ctx context.Context) (decimal.Decimal, error) {
 	return total, nil
 }
 
-var _ MarketRisk = (*perpRisk)(nil)
+var _ market.MarketRisk = (*perpRisk)(nil)
