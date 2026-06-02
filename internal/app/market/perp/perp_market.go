@@ -77,11 +77,16 @@ func NewPerpMarket(ctx context.Context, cfg PerpMarketConfig) (*PerpMarket, erro
 		decision.WithTickerLookup(router),
 	)
 
+	executor, err := NewPerpExecutor(PerpExecutorConfig{Exchange: cfg.Exchange, Proj: proj})
+	if err != nil {
+		return nil, err
+	}
+
 	return &PerpMarket{
 		exchange: cfg.Exchange,
 		router:   router,
 		decider:  NewPerpDecider(de),
-		executor: NewPerpExecutor(PerpExecutorConfig{Exchange: cfg.Exchange, Proj: proj}),
+		executor: executor,
 		proj:     proj,
 		reg:      reg,
 		de:       de,

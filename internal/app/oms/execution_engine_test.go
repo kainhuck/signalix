@@ -7,6 +7,7 @@ import (
 	"time"
 
 	"github.com/kainhuck/signalix/internal/app/instrument"
+	"github.com/kainhuck/signalix/internal/app/market"
 	"github.com/kainhuck/signalix/internal/models"
 	"github.com/kainhuck/signalix/internal/testutil"
 	"github.com/kainhuck/signalix/pkg/exchange/perp"
@@ -14,7 +15,10 @@ import (
 
 func TestExecutionEngine_DuplicateSubmitRejected(t *testing.T) {
 	ex := testutil.NewStubExchange()
-	execs, pe := testPerpExecutors(ex)
+	execs, pe, err := testPerpExecutors(ex)
+	if err != nil {
+		t.Fatal(err)
+	}
 	ee := NewExecutionEngine(execs, nil)
 	ctx, cancel := context.WithCancel(context.Background())
 	defer func() {
@@ -65,7 +69,10 @@ func TestExecutionEngine_SubmitRejectedInvalidSize(t *testing.T) {
 	if err := reg.LoadFrom(context.Background(), ex); err != nil {
 		t.Fatal(err)
 	}
-	execs, pe := testPerpExecutors(ex)
+	execs, pe, err := testPerpExecutors(ex)
+	if err != nil {
+		t.Fatal(err)
+	}
 	ee := NewExecutionEngine(execs, nil, WithContractMetaLookup(reg))
 	ctx, cancel := context.WithCancel(context.Background())
 	defer func() {
@@ -101,8 +108,7 @@ func TestExecutionEngine_SubmitRejectedInvalidSize(t *testing.T) {
 
 func TestExecutionEngine_applyOrderEvent_ClientIDFirst(t *testing.T) {
 	t.Parallel()
-	execs, _ := testPerpExecutors(nil)
-	ee := NewExecutionEngine(execs, nil)
+	ee := NewExecutionEngine(map[models.Market]market.MarketExecutor{}, nil)
 	ee.orders["local-1"] = &models.Order{
 		ID:         "local-1",
 		ExchangeID: "ex-other",

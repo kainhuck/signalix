@@ -11,5 +11,6 @@ import (
 // 由 *gateio.Client 等适配器实现，便于构造注入与测试替身。
 type Exchange interface {
 	perp.Live
+	perp.ClientOrderIDCodec
 	Connect(ctx context.Context, parts perp.ConnectParts) error
 }

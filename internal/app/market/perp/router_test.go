@@ -2,6 +2,7 @@ package perp
 
 import (
 	"context"
+	"strings"
 	"sync"
 	"testing"
 	"time"
@@ -60,6 +61,26 @@ func (r *recordingExchange) Balance(context.Context) (*perp.BalanceView, error) 
 func (r *recordingExchange) UserEvents() <-chan *perp.UserEvent {
 	ch := make(chan *perp.UserEvent)
 	return ch
+}
+
+func (r *recordingExchange) TagFromLocal(localID string) string {
+	localID = strings.TrimSpace(localID)
+	if localID == "" {
+		return ""
+	}
+	return "rec:" + localID
+}
+
+func (r *recordingExchange) LocalFromTag(tag string) (string, bool) {
+	tag = strings.TrimSpace(tag)
+	if !strings.HasPrefix(tag, "rec:") {
+		return "", false
+	}
+	local := strings.TrimPrefix(tag, "rec:")
+	if local == "" {
+		return "", false
+	}
+	return local, true
 }
 
 func (r *recordingExchange) tickerSubscribeCount() int {

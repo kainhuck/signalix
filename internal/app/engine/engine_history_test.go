@@ -2,6 +2,7 @@ package engine
 
 import (
 	"context"
+	"strings"
 	"testing"
 
 	"github.com/kainhuck/signalix/internal/app/strategy"
@@ -54,6 +55,26 @@ func (h *historyExchange) Balance(context.Context) (*perp.BalanceView, error) {
 func (h *historyExchange) UserEvents() <-chan *perp.UserEvent {
 	ch := make(chan *perp.UserEvent)
 	return ch
+}
+
+func (h *historyExchange) TagFromLocal(localID string) string {
+	localID = strings.TrimSpace(localID)
+	if localID == "" {
+		return ""
+	}
+	return "hist:" + localID
+}
+
+func (h *historyExchange) LocalFromTag(tag string) (string, bool) {
+	tag = strings.TrimSpace(tag)
+	if !strings.HasPrefix(tag, "hist:") {
+		return "", false
+	}
+	local := strings.TrimPrefix(tag, "hist:")
+	if local == "" {
+		return "", false
+	}
+	return local, true
 }
 
 type historyRuntime struct {

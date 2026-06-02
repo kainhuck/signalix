@@ -175,7 +175,6 @@ type (
 
 	// OrderSnapshot 订单快照。
 	OrderSnapshot struct {
-		OrderID         string
 		ExchangeOrderID string
 		Contract        Contract
 		Side            Side

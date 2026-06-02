@@ -1,4 +1,4 @@
-package perp
+package gateio
 
 import (
 	"crypto/sha256"
@@ -6,13 +6,22 @@ import (
 	"strings"
 )
 
-// GateOrderTextMaxLen Gate 永续下单 text（客户自定义 ID）最大长度。
-const GateOrderTextMaxLen = 30
+const gateOrderTextMaxLen = 30
 
-const gateOrderTextBodyMax = GateOrderTextMaxLen - 2 // 保留 "t-" 前缀
+const gateOrderTextBodyMax = gateOrderTextMaxLen - 2 // 保留 "t-" 前缀
 
-// NormalizeClientOrderID 转为 Gate text 字段（须 t- 前缀，总长 ≤ GateOrderTextMaxLen）。
-func NormalizeClientOrderID(id string) string {
+// TagFromLocal 满足 perp.ClientOrderIDCodec（Gate text）。
+func (c *Client) TagFromLocal(localID string) string {
+	return normalizeGateOrderText(localID)
+}
+
+// LocalFromTag 满足 perp.ClientOrderIDCodec。
+func (c *Client) LocalFromTag(tag string) (string, bool) {
+	local := localIDFromGateText(tag)
+	return local, local != ""
+}
+
+func normalizeGateOrderText(id string) string {
 	raw := strings.TrimSpace(id)
 	if raw == "" {
 		return ""
@@ -27,14 +36,7 @@ func NormalizeClientOrderID(id string) string {
 	return "t-" + raw
 }
 
-// GateTextFromClientOrderID 与 NormalizeClientOrderID 同义。
-func GateTextFromClientOrderID(id string) string {
-	return NormalizeClientOrderID(id)
-}
-
-// LocalClientIDFromGateText 从 Gate text 最佳努力还原本地 ClientID。
-// 不可逆 hash 路径（28 位 hex body）返回空串，须由调用方查 Place 索引。
-func LocalClientIDFromGateText(text string) string {
+func localIDFromGateText(text string) string {
 	text = strings.TrimSpace(text)
 	if text == "" || !strings.HasPrefix(text, "t-") {
 		return ""

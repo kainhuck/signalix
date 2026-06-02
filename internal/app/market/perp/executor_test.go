@@ -8,27 +8,42 @@ import (
 
 	"github.com/kainhuck/signalix/internal/models"
 	"github.com/kainhuck/signalix/internal/testutil"
-	"github.com/kainhuck/signalix/pkg/exchange/perp"
+	exchangeperp "github.com/kainhuck/signalix/pkg/exchange/perp"
+	"github.com/kainhuck/signalix/pkg/exchange/perp/gateio"
 )
 
 // pumpTestExchange 提供可写 UserEvents channel 的测试替身。
 type pumpTestExchange struct {
 	testutil.StubExchange
-	userCh chan *perp.UserEvent
+	userCh chan *exchangeperp.UserEvent
 }
 
-func (p *pumpTestExchange) UserEvents() <-chan *perp.UserEvent {
+func (p *pumpTestExchange) UserEvents() <-chan *exchangeperp.UserEvent {
 	return p.userCh
 }
 
-func orderUserEvent(exchangeID string) *perp.UserEvent {
-	return orderUserEventWithGateText(exchangeID, "", perp.OrderSubmitted)
+// gatePumpExchange 使用 Gate ClientOrderIDCodec，其余行为同 pumpTestExchange。
+type gatePumpExchange struct {
+	pumpTestExchange
+	codec gateio.Client
 }
 
-func orderUserEventWithGateText(exchangeID, gateText string, status perp.OrderStatus) *perp.UserEvent {
-	ev, err := perp.NewUserEvent(perp.UserOrderUpdate, &perp.OrderSnapshot{
+func (g *gatePumpExchange) TagFromLocal(localID string) string {
+	return g.codec.TagFromLocal(localID)
+}
+
+func (g *gatePumpExchange) LocalFromTag(tag string) (string, bool) {
+	return g.codec.LocalFromTag(tag)
+}
+
+func orderUserEvent(exchangeID string) *exchangeperp.UserEvent {
+	return orderUserEventWithClientTag(exchangeID, "", exchangeperp.OrderSubmitted)
+}
+
+func orderUserEventWithClientTag(exchangeID, clientTag string, status exchangeperp.OrderStatus) *exchangeperp.UserEvent {
+	ev, err := exchangeperp.NewUserEvent(exchangeperp.UserOrderUpdate, &exchangeperp.OrderSnapshot{
 		ExchangeOrderID: exchangeID,
-		ClientID:        gateText,
+		ClientID:        clientTag,
 		Status:          status,
 	})
 	if err != nil {
@@ -37,19 +52,28 @@ func orderUserEventWithGateText(exchangeID, gateText string, status perp.OrderSt
 	return ev
 }
 
+func TestNewPerpExecutor_requiresExchange(t *testing.T) {
+	t.Parallel()
+	_, err := NewPerpExecutor(PerpExecutorConfig{Exchange: nil})
+	if err == nil {
+		t.Fatal("expected error for nil exchange")
+	}
+}
+
 func TestPerpExecutorUserEventClientID_UUID(t *testing.T) {
 	t.Parallel()
 
 	localID := "550e8400-e29b-41d4-a716-446655440000"
-	gateText := perp.NormalizeClientOrderID(localID)
+	ex := &gatePumpExchange{pumpTestExchange: pumpTestExchange{userCh: make(chan *exchangeperp.UserEvent, 4)}}
+	clientTag := ex.TagFromLocal(localID)
 
-	ex := &pumpTestExchange{userCh: make(chan *perp.UserEvent, 4)}
 	p := &PerpExecutor{
-		exchange:        ex,
-		orderEvents:     make(chan *models.OrderEvent, 4),
-		gateTextToLocal: make(map[string]string),
+		exchange:    ex,
+		codec:       ex,
+		orderEvents: make(chan *models.OrderEvent, 4),
+		tagToLocal:  make(map[string]string),
 	}
-	p.registerGateText(localID)
+	p.registerClientTag(localID)
 
 	ctx, cancel := context.WithCancel(context.Background())
 	defer cancel()
@@ -58,7 +82,7 @@ func TestPerpExecutorUserEventClientID_UUID(t *testing.T) {
 	}
 	defer func() { _ = p.Stop() }()
 
-	ex.userCh <- orderUserEventWithGateText("ex-wrong", gateText, perp.OrderSubmitted)
+	ex.userCh <- orderUserEventWithClientTag("ex-wrong", clientTag, exchangeperp.OrderSubmitted)
 
 	select {
 	case oe := <-p.orderEvents:
@@ -77,13 +101,14 @@ func TestPerpExecutorUserEventClientID_short(t *testing.T) {
 	t.Parallel()
 
 	localID := "abc123"
-	gateText := perp.NormalizeClientOrderID(localID)
+	ex := &gatePumpExchange{pumpTestExchange: pumpTestExchange{userCh: make(chan *exchangeperp.UserEvent, 4)}}
+	clientTag := ex.TagFromLocal(localID)
 
-	ex := &pumpTestExchange{userCh: make(chan *perp.UserEvent, 4)}
 	p := &PerpExecutor{
-		exchange:        ex,
-		orderEvents:     make(chan *models.OrderEvent, 4),
-		gateTextToLocal: make(map[string]string),
+		exchange:    ex,
+		codec:       ex,
+		orderEvents: make(chan *models.OrderEvent, 4),
+		tagToLocal:  make(map[string]string),
 	}
 	ctx, cancel := context.WithCancel(context.Background())
 	defer cancel()
@@ -92,7 +117,7 @@ func TestPerpExecutorUserEventClientID_short(t *testing.T) {
 	}
 	defer func() { _ = p.Stop() }()
 
-	ex.userCh <- orderUserEventWithGateText("ex-1", gateText, perp.OrderSubmitted)
+	ex.userCh <- orderUserEventWithClientTag("ex-1", clientTag, exchangeperp.OrderSubmitted)
 
 	select {
 	case oe := <-p.orderEvents:
@@ -104,16 +129,19 @@ func TestPerpExecutorUserEventClientID_short(t *testing.T) {
 	}
 }
 
-func TestPerpExecutorPlaceRegistersGateText(t *testing.T) {
+func TestPerpExecutorPlaceRegistersClientTag(t *testing.T) {
 	t.Parallel()
 
 	localID := "550e8400-e29b-41d4-a716-446655440000"
-	gateText := perp.NormalizeClientOrderID(localID)
+	ex := &gatePumpExchange{pumpTestExchange: pumpTestExchange{userCh: make(chan *exchangeperp.UserEvent, 4)}}
+	clientTag := ex.TagFromLocal(localID)
 
-	ex := &pumpTestExchange{userCh: make(chan *perp.UserEvent, 4)}
-	p := NewPerpExecutor(PerpExecutorConfig{Exchange: ex})
+	p, err := NewPerpExecutor(PerpExecutorConfig{Exchange: ex})
+	if err != nil {
+		t.Fatal(err)
+	}
 	ctx := context.Background()
-	_, err := p.Place(ctx, &models.Order{
+	_, err = p.Place(ctx, &models.Order{
 		ID:        localID,
 		Symbol:    "BTC/USDT",
 		Side:      models.OrderSideBuy,
@@ -124,23 +152,24 @@ func TestPerpExecutorPlaceRegistersGateText(t *testing.T) {
 		t.Fatal(err)
 	}
 
-	p.gateTextMu.Lock()
-	got, ok := p.gateTextToLocal[gateText]
-	p.gateTextMu.Unlock()
+	p.tagMu.Lock()
+	got, ok := p.tagToLocal[clientTag]
+	p.tagMu.Unlock()
 	if !ok || got != localID {
-		t.Fatalf("gate text index: ok=%v got=%q want=%q", ok, got, localID)
+		t.Fatalf("client tag index: ok=%v got=%q want=%q", ok, got, localID)
 	}
 }
 
 func TestPerpExecutorPumpDropsWhenFull(t *testing.T) {
 	t.Parallel()
 
-	ex := &pumpTestExchange{userCh: make(chan *perp.UserEvent, 8)}
-	p := &PerpExecutor{
-		exchange:        ex,
-		orderEvents:     make(chan *models.OrderEvent, 1),
-		gateTextToLocal: make(map[string]string),
+	ex := &pumpTestExchange{userCh: make(chan *exchangeperp.UserEvent, 8)}
+	p, err := NewPerpExecutor(PerpExecutorConfig{Exchange: ex})
+	if err != nil {
+		t.Fatal(err)
 	}
+	p.orderEvents = make(chan *models.OrderEvent, 1)
+
 	ctx, cancel := context.WithCancel(context.Background())
 	defer cancel()
 	if err := p.Start(ctx); err != nil {
@@ -182,7 +211,10 @@ drain:
 func TestPerpExecutorPlace(t *testing.T) {
 	t.Parallel()
 	ex := testutil.NewStubExchange()
-	p := NewPerpExecutor(PerpExecutorConfig{Exchange: ex})
+	p, err := NewPerpExecutor(PerpExecutorConfig{Exchange: ex})
+	if err != nil {
+		t.Fatal(err)
+	}
 	ctx := context.Background()
 	o := &models.Order{
 		ID:        "ord-1",
@@ -203,14 +235,17 @@ func TestPerpExecutorPlace(t *testing.T) {
 func TestPerpExecutorSync(t *testing.T) {
 	t.Parallel()
 	ex := testutil.NewStubExchange()
-	ex.GetOrderHook = func(_ context.Context, _ perp.Contract, _ string) (*perp.OrderSnapshot, error) {
-		return &perp.OrderSnapshot{
+	ex.GetOrderHook = func(_ context.Context, _ exchangeperp.Contract, _ string) (*exchangeperp.OrderSnapshot, error) {
+		return &exchangeperp.OrderSnapshot{
 			ExchangeOrderID: "ex-99",
-			Status:          perp.OrderFilled,
+			Status:          exchangeperp.OrderFilled,
 			FilledSize:      "1",
 		}, nil
 	}
-	p := NewPerpExecutor(PerpExecutorConfig{Exchange: ex})
+	p, err := NewPerpExecutor(PerpExecutorConfig{Exchange: ex})
+	if err != nil {
+		t.Fatal(err)
+	}
 	oe, err := p.Sync(context.Background(), &models.Order{
 		ID:         "local-1",
 		Symbol:     "BTC/USDT",

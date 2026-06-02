@@ -18,7 +18,10 @@ import (
 func TestEvaluateStrategyRiskMaxOpenOrders(t *testing.T) {
 	t.Parallel()
 	ex := testutil.NewStubExchange()
-	execs, _ := testOMSExecutors(ex)
+	execs, _, err := testOMSExecutors(ex)
+	if err != nil {
+		t.Fatal(err)
+	}
 	ee := oms.NewExecutionEngine(execs, nil)
 	existing := &models.Order{
 		ID:           "existing",

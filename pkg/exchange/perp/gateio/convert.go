@@ -117,7 +117,6 @@ func orderViewFromFutures(fo gateapi.FuturesOrder) *perp.OrderSnapshot {
 		avg = ap
 	}
 	return &perp.OrderSnapshot{
-		OrderID:         strconv.FormatInt(fo.Id, 10),
 		ExchangeOrderID: strconv.FormatInt(fo.Id, 10),
 		Contract:        perp.CanonicalContract(fo.Contract),
 		Side:            gateSizeSide(fo.Size),

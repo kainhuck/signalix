@@ -10,11 +10,14 @@ import (
 )
 
 // testPerpExecutors 为 OMS 测试构造仅含 perp 的 executor map。
-func testPerpExecutors(exchange ports.Exchange) (map[models.Market]market.MarketExecutor, *mktperp.PerpExecutor) {
-	pe := mktperp.NewPerpExecutor(mktperp.PerpExecutorConfig{Exchange: exchange})
+func testPerpExecutors(exchange ports.Exchange) (map[models.Market]market.MarketExecutor, *mktperp.PerpExecutor, error) {
+	pe, err := mktperp.NewPerpExecutor(mktperp.PerpExecutorConfig{Exchange: exchange})
+	if err != nil {
+		return nil, nil, err
+	}
 	return map[models.Market]market.MarketExecutor{
 		models.MarketPerp: pe,
-	}, pe
+	}, pe, nil
 }
 
 func startTestOMS(ctx context.Context, ee *ExecutionEngine, pe *mktperp.PerpExecutor) error {

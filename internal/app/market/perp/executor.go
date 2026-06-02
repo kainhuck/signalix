@@ -10,7 +10,7 @@ import (
 	"github.com/kainhuck/signalix/internal/app/projection"
 	"github.com/kainhuck/signalix/internal/models"
 	"github.com/kainhuck/signalix/internal/ports"
-	"github.com/kainhuck/signalix/pkg/exchange/perp"
+	exchangeperp "github.com/kainhuck/signalix/pkg/exchange/perp"
 	"github.com/kainhuck/signalix/pkg/logger"
 )
 
@@ -25,11 +25,12 @@ type PerpExecutorConfig struct {
 // PerpExecutor 实现 perp 的 market.MarketExecutor（含用户流泵与 projection 更新）。
 type PerpExecutor struct {
 	exchange    ports.Exchange
+	codec       exchangeperp.ClientOrderIDCodec
 	proj        *projection.AccountProjection
 	orderEvents chan *models.OrderEvent
 
-	gateTextMu      sync.Mutex
-	gateTextToLocal map[string]string
+	tagMu      sync.Mutex
+	tagToLocal map[string]string
 
 	mu      sync.Mutex
 	runCtx  context.Context
@@ -39,13 +40,21 @@ type PerpExecutor struct {
 }
 
 // NewPerpExecutor 构造 perp 执行器。
-func NewPerpExecutor(cfg PerpExecutorConfig) *PerpExecutor {
-	return &PerpExecutor{
-		exchange:        cfg.Exchange,
-		proj:            cfg.Proj,
-		orderEvents:     make(chan *models.OrderEvent, perpOrderEventBuf),
-		gateTextToLocal: make(map[string]string),
+func NewPerpExecutor(cfg PerpExecutorConfig) (*PerpExecutor, error) {
+	if cfg.Exchange == nil {
+		return nil, fmt.Errorf("exchange is required")
 	}
+	codec, ok := cfg.Exchange.(exchangeperp.ClientOrderIDCodec)
+	if !ok {
+		return nil, fmt.Errorf("exchange does not implement perp.ClientOrderIDCodec")
+	}
+	return &PerpExecutor{
+		exchange:    cfg.Exchange,
+		codec:       codec,
+		proj:        cfg.Proj,
+		orderEvents: make(chan *models.OrderEvent, perpOrderEventBuf),
+		tagToLocal:  make(map[string]string),
+	}, nil
 }
 
 // Start 启动用户流泵（须在 Exchange 可用之后调用）。
@@ -97,13 +106,13 @@ func (p *PerpExecutor) Place(ctx context.Context, o *models.Order) (string, erro
 	if o == nil {
 		return "", fmt.Errorf("nil order")
 	}
-	req := &perp.PlaceRequest{
+	req := &exchangeperp.PlaceRequest{
 		Contract:    o.Symbol,
-		Side:        perp.Side(o.Side),
-		Type:        perp.OrderType(o.OrderType),
+		Side:        exchangeperp.Side(o.Side),
+		Type:        exchangeperp.OrderType(o.OrderType),
 		Size:        o.Size,
 		Price:       o.Price,
-		TimeInForce: perp.TIFGTC,
+		TimeInForce: exchangeperp.TIFGTC,
 		ReduceOnly:  false,
 		ClientID:    o.ID,
 	}
@@ -114,7 +123,7 @@ func (p *PerpExecutor) Place(ctx context.Context, o *models.Order) (string, erro
 	if resp == nil {
 		return "", fmt.Errorf("nil place response")
 	}
-	p.registerGateText(o.ID)
+	p.registerClientTag(o.ID)
 	return resp.ExchangeOrderID, nil
 }
 
@@ -126,7 +135,7 @@ func (p *PerpExecutor) Cancel(ctx context.Context, o *models.Order) error {
 	if o == nil {
 		return fmt.Errorf("nil order")
 	}
-	return p.exchange.Cancel(ctx, &perp.CancelParams{
+	return p.exchange.Cancel(ctx, &exchangeperp.CancelParams{
 		Contract: o.Symbol,
 		OrderID:  o.ExchangeID,
 	})
@@ -147,11 +156,10 @@ func (p *PerpExecutor) Sync(ctx context.Context, o *models.Order) (*models.Order
 	if snap == nil {
 		return nil, fmt.Errorf("nil order snapshot")
 	}
-	clientID := o.ID
 	return &models.OrderEvent{
 		Market:     models.MarketPerp,
 		ExchangeID: snap.ExchangeOrderID,
-		ClientID:   clientID,
+		ClientID:   o.ID,
 		Status:     models.OrderStatus(snap.Status),
 		FilledSize: snap.FilledSize,
 		UpdatedAt:  snap.UpdatedAt,
@@ -180,53 +188,56 @@ func (p *PerpExecutor) pump(ctx context.Context) {
 			if p.proj != nil {
 				p.proj.OnUserEvent(ctx, ev)
 			}
-			oe, gateText := p.orderEventFromUserEvent(ev)
+			oe, clientTag := p.orderEventFromUserEvent(ev)
 			if oe == nil {
 				continue
 			}
 			p.emitOrderEvent(ctx, oe)
-			if gateText != "" && isTerminalOrderStatus(oe.Status) {
-				p.unregisterGateText(gateText)
+			if clientTag != "" && isTerminalOrderStatus(oe.Status) {
+				p.unregisterClientTag(clientTag)
 			}
 		}
 	}
 }
 
-func (p *PerpExecutor) registerGateText(localID string) {
-	if p == nil || localID == "" {
+func (p *PerpExecutor) registerClientTag(localID string) {
+	if p == nil || p.codec == nil || localID == "" {
 		return
 	}
-	gateText := perp.GateTextFromClientOrderID(localID)
-	if gateText == "" {
+	tag := p.codec.TagFromLocal(localID)
+	if tag == "" {
 		return
 	}
-	p.gateTextMu.Lock()
-	p.gateTextToLocal[gateText] = localID
-	p.gateTextMu.Unlock()
+	p.tagMu.Lock()
+	p.tagToLocal[tag] = localID
+	p.tagMu.Unlock()
 }
 
-func (p *PerpExecutor) unregisterGateText(gateText string) {
-	gateText = strings.TrimSpace(gateText)
-	if p == nil || gateText == "" {
+func (p *PerpExecutor) unregisterClientTag(clientTag string) {
+	clientTag = strings.TrimSpace(clientTag)
+	if p == nil || clientTag == "" {
 		return
 	}
-	p.gateTextMu.Lock()
-	delete(p.gateTextToLocal, gateText)
-	p.gateTextMu.Unlock()
+	p.tagMu.Lock()
+	delete(p.tagToLocal, clientTag)
+	p.tagMu.Unlock()
 }
 
-func (p *PerpExecutor) resolveLocalClientID(gateText string) string {
-	gateText = strings.TrimSpace(gateText)
-	if gateText == "" {
+func (p *PerpExecutor) resolveLocalClientID(clientTag string) string {
+	clientTag = strings.TrimSpace(clientTag)
+	if clientTag == "" || p.codec == nil {
 		return ""
 	}
-	p.gateTextMu.Lock()
-	local, ok := p.gateTextToLocal[gateText]
-	p.gateTextMu.Unlock()
+	p.tagMu.Lock()
+	local, ok := p.tagToLocal[clientTag]
+	p.tagMu.Unlock()
 	if ok {
 		return local
 	}
-	return perp.LocalClientIDFromGateText(gateText)
+	if local, ok := p.codec.LocalFromTag(clientTag); ok {
+		return local
+	}
+	return ""
 }
 
 func isTerminalOrderStatus(st models.OrderStatus) bool {
@@ -249,23 +260,23 @@ func (p *PerpExecutor) emitOrderEvent(ctx context.Context, oe *models.OrderEvent
 	}
 }
 
-func (p *PerpExecutor) orderEventFromUserEvent(ev *perp.UserEvent) (*models.OrderEvent, string) {
-	if p == nil || ev == nil || ev.Kind != perp.UserOrderUpdate {
+func (p *PerpExecutor) orderEventFromUserEvent(ev *exchangeperp.UserEvent) (*models.OrderEvent, string) {
+	if p == nil || ev == nil || ev.Kind != exchangeperp.UserOrderUpdate {
 		return nil, ""
 	}
 	ov, ok := ev.Order()
 	if !ok || ov == nil {
 		return nil, ""
 	}
-	gateText := strings.TrimSpace(ov.ClientID)
+	clientTag := strings.TrimSpace(ov.ClientID)
 	return &models.OrderEvent{
 		Market:     models.MarketPerp,
 		ExchangeID: ov.ExchangeOrderID,
-		ClientID:   p.resolveLocalClientID(gateText),
+		ClientID:   p.resolveLocalClientID(clientTag),
 		Status:     models.OrderStatus(ov.Status),
 		FilledSize: ov.FilledSize,
 		UpdatedAt:  ov.UpdatedAt,
-	}, gateText
+	}, clientTag
 }
 
 var _ market.MarketExecutor = (*PerpExecutor)(nil)
