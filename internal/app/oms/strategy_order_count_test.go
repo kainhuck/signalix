@@ -11,13 +11,14 @@ import (
 func TestNonFinalOrderCountForStrategy(t *testing.T) {
 	t.Parallel()
 	ex := testutil.NewStubExchange()
-	ee := NewExecutionEngine(ex, nil, nil)
+	execs, pe := testPerpExecutors(ex)
+	ee := NewExecutionEngine(execs, nil)
 	ctx, cancel := context.WithCancel(context.Background())
 	defer func() {
 		cancel()
-		_ = ee.Stop()
+		stopTestOMS(ee, pe)
 	}()
-	if err := ee.Start(ctx); err != nil {
+	if err := startTestOMS(ctx, ee, pe); err != nil {
 		t.Fatal(err)
 	}
 

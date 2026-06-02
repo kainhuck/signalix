@@ -109,12 +109,17 @@ func TestShouldAutoRestartSkipsWhenKillSwitchActive(t *testing.T) {
 func TestActivateKillSwitchCancelOpenOrders(t *testing.T) {
 	t.Parallel()
 	ex := testutil.NewStubExchange()
-	ee := oms.NewExecutionEngine(ex, nil, nil)
+	execs, pe := testOMSExecutors(ex)
+	ee := oms.NewExecutionEngine(execs, nil)
 	ctx, cancel := context.WithCancel(context.Background())
 	defer func() {
 		cancel()
 		_ = ee.Stop()
+		_ = pe.Stop()
 	}()
+	if err := pe.Start(ctx); err != nil {
+		t.Fatal(err)
+	}
 	if err := ee.Start(ctx); err != nil {
 		t.Fatal(err)
 	}

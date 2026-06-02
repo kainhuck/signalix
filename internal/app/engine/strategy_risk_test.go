@@ -18,7 +18,8 @@ import (
 func TestEvaluateStrategyRiskMaxOpenOrders(t *testing.T) {
 	t.Parallel()
 	ex := testutil.NewStubExchange()
-	ee := oms.NewExecutionEngine(ex, nil, nil)
+	execs, _ := testOMSExecutors(ex)
+	ee := oms.NewExecutionEngine(execs, nil)
 	existing := &models.Order{
 		ID:           "existing",
 		Symbol:       "BTC/USDT",

@@ -45,6 +45,7 @@ type Engine struct {
 	loader             *strategy.StrategyLoader
 	decider            market.MarketDecider
 	perpRisk           market.MarketRisk
+	perpExecutor       *market.PerpExecutor
 	executionEngine    *oms.ExecutionEngine
 	instrumentRegistry *instrument.Registry
 	accountProjection  *projection.AccountProjection
@@ -190,7 +191,13 @@ func NewEngine(strategyDir string, exchange ports.Exchange, build BuildParams, o
 	if cmdBuf <= 0 {
 		cmdBuf = 100
 	}
-	e.executionEngine = oms.NewExecutionEngine(exchange, proj, e.store,
+	e.perpExecutor = market.NewPerpExecutor(market.PerpExecutorConfig{
+		Exchange: exchange,
+		Proj:     proj,
+	})
+	e.executionEngine = oms.NewExecutionEngine(map[models.Market]market.MarketExecutor{
+		models.MarketPerp: e.perpExecutor,
+	}, e.store,
 		oms.WithChannelBuffers(omsBuf, cmdBuf),
 		oms.WithMaxRetries(omsRetries),
 		oms.WithContractMetaLookup(reg),
@@ -304,6 +311,9 @@ func (e *Engine) Start() error {
 
 	logger.InfoContext(e.ctx, "Strategy Engine started", "strategies", len(e.strategies))
 
+	if err := e.perpExecutor.Start(e.ctx); err != nil {
+		return err
+	}
 	if err := e.executionEngine.Start(e.ctx); err != nil {
 		return err
 	}
@@ -547,6 +557,11 @@ func (e *Engine) Stop() error {
 	}
 	if err := e.executionEngine.Stop(); err != nil {
 		logger.ErrorContext(e.ctx, "execution engine stop", logger.Any("error", err))
+	}
+	if e.perpExecutor != nil {
+		if err := e.perpExecutor.Stop(); err != nil {
+			logger.ErrorContext(e.ctx, "perp executor stop", logger.Any("error", err))
+		}
 	}
 
 	e.orderPumpWg.Wait()
