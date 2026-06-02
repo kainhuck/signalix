@@ -2,6 +2,7 @@ package testutil
 
 import (
 	"context"
+	"strings"
 	"sync"
 	"time"
 
@@ -77,6 +78,7 @@ func (s *StubExchange) Place(ctx context.Context, req *perp.PlaceRequest) (*perp
 	s.Mu.Unlock()
 	return &perp.OrderSnapshot{
 		ExchangeOrderID: "stub-ex-1",
+		ClientID:        s.TagFromLocal(req.ClientID),
 		Contract:        req.Contract,
 		Status:          perp.OrderPending,
 		UpdatedAt:       time.Now(),
@@ -147,3 +149,27 @@ func (s *StubExchange) UserEvents() <-chan *perp.UserEvent {
 }
 
 func (s *StubExchange) Connect(ctx context.Context, parts perp.ConnectParts) error { return nil }
+
+const stubClientTagPrefix = "stub:"
+
+// TagFromLocal 满足 perp.ClientOrderIDCodec（测试替身）。
+func (s *StubExchange) TagFromLocal(localID string) string {
+	localID = strings.TrimSpace(localID)
+	if localID == "" {
+		return ""
+	}
+	return stubClientTagPrefix + localID
+}
+
+// LocalFromTag 满足 perp.ClientOrderIDCodec。
+func (s *StubExchange) LocalFromTag(tag string) (string, bool) {
+	tag = strings.TrimSpace(tag)
+	if !strings.HasPrefix(tag, stubClientTagPrefix) {
+		return "", false
+	}
+	local := strings.TrimPrefix(tag, stubClientTagPrefix)
+	if local == "" {
+		return "", false
+	}
+	return local, true
+}

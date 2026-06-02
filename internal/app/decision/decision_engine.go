@@ -45,8 +45,17 @@ func NewDecisionEngine(acct *projection.AccountProjection, opts ...Option) *Deci
 	return de
 }
 
-// ProcessSignal 处理策略信号，转换为订单
+// Decide 满足 market.MarketDecider 语义（与 ProcessSignal 等价）。
+func (de *DecisionEngine) Decide(ctx context.Context, strategyName string, signal *models.Signal) (*models.Order, error) {
+	return de.processSignal(ctx, strategyName, signal)
+}
+
+// ProcessSignal 处理策略信号，转换为订单（保留公开 API）。
 func (de *DecisionEngine) ProcessSignal(ctx context.Context, strategyName string, signal *models.Signal) (*models.Order, error) {
+	return de.processSignal(ctx, strategyName, signal)
+}
+
+func (de *DecisionEngine) processSignal(ctx context.Context, strategyName string, signal *models.Signal) (*models.Order, error) {
 	de.mu.Lock()
 	de.stats.SignalsProcessed++
 	de.mu.Unlock()
@@ -164,39 +173,7 @@ func (de *DecisionEngine) calculateOrderSize(ctx context.Context, signal *models
 
 	availableBalance, _ := decimal.NewFromString(balance.Available)
 
-	divisor := de.defaultSizeDivisor
-	if divisor <= 0 {
-		divisor = 10
-	}
-	var notional decimal.Decimal
-	if signal.SizingMode == nil {
-		notional = availableBalance.Div(decimal.NewFromInt(int64(divisor)))
-		return de.notionalUSDTToContracts(ctx, signal.Symbol, notional)
-	}
-
-	switch *signal.SizingMode {
-	case models.SizingModePercent:
-		if signal.Value == nil {
-			return decimal.Zero, fmt.Errorf("value is required for percent sizing mode")
-		}
-		percent, _ := decimal.NewFromString(*signal.Value)
-		if percent.IsNegative() || percent.GreaterThan(decimal.NewFromFloat(1.0)) {
-			return decimal.Zero, fmt.Errorf("percent must be between 0 and 1, got: %s", *signal.Value)
-		}
-		notional = availableBalance.Mul(percent)
-		return de.notionalUSDTToContracts(ctx, signal.Symbol, notional)
-
-	case models.SizingModeFixed:
-		if signal.Value == nil {
-			return decimal.Zero, fmt.Errorf("value is required for fixed sizing mode")
-		}
-		fixedSize, _ := decimal.NewFromString(*signal.Value)
-		if fixedSize.GreaterThan(availableBalance) {
-			return decimal.Zero, fmt.Errorf("fixed size %s exceeds available balance %s", *signal.Value, balance.Available)
-		}
-		return de.notionalUSDTToContracts(ctx, signal.Symbol, fixedSize)
-
-	case models.SizingModeCustom:
+	if signal.SizingMode != nil && *signal.SizingMode == models.SizingModeCustom {
 		if signal.Value == nil {
 			return decimal.Zero, fmt.Errorf("value is required for custom sizing mode")
 		}
@@ -205,10 +182,13 @@ func (de *DecisionEngine) calculateOrderSize(ctx context.Context, signal *models
 			return decimal.Zero, fmt.Errorf("custom size must be positive")
 		}
 		return value, nil
-
-	default:
-		return decimal.Zero, fmt.Errorf("unknown sizing mode: %s", *signal.SizingMode)
 	}
+
+	notional, err := ComputeUSDTNotionalFromSignal(signal, availableBalance, de.defaultSizeDivisor)
+	if err != nil {
+		return decimal.Zero, err
+	}
+	return de.notionalUSDTToContracts(ctx, signal.Symbol, notional)
 }
 
 // determineOrderSide 确定订单方向

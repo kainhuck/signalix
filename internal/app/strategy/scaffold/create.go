@@ -7,7 +7,6 @@ import (
 	"path/filepath"
 
 	"github.com/kainhuck/signalix/internal/app/strategy"
-	"github.com/kainhuck/signalix/pkg/exchange/perp"
 	"gopkg.in/yaml.v3"
 )
 
@@ -25,7 +24,7 @@ type CreateOptions struct {
 	StrategiesDir   string
 	Name            string
 	TemplateID      string
-	Symbols         []perp.Contract
+	Symbols         []string
 	Interval        *string
 	HistoryBars     *int
 	SubscribeTicker *bool
@@ -112,7 +111,7 @@ func mergeConfig(base strategy.StrategyConfig, opts CreateOptions) strategy.Stra
 		cfg.Enabled = false
 	}
 	if len(opts.Symbols) > 0 {
-		cfg.Symbols = append([]perp.Contract(nil), opts.Symbols...)
+		cfg.Symbols = append([]string(nil), opts.Symbols...)
 	}
 	if opts.Interval != nil {
 		cfg.Interval = *opts.Interval

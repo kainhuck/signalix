@@ -249,7 +249,8 @@ python3 -m unittest discover -s tests -v
 ```text
 ┌──────────────────┐
 │  signalixd (Go)  │
-│  MarketRouter    │
+│  market.Market   │
+│  (perp Router)   │
 │  REST 预热       │
 └────────┬─────────┘
          │ stdin/stdout JSON

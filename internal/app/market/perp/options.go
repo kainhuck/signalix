@@ -1,4 +1,6 @@
-package market
+package perp
+
+import "github.com/kainhuck/signalix/internal/app/market"
 
 // Option 行情路由器可选配置。
 type Option func(*MarketRouter)
@@ -7,7 +9,7 @@ type Option func(*MarketRouter)
 func WithBufferSize(n int) Option {
 	return func(mr *MarketRouter) {
 		if mr != nil && n > 0 {
-			mr.marketCh = make(chan MarketUpdate, n)
+			mr.marketCh = make(chan market.MarketUpdate, n)
 		}
 	}
 }

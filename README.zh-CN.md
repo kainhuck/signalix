@@ -21,6 +21,7 @@ Signalix 将行情接入、账户投影、决策、风控、OMS 与策略生命�
 
 ## 特性
 
+- **市场抽象**（`internal/app/market`）：引擎按 `map[models.Market]market.Market` 编排；perp 为 `market/perp` 下第一个实现
 - **永续抽象层**（`pkg/exchange/perp`）：统一连接、行情、交易、账户视图与用户推送接口
 - **Gate.io 适配**：REST / WebSocket，支持模拟盘与实盘配置切换
 - **多策略隔离**：每策略独立 Python 进程；单策略崩溃不拖垮引擎
@@ -40,8 +41,8 @@ Signalix 将行情接入、账户投影、决策、风控、OMS 与策略生命�
                                         │
           ┌─────────────────────────────┼─────────────────────────────┐
           ▼                             ▼                             ▼
-   MarketRouter              Python Strategy(s)                  ExecutionEngine
-   AccountProjection         stdin/stdout IPC                    (OMS)
+   market.Market (perp)       Python Strategy(s)                  ExecutionEngine
+   AccountProjection          stdin/stdout IPC                    (OMS)
           │                             │                             │
           └─────────────────────────────┴─────────────────────────────┘
                                         │
@@ -191,6 +192,7 @@ symbols:
   - BTC/USDT
 interval: 1m
 history_bars: 200
+# market: perp   # 可选；省略时默认 perp
 # 可选 risk 段：策略级限额（不写则仅用 config.toml [risk]）
 # risk:
 #   max_open_orders: 10
@@ -209,17 +211,18 @@ signalix/
 ├── api/gen/go/             # 生成的 Go 代码
 ├── cmd/signalixd/          # 引擎入口
 ├── internal/
-│   ├── app/                # engine、oms、projection、market、decision、strategy
-│   ├── adapters/           # gateio、pythonipc、sqlite、grpc
+│   ├── app/                # engine、oms、projection、market（含 perp/）、decision、strategy
+│   ├── adapters/           # gateio、pythonipc、sqlite、grpc（models→proto 转换）
 │   ├── domain/risk/        # 风控规则
 │   ├── ports/              # 端口接口
-│   └── models/
-├── pkg/exchange/perp/      # 永续领域模型与 Gate.io 实现
+│   └── models/             # 市场中性视图
+├── pkg/exchange/perp/      # 永续 DTO 与 Gate.io 适配
 ├── sdk/python/             # Python SDK
 ├── config.example.toml
-├── docs/                   # 架构与产品设计
-└── templates/              # 策略模板
+└── docs/                   # 架构与产品设计
 ```
+
+策略脚手架模版位于 `internal/app/strategy/scaffold/templates/`（embed 内置；经 gRPC `ListTemplates` / `CreateStrategy` 暴露）。
 
 ## 已知限制
 
@@ -232,7 +235,8 @@ signalix/
 ## 路线图
 
 - HTTP 网关（OpenAPI + 认证，调用引擎 gRPC）
-- 更多交易所适配、合约元数据缓存、回测 / Paper 模式
+- `signalixd` 注册 spot 市场（spot 管线已单独归档）
+- 更多交易所适配、回测 / Paper 统一语义
 
 ## 文档
 

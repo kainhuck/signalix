@@ -11,7 +11,6 @@ import (
 	enginev1 "github.com/kainhuck/signalix/api/gen/go/signalix/engine/v1"
 	"github.com/kainhuck/signalix/internal/app/engine"
 	"github.com/kainhuck/signalix/internal/models"
-	"github.com/kainhuck/signalix/pkg/exchange/perp"
 	"github.com/kainhuck/signalix/pkg/logger"
 	"google.golang.org/grpc"
 	"google.golang.org/grpc/codes"
@@ -194,7 +193,7 @@ func (s *EngineService) GetPosition(ctx context.Context, req *enginev1.GetPositi
 	if symbol == "" {
 		return nil, status.Error(codes.InvalidArgument, "empty symbol")
 	}
-	pos, err := s.eng.PositionSnapshot(perp.Contract(symbol))
+	pos, err := s.eng.PositionSnapshot(symbol)
 	if err != nil {
 		return nil, mapProjectionErr(err)
 	}
@@ -227,7 +226,7 @@ func (s *EngineService) GetTicker(ctx context.Context, req *enginev1.GetTickerRe
 	if symbol == "" {
 		return nil, status.Error(codes.InvalidArgument, "empty symbol")
 	}
-	snap, err := s.eng.TickerSnapshot(perp.Contract(symbol))
+	snap, err := s.eng.TickerSnapshot(symbol)
 	if err != nil {
 		return nil, mapMarketErr(err)
 	}
@@ -246,7 +245,7 @@ func (s *EngineService) GetKlines(ctx context.Context, req *enginev1.GetKlinesRe
 	if interval == "" {
 		return nil, status.Error(codes.InvalidArgument, "empty interval")
 	}
-	klines, err := s.eng.ClosedKlines(perp.Contract(symbol), interval, int(req.GetLimit()))
+	klines, err := s.eng.ClosedKlines(symbol, interval, int(req.GetLimit()))
 	if err != nil {
 		return nil, mapMarketErr(err)
 	}
@@ -272,7 +271,7 @@ func (s *EngineService) ListTickers(ctx context.Context, _ *enginev1.ListTickers
 	sort.Strings(symbols)
 	out := make([]*enginev1.Ticker, 0, len(symbols))
 	for _, sym := range symbols {
-		out = append(out, tickerToProto(all[perp.Contract(sym)]))
+		out = append(out, tickerToProto(all[sym]))
 	}
 	return &enginev1.ListTickersReply{Tickers: out}, nil
 }

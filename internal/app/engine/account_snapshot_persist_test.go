@@ -5,21 +5,21 @@ import (
 	"testing"
 	"time"
 
-	"github.com/kainhuck/signalix/pkg/exchange/perp"
+	"github.com/kainhuck/signalix/internal/models"
 )
 
 func TestEncodeAccountSnapshotRow(t *testing.T) {
 	at := time.Date(2026, 5, 26, 10, 0, 0, 0, time.UTC)
-	bal := &perp.BalanceView{
+	bal := &models.BalanceView{
 		Currency:  "USDT",
 		Total:     "12345.67",
 		Available: "10000",
 		Frozen:    "2345.67",
 		UpdatedAt: time.Unix(1710000000, 0),
 	}
-	positions := []*perp.PositionSnapshot{
-		{Contract: "BTC/USDT", Side: perp.PositionShort, Size: "2", UpdatedAt: time.Unix(2, 0)},
-		{Contract: "ETH/USDT", Side: perp.PositionLong, Size: "1", UpdatedAt: time.Unix(1, 0)},
+	positions := []*models.PositionView{
+		{Symbol: "BTC/USDT", Side: "short", Size: "2", UpdatedAt: time.Unix(2, 0)},
+		{Symbol: "ETH/USDT", Side: "long", Size: "1", UpdatedAt: time.Unix(1, 0)},
 	}
 
 	row, err := encodeAccountSnapshotRow(bal, positions, 5, at)
@@ -54,7 +54,7 @@ func TestEncodeAccountSnapshotRow(t *testing.T) {
 }
 
 func TestEncodeAccountSnapshotRow_emptyPositions(t *testing.T) {
-	row, err := encodeAccountSnapshotRow(&perp.BalanceView{
+	row, err := encodeAccountSnapshotRow(&models.BalanceView{
 		Currency: "USDT",
 		Total:    "1",
 	}, nil, 1, time.Now().UTC())

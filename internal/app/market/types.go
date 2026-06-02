@@ -1,6 +1,6 @@
 package market
 
-import "github.com/kainhuck/signalix/pkg/exchange/perp"
+import "github.com/kainhuck/signalix/internal/models"
 
 // MarketUpdateKind 行情更新类型。
 type MarketUpdateKind int
@@ -10,10 +10,11 @@ const (
 	MarketUpdateKline
 )
 
-// MarketUpdate 分发给引擎的行情更新。
+// MarketUpdate 分发给引擎的行情更新（市场中性：携带 models 层 IPC 载荷）。
 type MarketUpdate struct {
+	Market       models.Market
 	StrategyName string
 	Kind         MarketUpdateKind
-	Ticker       *perp.TickerSnapshot
-	Kline        *perp.CandlestickSnapshot
+	Ticker       *models.Ticker
+	Kline        *models.Kline
 }

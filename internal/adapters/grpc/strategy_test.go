@@ -7,7 +7,6 @@ import (
 	enginev1 "github.com/kainhuck/signalix/api/gen/go/signalix/engine/v1"
 	"github.com/kainhuck/signalix/internal/app/engine"
 	"github.com/kainhuck/signalix/internal/app/strategy"
-	"github.com/kainhuck/signalix/pkg/exchange/perp"
 	"google.golang.org/grpc/codes"
 	"google.golang.org/grpc/status"
 )
@@ -29,7 +28,7 @@ func TestListStrategies_engineNotRunning(t *testing.T) {
 			StrategyConfig: strategy.StrategyConfig{
 				Name:    "alpha",
 				Enabled: true,
-				Symbols: []perp.Contract{"BTC/USDT"},
+				Symbols: []string{"BTC/USDT"},
 			},
 		},
 	})

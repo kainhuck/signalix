@@ -20,7 +20,7 @@ func TestBalanceSnapshot_projectionNotConfigured(t *testing.T) {
 
 func TestBalanceSnapshot_notReady(t *testing.T) {
 	t.Parallel()
-	e := NewEngine(t.TempDir(), testutil.NewStubExchange(), BuildParams{})
+	e := newTestEngine(t, t.TempDir(), testutil.NewStubExchange())
 	_, err := e.BalanceSnapshot()
 	if !errors.Is(err, projection.ErrProjectionNotReady) {
 		t.Fatalf("err = %v", err)
@@ -29,7 +29,7 @@ func TestBalanceSnapshot_notReady(t *testing.T) {
 
 func TestBalanceSnapshot_ok(t *testing.T) {
 	t.Parallel()
-	e := NewEngine(t.TempDir(), testutil.NewStubExchange(), BuildParams{})
+	e := newTestEngine(t, t.TempDir(), testutil.NewStubExchange())
 	if err := e.accountProjection.Start(t.Context()); err != nil {
 		t.Fatal(err)
 	}
@@ -44,11 +44,11 @@ func TestBalanceSnapshot_ok(t *testing.T) {
 
 func TestPositionSnapshot_noPosition(t *testing.T) {
 	t.Parallel()
-	e := NewEngine(t.TempDir(), testutil.NewStubExchange(), BuildParams{})
+	e := newTestEngine(t, t.TempDir(), testutil.NewStubExchange())
 	if err := e.accountProjection.Start(t.Context()); err != nil {
 		t.Fatal(err)
 	}
-	pos, err := e.PositionSnapshot(perp.Contract("BTC/USDT"))
+	pos, err := e.PositionSnapshot("BTC/USDT")
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -67,7 +67,7 @@ func TestAllPositionsSnapshot_withPositions(t *testing.T) {
 			Size:     "1",
 		},
 	}
-	e := NewEngine(t.TempDir(), ex, BuildParams{})
+	e := newTestEngine(t, t.TempDir(), ex)
 	if err := e.accountProjection.Start(t.Context()); err != nil {
 		t.Fatal(err)
 	}
@@ -75,14 +75,14 @@ func TestAllPositionsSnapshot_withPositions(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	if len(list) != 1 || list[0].Contract != "BTC/USDT" {
+	if len(list) != 1 || list[0].Symbol != "BTC/USDT" {
 		t.Fatalf("list = %+v", list)
 	}
 }
 
 func TestAllPositionsSnapshot_empty(t *testing.T) {
 	t.Parallel()
-	e := NewEngine(t.TempDir(), testutil.NewStubExchange(), BuildParams{})
+	e := newTestEngine(t, t.TempDir(), testutil.NewStubExchange())
 	if err := e.accountProjection.Start(t.Context()); err != nil {
 		t.Fatal(err)
 	}

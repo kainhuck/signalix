@@ -7,7 +7,6 @@ import (
 	"github.com/kainhuck/signalix/internal/domain/risk"
 	"github.com/kainhuck/signalix/internal/models"
 	"github.com/kainhuck/signalix/internal/ports"
-	"github.com/kainhuck/signalix/pkg/exchange/perp"
 	"github.com/kainhuck/signalix/pkg/logger"
 	"github.com/shopspring/decimal"
 )
@@ -35,7 +34,7 @@ func (e *Engine) evaluateStrategyRisk(ctx context.Context, strategyName string, 
 	v = risk.PrefixStrategyVerdict(v)
 	if v.Kind == risk.KindReduce {
 		order.Size = v.AdjustedSize
-		rebuilt, err := e.buildRiskContext(ctx, strategyName, signal, order)
+		rebuilt, err := e.buildRiskContext(ctx, e.strategyMarket(strategyName), strategyName, signal, order)
 		if err != nil {
 			return v, base, err
 		}
@@ -44,7 +43,7 @@ func (e *Engine) evaluateStrategyRisk(ctx context.Context, strategyName string, 
 	return v, base, nil
 }
 
-func (e *Engine) buildStrategyRiskContext(base *ports.RiskContext, strategyName string, symbols []perp.Contract) (*ports.RiskContext, error) {
+func (e *Engine) buildStrategyRiskContext(base *ports.RiskContext, strategyName string, symbols []string) (*ports.RiskContext, error) {
 	if base == nil {
 		return nil, nil
 	}
@@ -60,16 +59,19 @@ func (e *Engine) buildStrategyRiskContext(base *ports.RiskContext, strategyName 
 	return &scoped, nil
 }
 
-func (e *Engine) openPositionCountForStrategy(symbols []perp.Contract) (int, error) {
+func (e *Engine) openPositionCountForStrategy(symbols []string) (int, error) {
 	if e.accountProjection == nil || !e.accountProjection.IsReady() {
 		return -1, nil
 	}
 	if len(symbols) == 0 {
 		return 0, nil
 	}
-	allowed := make(map[perp.Contract]struct{}, len(symbols))
+	allowed := make(map[string]struct{}, len(symbols))
 	for _, s := range symbols {
-		allowed[s] = struct{}{}
+		s = strings.TrimSpace(s)
+		if s != "" {
+			allowed[s] = struct{}{}
+		}
 	}
 	positions, err := e.accountProjection.AllPositions()
 	if err != nil {
@@ -80,7 +82,7 @@ func (e *Engine) openPositionCountForStrategy(symbols []perp.Contract) (int, err
 		if pv == nil {
 			continue
 		}
-		if _, ok := allowed[pv.Contract]; !ok {
+		if _, ok := allowed[string(pv.Contract)]; !ok {
 			continue
 		}
 		qty, err := decimal.NewFromString(strings.TrimSpace(pv.Size))

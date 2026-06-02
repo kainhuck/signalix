@@ -175,7 +175,6 @@ type (
 
 	// OrderSnapshot 订单快照。
 	OrderSnapshot struct {
-		OrderID         string
 		ExchangeOrderID string
 		Contract        Contract
 		Side            Side
@@ -185,6 +184,7 @@ type (
 		FilledSize      string
 		AvgPrice        string
 		Status          OrderStatus
+		ClientID        string // Gate text 原值（normalize 后）
 		CreatedAt       time.Time
 		UpdatedAt       time.Time
 	}

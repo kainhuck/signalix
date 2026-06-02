@@ -6,15 +6,32 @@ import (
 
 	enginev1 "github.com/kainhuck/signalix/api/gen/go/signalix/engine/v1"
 	"github.com/kainhuck/signalix/internal/app/engine"
+	"github.com/kainhuck/signalix/internal/app/market"
+	mktperp "github.com/kainhuck/signalix/internal/app/market/perp"
+	"github.com/kainhuck/signalix/internal/models"
 	"github.com/kainhuck/signalix/internal/testutil"
 	"google.golang.org/grpc/codes"
 	"google.golang.org/grpc/status"
 )
 
+func testEngineWithMarkets(t *testing.T, dir string) *engine.Engine {
+	t.Helper()
+	pm, err := mktperp.NewPerpMarket(context.Background(), mktperp.PerpMarketConfig{Exchange: testutil.NewStubExchange()})
+	if err != nil {
+		t.Fatal(err)
+	}
+	markets := map[models.Market]market.Market{models.MarketPerp: pm}
+	build := engine.BuildParams{
+		AccountProjection: pm.Projection(),
+		MetaLookup:        pm.Registry(),
+	}
+	return engine.NewEngine(dir, markets, build)
+}
+
 func TestCreateStrategy_engineNotRunning(t *testing.T) {
 	t.Parallel()
 	dir := t.TempDir()
-	e := engine.NewEngine(dir, testutil.NewStubExchange(), engine.BuildParams{})
+	e := testEngineWithMarkets(t, dir)
 	svc := NewEngineService(e)
 	_, err := svc.CreateStrategy(context.Background(), &enginev1.CreateStrategyRequest{
 		Name:       "x",
@@ -28,7 +45,7 @@ func TestCreateStrategy_engineNotRunning(t *testing.T) {
 func TestListTemplates_ok(t *testing.T) {
 	t.Parallel()
 	dir := t.TempDir()
-	e := engine.NewEngine(dir, testutil.NewStubExchange(), engine.BuildParams{})
+	e := testEngineWithMarkets(t, dir)
 	svc := NewEngineService(e)
 	reply, err := svc.ListTemplates(context.Background(), &enginev1.ListTemplatesRequest{})
 	if err != nil {

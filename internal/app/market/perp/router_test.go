@@ -1,10 +1,13 @@
-package market
+package perp
 
 import (
 	"context"
+	"strings"
 	"sync"
 	"testing"
+	"time"
 
+	"github.com/kainhuck/signalix/internal/app/market"
 	"github.com/kainhuck/signalix/pkg/exchange/perp"
 )
 
@@ -60,6 +63,26 @@ func (r *recordingExchange) UserEvents() <-chan *perp.UserEvent {
 	return ch
 }
 
+func (r *recordingExchange) TagFromLocal(localID string) string {
+	localID = strings.TrimSpace(localID)
+	if localID == "" {
+		return ""
+	}
+	return "rec:" + localID
+}
+
+func (r *recordingExchange) LocalFromTag(tag string) (string, bool) {
+	tag = strings.TrimSpace(tag)
+	if !strings.HasPrefix(tag, "rec:") {
+		return "", false
+	}
+	local := strings.TrimPrefix(tag, "rec:")
+	if local == "" {
+		return "", false
+	}
+	return local, true
+}
+
 func (r *recordingExchange) tickerSubscribeCount() int {
 	r.mu.Lock()
 	defer r.mu.Unlock()
@@ -89,7 +112,7 @@ func TestSubscribeWithoutTicker(t *testing.T) {
 
 	ex := newRecordingExchange()
 	mr := NewMarketRouter(ex)
-	if err := mr.Subscribe("s1", []perp.Contract{"BTC/USDT"}, "5m", false); err != nil {
+	if err := mr.SubscribeContracts("s1", []perp.Contract{"BTC/USDT"}, "5m", false); err != nil {
 		t.Fatal(err)
 	}
 	if got := ex.tickerSubscribeCount(); got != 1 {
@@ -105,7 +128,7 @@ func TestSubscribeWithoutTicker(t *testing.T) {
 	})
 	mr.OnPublicEvent(tick)
 	select {
-	case <-mr.GetMarketChannel():
+	case <-mr.Updates():
 		t.Fatal("expected no tick fan-out when subscribe_ticker=false")
 	default:
 	}
@@ -119,7 +142,7 @@ func TestSubscribeWithTickerPushesToStrategy(t *testing.T) {
 
 	ex := newRecordingExchange()
 	mr := NewMarketRouter(ex, WithBufferSize(4))
-	if err := mr.Subscribe("s1", []perp.Contract{"BTC/USDT"}, "5m", true); err != nil {
+	if err := mr.SubscribeContracts("s1", []perp.Contract{"BTC/USDT"}, "5m", true); err != nil {
 		t.Fatal(err)
 	}
 	tick, _ := perp.NewPublicEvent(perp.PublicTicker, &perp.TickerSnapshot{
@@ -128,8 +151,8 @@ func TestSubscribeWithTickerPushesToStrategy(t *testing.T) {
 	})
 	mr.OnPublicEvent(tick)
 	select {
-	case u := <-mr.GetMarketChannel():
-		if u.Kind != MarketUpdateTicker || u.StrategyName != "s1" {
+	case u := <-mr.Updates():
+		if u.Kind != market.MarketUpdateTicker || u.StrategyName != "s1" {
 			t.Fatalf("unexpected update: %+v", u)
 		}
 	default:
@@ -143,10 +166,10 @@ func TestSubscribeCandlesticksDedup(t *testing.T) {
 	ex := newRecordingExchange()
 	mr := NewMarketRouter(ex)
 
-	if err := mr.Subscribe("s1", []perp.Contract{"BTC/USDT"}, "5m", true); err != nil {
+	if err := mr.SubscribeContracts("s1", []perp.Contract{"BTC/USDT"}, "5m", true); err != nil {
 		t.Fatal(err)
 	}
-	if err := mr.Subscribe("s2", []perp.Contract{"BTC/USDT"}, "5m", true); err != nil {
+	if err := mr.SubscribeContracts("s2", []perp.Contract{"BTC/USDT"}, "5m", true); err != nil {
 		t.Fatal(err)
 	}
 	if got := ex.candlestickSubscribeCount(); got != 1 {
@@ -159,7 +182,7 @@ func TestOnCandlestickClosedOnlyFanout(t *testing.T) {
 
 	ex := newRecordingExchange()
 	mr := NewMarketRouter(ex, WithBufferSize(8))
-	if err := mr.Subscribe("s1", []perp.Contract{"BTC/USDT"}, "1m", true); err != nil {
+	if err := mr.SubscribeContracts("s1", []perp.Contract{"BTC/USDT"}, "1m", true); err != nil {
 		t.Fatal(err)
 	}
 
@@ -179,11 +202,11 @@ func TestOnCandlestickClosedOnlyFanout(t *testing.T) {
 	})
 	mr.OnPublicEvent(closed)
 
-	var updates []MarketUpdate
+	var updates []market.MarketUpdate
 drain:
 	for {
 		select {
-		case u := <-mr.GetMarketChannel():
+		case u := <-mr.Updates():
 			updates = append(updates, u)
 		default:
 			break drain
@@ -193,7 +216,7 @@ drain:
 	if len(updates) != 1 {
 		t.Fatalf("got %d updates, want 1 closed kline", len(updates))
 	}
-	if updates[0].Kind != MarketUpdateKline {
+	if updates[0].Kind != market.MarketUpdateKline {
 		t.Fatalf("kind = %v, want kline", updates[0].Kind)
 	}
 	if updates[0].StrategyName != "s1" || updates[0].Kline.Close != "2" {
@@ -206,7 +229,7 @@ func TestUnsubscribeAllClearsCandleSubs(t *testing.T) {
 
 	ex := newRecordingExchange()
 	mr := NewMarketRouter(ex)
-	if err := mr.Subscribe("s1", []perp.Contract{"ETH/USDT"}, "5m", true); err != nil {
+	if err := mr.SubscribeContracts("s1", []perp.Contract{"ETH/USDT"}, "5m", true); err != nil {
 		t.Fatal(err)
 	}
 	if err := mr.UnsubscribeAll("s1"); err != nil {
@@ -221,8 +244,68 @@ func TestUnsubscribeAllClearsCandleSubs(t *testing.T) {
 	mr.OnPublicEvent(closed)
 
 	select {
-	case u := <-mr.GetMarketChannel():
+	case u := <-mr.Updates():
 		t.Fatalf("unexpected update after unsubscribe: %+v", u)
 	default:
 	}
+}
+
+func TestRouterStopConcurrentEmitNoPanic(t *testing.T) {
+	t.Parallel()
+
+	ex := newRecordingExchange()
+	mr := NewMarketRouter(ex, WithBufferSize(4))
+
+	var wg sync.WaitGroup
+	stopEmit := make(chan struct{})
+	wg.Add(1)
+	go func() {
+		defer wg.Done()
+		for {
+			select {
+			case <-stopEmit:
+				return
+			default:
+				mr.emit(market.MarketUpdate{
+					StrategyName: "s1",
+					Kind:         market.MarketUpdateTicker,
+				})
+			}
+		}
+	}()
+
+	var stopErr error
+	var stopPanicked any
+	stopDone := make(chan struct{})
+	go func() {
+		defer close(stopDone)
+		defer func() { stopPanicked = recover() }()
+		stopErr = mr.Stop()
+	}()
+
+	select {
+	case <-stopDone:
+	case <-time.After(2 * time.Second):
+		close(stopEmit)
+		wg.Wait()
+		t.Fatal("Stop blocked")
+	}
+	close(stopEmit)
+	wg.Wait()
+
+	if stopPanicked != nil {
+		t.Fatalf("Stop panicked: %v", stopPanicked)
+	}
+	if stopErr != nil {
+		t.Fatalf("Stop: %v", stopErr)
+	}
+
+	func() {
+		defer func() {
+			if r := recover(); r != nil {
+				t.Fatalf("emit after Stop panicked: %v", r)
+			}
+		}()
+		mr.emit(market.MarketUpdate{StrategyName: "s1", Kind: market.MarketUpdateTicker})
+	}()
 }

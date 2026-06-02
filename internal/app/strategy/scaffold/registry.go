@@ -7,7 +7,6 @@ import (
 	"sort"
 
 	"github.com/kainhuck/signalix/internal/app/strategy"
-	"github.com/kainhuck/signalix/pkg/exchange/perp"
 	"gopkg.in/yaml.v3"
 )
 
@@ -15,7 +14,7 @@ import (
 type TemplateMeta struct {
 	ID              string
 	Description     string
-	DefaultSymbols  []perp.Contract
+	DefaultSymbols  []string
 	DefaultInterval string
 }
 
@@ -43,7 +42,7 @@ func ListTemplates() ([]TemplateMeta, error) {
 		out = append(out, TemplateMeta{
 			ID:              id,
 			Description:     desc,
-			DefaultSymbols:  append([]perp.Contract(nil), cfg.Symbols...),
+			DefaultSymbols:  append([]string(nil), cfg.Symbols...),
 			DefaultInterval: cfg.Interval,
 		})
 	}

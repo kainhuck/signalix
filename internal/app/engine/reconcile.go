@@ -6,9 +6,9 @@ import (
 	"fmt"
 	"time"
 
+	"github.com/kainhuck/signalix/internal/app/market"
 	"github.com/kainhuck/signalix/internal/models"
 	"github.com/kainhuck/signalix/internal/ports"
-	"github.com/kainhuck/signalix/pkg/exchange/perp"
 	"github.com/kainhuck/signalix/pkg/logger"
 )
 
@@ -48,13 +48,13 @@ func (e *Engine) loadSnapshotAndReconcile() error {
 		return fmt.Errorf("list non-terminal orders: %w", err)
 	}
 
-	reconcileWithExchange(ctx, e.exchange, e.store, orders)
+	reconcileWithExecutors(ctx, e.markets, e.store, orders)
 	e.executionEngine.HydrateFromSnapshot(orders)
 	return nil
 }
 
-func reconcileWithExchange(ctx context.Context, ex ports.Exchange, store ports.OrderStore, orders []*models.Order) {
-	if store == nil || ex == nil {
+func reconcileWithExecutors(ctx context.Context, markets map[models.Market]market.Market, store ports.OrderStore, orders []*models.Order) {
+	if store == nil || markets == nil {
 		return
 	}
 	for _, o := range orders {
@@ -73,9 +73,23 @@ func reconcileWithExchange(ctx context.Context, ex ports.Exchange, store ports.O
 			continue
 		}
 
-		ev, err := ex.GetOrder(ctx, o.Symbol, o.ExchangeID)
+		m := o.Market
+		if !m.Valid() {
+			m = models.MarketPerp
+			o.Market = m
+		}
+		mk := markets[m]
+		if mk == nil {
+			continue
+		}
+		exec, ok := mk.(market.MarketExecutor)
+		if !ok {
+			continue
+		}
+
+		ev, err := exec.Sync(ctx, o)
 		if err != nil {
-			if perp.IsOrderNotFound(err) {
+			if ports.IsOrderNotFound(err) {
 				prev := o.Status
 				o.Status = models.OrderStatusCancelled
 				o.UpdatedAt = time.Now()
@@ -92,15 +106,18 @@ func reconcileWithExchange(ctx context.Context, ex ports.Exchange, store ports.O
 				}
 				continue
 			}
-			logger.WarnContext(ctx, "reconcile get order failed, continuing startup",
+			logger.WarnContext(ctx, "reconcile sync order failed, continuing startup",
 				logger.String("order_id", o.ID),
 				logger.String("exchange_id", o.ExchangeID),
 				logger.String("contract", string(o.Symbol)),
 				logger.Any("error", err))
 			continue
 		}
+		if ev == nil {
+			continue
+		}
 
-		newStatus := models.OrderStatus(ev.Status)
+		newStatus := ev.Status
 		if o.Status != newStatus || o.FilledSize != ev.FilledSize {
 			logger.WarnContext(ctx, "reconcile order state differs from exchange, applying exchange view",
 				logger.String("order_id", o.ID),

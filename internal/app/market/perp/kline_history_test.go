@@ -1,4 +1,4 @@
-package market
+package perp
 
 import (
 	"testing"

@@ -5,7 +5,6 @@ import (
 	"time"
 
 	"github.com/kainhuck/signalix/internal/app/strategy"
-	"github.com/kainhuck/signalix/pkg/exchange/perp"
 )
 
 // ErrStrategyNotFound 表示策略不在 catalog 中。
@@ -15,7 +14,7 @@ var ErrStrategyNotFound = errors.New("strategy not found")
 type StrategyRuntimeSnapshot struct {
 	Name               string
 	Enabled            bool
-	Symbols            []perp.Contract
+	Symbols            []string
 	Running            bool
 	LastHeartbeat      time.Time
 	CrashCount         int
@@ -52,7 +51,7 @@ func (e *Engine) buildRuntimeSnapshot(st *strategy.Strategy) StrategyRuntimeSnap
 	snap := StrategyRuntimeSnapshot{
 		Name:               name,
 		Enabled:            st.Enabled,
-		Symbols:            append([]perp.Contract(nil), st.Symbols...),
+		Symbols:            append([]string(nil), st.Symbols...),
 		AutoRestartEnabled: e.restartCfg.Enabled,
 		CrashCountInWindow: e.crashCountInWindow(name),
 		RestartBackoffSec:  e.pendingRestartSeconds(name),

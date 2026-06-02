@@ -6,8 +6,6 @@ import (
 	"testing"
 	"time"
 
-	"github.com/kainhuck/signalix/internal/app/market"
-	"github.com/kainhuck/signalix/internal/app/projection"
 	"github.com/kainhuck/signalix/internal/models"
 	"github.com/kainhuck/signalix/internal/testutil"
 	"github.com/kainhuck/signalix/pkg/exchange/perp"
@@ -23,20 +21,18 @@ func TestEngine_rpcGetBalanceAndPosition(t *testing.T) {
 		UpdatedAt:  time.Unix(1, 0),
 	}}
 	ctx, cancel := context.WithCancel(context.Background())
-	proj := projection.NewAccountProjection(ex)
+	markets := testPerpMarkets(t, ex)
+	pm := testPerpFromMarkets(t, markets)
+	proj := pm.Projection()
+	if err := proj.Start(ctx); err != nil {
+		t.Fatal(err)
+	}
 	defer func() {
 		cancel()
 		proj.Stop()
 	}()
-	if err := proj.Start(ctx); err != nil {
-		t.Fatal(err)
-	}
 
-	router := market.NewMarketRouter(ex)
-	e := &Engine{
-		accountProjection: proj,
-		router:            router,
-	}
+	e := &Engine{markets: markets, accountProjection: proj}
 
 	bal, err := e.rpcGetBalance()
 	if err != nil {
@@ -51,8 +47,8 @@ func TestEngine_rpcGetBalanceAndPosition(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	pm, ok := pos.(map[string]interface{})
-	if !ok || pm["size"] != "2" {
+	pmOut, ok := pos.(map[string]interface{})
+	if !ok || pmOut["size"] != "2" {
 		t.Fatalf("position: %+v", pos)
 	}
 
@@ -67,8 +63,10 @@ func TestEngine_rpcGetBalanceAndPosition(t *testing.T) {
 
 func TestEngine_rpcGetKlines(t *testing.T) {
 	ex := testutil.NewStubExchange()
-	router := market.NewMarketRouter(ex)
-	e := &Engine{router: router}
+	markets := testPerpMarkets(t, ex)
+	pm := testPerpFromMarkets(t, markets)
+	router := pm.Router()
+	e := &Engine{markets: markets}
 	e.setStrategyInterval("s1", "5m")
 
 	router.IngestHistoryKlines("5m", []*models.KlineSeries{{
@@ -94,8 +92,10 @@ func TestEngine_rpcGetKlines(t *testing.T) {
 
 func TestEngine_rpcGetTicker_ok(t *testing.T) {
 	ex := testutil.NewStubExchange()
-	router := market.NewMarketRouter(ex)
-	e := &Engine{router: router}
+	markets := testPerpMarkets(t, ex)
+	pm := testPerpFromMarkets(t, markets)
+	router := pm.Router()
+	e := &Engine{markets: markets}
 	tick, err := perp.NewPublicEvent(perp.PublicTicker, &perp.TickerSnapshot{
 		Contract:        "BTC/USDT",
 		Last:            "42000",
@@ -121,7 +121,7 @@ func TestEngine_rpcGetTicker_ok(t *testing.T) {
 }
 
 func TestEngine_rpcGetTicker_notInCache(t *testing.T) {
-	e := &Engine{router: market.NewMarketRouter(testutil.NewStubExchange())}
+	e := &Engine{markets: testPerpMarkets(t, testutil.NewStubExchange())}
 	_, err := e.rpcGetTicker("BTC/USDT")
 	if !errors.Is(err, ErrTickerNotInCache) {
 		t.Fatalf("err = %v", err)
@@ -129,17 +129,17 @@ func TestEngine_rpcGetTicker_notInCache(t *testing.T) {
 }
 
 func TestEngine_rpcGetTicker_symbolRequired(t *testing.T) {
-	e := &Engine{router: market.NewMarketRouter(testutil.NewStubExchange())}
+	e := &Engine{markets: testPerpMarkets(t, testutil.NewStubExchange())}
 	_, err := e.rpcGetTicker("")
 	if err == nil || err.Error() != "symbol is required" {
 		t.Fatalf("err = %v", err)
 	}
 }
 
-func TestEngine_rpcGetTicker_routerNil(t *testing.T) {
+func TestEngine_rpcGetTicker_marketNotRegistered(t *testing.T) {
 	e := &Engine{}
 	_, err := e.rpcGetTicker("BTC/USDT")
-	if !errors.Is(err, ErrMarketRouterNotConfigured) {
+	if err == nil || err.Error() != `market "perp" not registered` {
 		t.Fatalf("err = %v", err)
 	}
 }

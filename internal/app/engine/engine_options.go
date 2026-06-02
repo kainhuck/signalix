@@ -3,6 +3,8 @@ package engine
 import (
 	"time"
 
+	"github.com/kainhuck/signalix/internal/app/instrument"
+	"github.com/kainhuck/signalix/internal/app/projection"
 	"github.com/kainhuck/signalix/internal/config"
 	"github.com/kainhuck/signalix/internal/domain/risk"
 	"github.com/kainhuck/signalix/internal/ports"
@@ -21,6 +23,8 @@ type BuildParams struct {
 	Restart           config.RestartSettings
 	KillSwitch        config.KillSwitchSettings
 	Persistence       config.PersistenceSettings
+	AccountProjection *projection.AccountProjection
+	MetaLookup        instrument.ContractMetaLookup
 }
 
 // BuildParamsFromConfig 从全局配置提取构建参数。

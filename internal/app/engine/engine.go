@@ -6,13 +6,13 @@ import (
 	"fmt"
 	"runtime/debug"
 	"sort"
+	"strings"
 	"sync"
 	"sync/atomic"
 	"time"
 
 	"github.com/google/uuid"
 	"github.com/kainhuck/signalix/internal/adapters/strategy/pythonipc"
-	"github.com/kainhuck/signalix/internal/app/decision"
 	"github.com/kainhuck/signalix/internal/app/instrument"
 	"github.com/kainhuck/signalix/internal/app/market"
 	"github.com/kainhuck/signalix/internal/app/oms"
@@ -23,7 +23,6 @@ import (
 	"github.com/kainhuck/signalix/internal/domain/risk"
 	"github.com/kainhuck/signalix/internal/models"
 	"github.com/kainhuck/signalix/internal/ports"
-	"github.com/kainhuck/signalix/pkg/exchange/perp"
 	"github.com/kainhuck/signalix/pkg/logger"
 )
 
@@ -39,15 +38,13 @@ type Engine struct {
 	processMu       sync.RWMutex
 
 	// 依赖
-	exchange           ports.Exchange
-	loader             *strategy.StrategyLoader
-	router             *market.MarketRouter
-	decisionEngine     *decision.DecisionEngine
-	executionEngine    *oms.ExecutionEngine
-	instrumentRegistry *instrument.Registry
-	accountProjection  *projection.AccountProjection
-	riskEvaluator      ports.RiskEvaluator
-	store              ports.PersistenceStore
+	markets           map[models.Market]market.Market
+	metaLookup        instrument.ContractMetaLookup
+	loader            *strategy.StrategyLoader
+	executionEngine   *oms.ExecutionEngine
+	accountProjection *projection.AccountProjection
+	riskEvaluator     ports.RiskEvaluator
+	store             ports.PersistenceStore
 
 	// persistenceSettings 资产快照/策略日志保留与清理周期。
 	persistenceSettings config.PersistenceSettings
@@ -106,11 +103,11 @@ type Engine struct {
 	strategyLogSubs    map[uint64]*strategyLogSubscription
 }
 
-// NewEngine 创建策略引擎；可通过 EngineOption 覆盖风控等默认行为。
-func NewEngine(strategyDir string, exchange ports.Exchange, build BuildParams, opts ...EngineOption) *Engine {
+// NewEngine 创建策略引擎；AccountProjection / MetaLookup 由 main 注入（perp 场景来自 PerpMarket）。
+func NewEngine(strategyDir string, markets map[models.Market]market.Market, build BuildParams, opts ...EngineOption) *Engine {
 	ctx, cancel := context.WithCancel(context.Background())
 	ch := build.Channels
-	signalBuf, orderBuf, mainBuf, marketBuf := ch.Signal, ch.Order, ch.MainOrder, ch.Market
+	signalBuf, orderBuf, mainBuf := ch.Signal, ch.Order, ch.MainOrder
 	if signalBuf <= 0 {
 		signalBuf = 100
 	}
@@ -120,13 +117,6 @@ func NewEngine(strategyDir string, exchange ports.Exchange, build BuildParams, o
 	if mainBuf <= 0 {
 		mainBuf = 100
 	}
-	if marketBuf <= 0 {
-		marketBuf = 1000
-	}
-	divisor := build.DecisionDivisor
-	if divisor <= 0 {
-		divisor = 10
-	}
 	omsRetries := build.OMSMaxRetries
 	if omsRetries <= 0 {
 		omsRetries = 3
@@ -134,23 +124,18 @@ func NewEngine(strategyDir string, exchange ports.Exchange, build BuildParams, o
 
 	loader := strategy.NewStrategyLoader(ctx, strategyDir)
 	equityTracker := apprisk.NewEquityTracker()
-	proj := projection.NewAccountProjection(exchange,
-		projection.WithRefreshInterval(build.ProjectionRefresh),
-		projection.WithEquityHook(equityTracker.OnEquityUpdate),
-	)
-	router := market.NewMarketRouter(exchange, market.WithBufferSize(marketBuf))
 
-	reg := instrument.NewRegistry()
-	if err := reg.LoadFrom(ctx, exchange); err != nil {
-		logger.WarnContext(ctx, "contract meta registry load failed", logger.Any("error", err))
+	metaLookup := build.MetaLookup
+	if metaLookup == nil {
+		metaLookup = instrument.NewRegistry()
 	}
 
 	e := &Engine{
 		strategyProcess:     make(map[string]strategy.StrategyRuntime),
-		exchange:            exchange,
+		markets:             markets,
+		metaLookup:          metaLookup,
 		loader:              loader,
-		router:              router,
-		instrumentRegistry:  reg,
+		accountProjection:   build.AccountProjection,
 		defaultInterval:     build.DefaultInterval,
 		restartCfg:          build.Restart,
 		crashTracker:        newCrashTracker(),
@@ -159,20 +144,14 @@ func NewEngine(strategyDir string, exchange ports.Exchange, build BuildParams, o
 		equityTracker:       equityTracker,
 		killSwitchCfg:       build.KillSwitch,
 		persistenceSettings: build.Persistence,
-		decisionEngine: decision.NewDecisionEngine(proj,
-			decision.WithDefaultSizeDivisor(divisor),
-			decision.WithContractMetaLookup(reg),
-			decision.WithTickerLookup(router),
-		),
-		accountProjection: proj,
-		riskEvaluator:     NewStaticRiskEvaluator(risk.DefaultRules()),
-		signalCh:          make(chan *models.StrategySignal, signalBuf),
-		orderCh:           make(chan *models.Order, orderBuf),
-		ctx:               ctx,
-		cancel:            cancel,
-		strategyStates:    make(map[string]map[string]interface{}),
-		mainOrderCh:       make(chan *models.Order, mainBuf),
-		orderStreamSubs:   make(map[uint64]chan *models.Order),
+		riskEvaluator:       NewStaticRiskEvaluator(risk.DefaultRules()),
+		signalCh:            make(chan *models.StrategySignal, signalBuf),
+		orderCh:             make(chan *models.Order, orderBuf),
+		ctx:                 ctx,
+		cancel:              cancel,
+		strategyStates:      make(map[string]map[string]interface{}),
+		mainOrderCh:         make(chan *models.Order, mainBuf),
+		orderStreamSubs:     make(map[uint64]chan *models.Order),
 	}
 	for _, o := range opts {
 		o(e)
@@ -185,13 +164,27 @@ func NewEngine(strategyDir string, exchange ports.Exchange, build BuildParams, o
 	if cmdBuf <= 0 {
 		cmdBuf = 100
 	}
-	e.executionEngine = oms.NewExecutionEngine(exchange, proj, e.store,
+	executors := make(map[models.Market]market.MarketExecutor)
+	for mk, m := range markets {
+		if m != nil {
+			executors[mk] = m
+		}
+	}
+	e.executionEngine = oms.NewExecutionEngine(executors, e.store,
 		oms.WithChannelBuffers(omsBuf, cmdBuf),
 		oms.WithMaxRetries(omsRetries),
-		oms.WithContractMetaLookup(reg),
+		oms.WithContractMetaLookup(metaLookup),
 	)
 
 	return e
+}
+
+// ExecutionEngine 返回 OMS 执行引擎（供 main 在 NewEngine 后 BindRisk）。
+func (e *Engine) ExecutionEngine() *oms.ExecutionEngine {
+	if e == nil {
+		return nil
+	}
+	return e.executionEngine
 }
 
 func (e *Engine) SetAllStrategy(strategies map[string]*strategy.Strategy) {
@@ -268,7 +261,6 @@ func (e *Engine) Start() error {
 
 	if e.store != nil {
 		e.startStrategyLogWriter()
-		e.accountProjection.SetRefreshHook(e.persistAccountSnapshot)
 	}
 
 	if err := e.accountProjection.Start(e.ctx); err != nil {
@@ -292,6 +284,14 @@ func (e *Engine) Start() error {
 
 	logger.InfoContext(e.ctx, "Strategy Engine started", "strategies", len(e.strategies))
 
+	for _, m := range e.markets {
+		if m == nil {
+			continue
+		}
+		if err := m.Start(e.ctx); err != nil {
+			return err
+		}
+	}
 	if err := e.executionEngine.Start(e.ctx); err != nil {
 		return err
 	}
@@ -300,19 +300,17 @@ func (e *Engine) Start() error {
 		go e.orderFanoutLoop()
 	})
 
-	// 启动路由器
-	e.wg.Add(1)
-	go func() {
-		defer e.wg.Done()
-		e.router.Start()
-	}()
-
 	// 获取市场路由信息并发送到对应的策略
-	e.wg.Add(1)
-	go func() {
-		defer e.wg.Done()
-		e.dispatchMarket()
-	}()
+	for mk, m := range e.markets {
+		if m == nil {
+			continue
+		}
+		e.wg.Add(1)
+		go func(kind models.Market, mkt market.Market) {
+			defer e.wg.Done()
+			e.pumpMarketUpdates(kind, mkt)
+		}(mk, m)
+	}
 
 	// 获取交易信号并交决策引擎，决策引擎将交易信号转为交易订单
 	e.wg.Add(1)
@@ -343,27 +341,6 @@ func (e *Engine) Start() error {
 	return nil
 }
 
-func (e *Engine) dispatchMarket() {
-	for {
-		select {
-		case marketUpdate := <-e.router.GetMarketChannel():
-			switch marketUpdate.Kind {
-			case market.MarketUpdateTicker:
-				e.dispatchTickerUpdate(marketUpdate)
-			case market.MarketUpdateKline:
-				e.dispatchKlineUpdate(marketUpdate)
-			default:
-				if marketUpdate.Ticker != nil {
-					marketUpdate.Kind = market.MarketUpdateTicker
-					e.dispatchTickerUpdate(marketUpdate)
-				}
-			}
-		case <-e.ctx.Done():
-			return
-		}
-	}
-}
-
 func (e *Engine) dispatchTickerUpdate(marketUpdate market.MarketUpdate) {
 	traceID := uuid.New().String()
 	ticker := marketUpdate.Ticker
@@ -371,7 +348,7 @@ func (e *Engine) dispatchTickerUpdate(marketUpdate market.MarketUpdate) {
 		return
 	}
 
-	if err := e.SendTick(marketUpdate.StrategyName, models.TickerFromSnapshot(ticker), traceID); err != nil {
+	if err := e.SendTick(marketUpdate.StrategyName, ticker, traceID); err != nil {
 		logger.ErrorContext(e.ctx, "failed to send tick",
 			logger.String("strategy", marketUpdate.StrategyName),
 			logger.Any("error", err),
@@ -386,12 +363,11 @@ func (e *Engine) dispatchTickerUpdate(marketUpdate market.MarketUpdate) {
 }
 
 func (e *Engine) dispatchKlineUpdate(marketUpdate market.MarketUpdate) {
-	snap := marketUpdate.Kline
-	if snap == nil || snap.Contract == "" {
+	bar := marketUpdate.Kline
+	if bar == nil || bar.Contract == "" {
 		return
 	}
 	traceID := uuid.New().String()
-	bar := models.KlineFromSnapshot(snap)
 	if err := e.SendKline(marketUpdate.StrategyName, bar, traceID); err != nil {
 		logger.ErrorContext(e.ctx, "failed to send kline",
 			logger.String("strategy", marketUpdate.StrategyName),
@@ -401,10 +377,10 @@ func (e *Engine) dispatchKlineUpdate(marketUpdate market.MarketUpdate) {
 	}
 	logger.DebugContext(e.ctx, "send kline success",
 		logger.String("strategy", marketUpdate.StrategyName),
-		logger.String("contract", string(snap.Contract)),
-		logger.String("interval", snap.Interval),
-		logger.String("close", snap.Close),
-		logger.Int64("timestamp_sec", snap.TimestampSec),
+		logger.String("contract", string(bar.Contract)),
+		logger.String("interval", bar.Interval),
+		logger.String("close", bar.Close),
+		logger.Int64("timestamp_sec", bar.TimestampSec),
 		logger.String("trace", traceID))
 }
 
@@ -423,7 +399,16 @@ func (e *Engine) dispatchSignal() {
 				continue
 			}
 
-			order, err := e.decisionEngine.ProcessSignal(e.ctx, signal.StrategyName, signal.Signal)
+			mk := e.strategyMarket(signal.StrategyName)
+			m := e.marketFor(mk)
+			if m == nil {
+				logger.ErrorContext(e.ctx, "market not registered for signal",
+					logger.String("strategy", signal.StrategyName),
+					logger.String("market", string(mk)))
+				continue
+			}
+
+			order, err := m.Decide(e.ctx, signal.StrategyName, signal.Signal)
 			if err != nil {
 				logger.ErrorContext(e.ctx, "failed to process signal", logger.Any("error", err))
 				continue
@@ -431,8 +416,11 @@ func (e *Engine) dispatchSignal() {
 			if order == nil {
 				continue
 			}
+			if !order.Market.Valid() {
+				order.Market = mk
+			}
 
-			riskCtx, err := e.buildRiskContext(e.ctx, signal.StrategyName, signal.Signal, order)
+			riskCtx, err := e.buildRiskContext(e.ctx, mk, signal.StrategyName, signal.Signal, order)
 			if err != nil {
 				logger.ErrorContext(e.ctx, "failed to build risk context", logger.Any("error", err))
 				continue
@@ -508,7 +496,13 @@ func (e *Engine) Stop() error {
 
 	e.running.Store(false)
 
-	e.router.Stop()
+	for _, m := range e.markets {
+		if m != nil {
+			if err := m.Stop(); err != nil {
+				logger.ErrorContext(e.ctx, "market stop", logger.Any("error", err))
+			}
+		}
+	}
 
 	// 停止所有策略
 	if err := e.StopAllStrategies(); err != nil {
@@ -577,8 +571,8 @@ func (e *Engine) launchStrategy(st *strategy.Strategy) error {
 	if err != nil {
 		return fmt.Errorf("strategy %q: %w", st.Name, err)
 	}
-	if err := e.router.Subscribe(st.Name, st.Symbols, interval, st.SubscribeTicker); err != nil {
-		return fmt.Errorf("failed to subscribe strategy %q: %v", st.Name, err)
+	if err := e.subscribeStrategy(st, interval); err != nil {
+		return fmt.Errorf("failed to subscribe strategy %q: %w", st.Name, err)
 	}
 
 	// 检查策略是否已经在运行
@@ -637,57 +631,54 @@ func (e *Engine) warmupHistory(st *strategy.Strategy, sp strategy.StrategyRuntim
 		return nil
 	}
 
-	series := make([]*models.KlineSeries, 0, len(st.Symbols))
-	for _, sym := range st.Symbols {
-		snaps, err := e.exchange.ListCandlesticks(e.ctx, &perp.ListCandlesticksQuery{
-			Contract: sym,
-			Interval: interval,
-			Limit:    st.HistoryBars,
-		})
-		if err != nil {
-			logger.ErrorContext(e.ctx, "list candlesticks for history failed",
-				logger.String("strategy", st.Name),
-				logger.String("contract", string(sym)),
-				logger.String("interval", interval),
-				logger.Any("error", err))
-			continue
-		}
-		bars := models.KlinesFromSnapshots(snaps)
-		if len(bars) == 0 {
-			continue
-		}
-		series = append(series, &models.KlineSeries{
-			Contract: sym,
-			Bars:     bars,
-		})
+	mk := st.Market
+	if !mk.Valid() {
+		mk = models.MarketPerp
+	}
+	m := e.marketFor(mk)
+	if m == nil {
+		return fmt.Errorf("market %q not registered for strategy %q", mk, st.Name)
 	}
 
-	if len(series) == 0 {
+	payload, err := m.WarmupHistory(e.ctx, market.SubscribeRequest{
+		Strategy: st.Name,
+		Symbols:  contractsToStrings(st.Symbols),
+		Interval: interval,
+	}, st.HistoryBars)
+	if err != nil {
+		return err
+	}
+	if payload == nil {
 		logger.WarnContext(e.ctx, "history warmup skipped: no bars",
 			logger.String("strategy", st.Name))
 		return nil
 	}
-
-	payload := &models.HistoryPayload{
-		Interval: interval,
-		Series:   series,
-	}
-	e.router.IngestHistoryKlines(interval, series)
 
 	if err := sp.SendHistory(payload); err != nil {
 		return err
 	}
 
 	barCount := 0
-	for _, s := range series {
+	for _, s := range payload.Series {
 		barCount += len(s.Bars)
 	}
 	logger.InfoContext(e.ctx, "send history success",
 		logger.String("strategy", st.Name),
 		logger.String("interval", interval),
-		logger.Int("series", len(series)),
+		logger.Int("series", len(payload.Series)),
 		logger.Int("bars", barCount))
 	return nil
+}
+
+func contractsToStrings(symbols []string) []string {
+	out := make([]string, 0, len(symbols))
+	for _, s := range symbols {
+		s = strings.TrimSpace(s)
+		if s != "" {
+			out = append(out, s)
+		}
+	}
+	return out
 }
 
 // StopStrategy 停止策略
@@ -700,7 +691,7 @@ func (e *Engine) StopStrategy(name string) error {
 	}
 	delete(e.strategyProcess, name)
 
-	_ = e.router.UnsubscribeAll(name)
+	e.unsubscribeStrategy(name)
 	e.removeStrategyInterval(name)
 
 	e.processMu.Unlock()
@@ -916,7 +907,7 @@ func (e *Engine) handleProcessExit(sp strategy.StrategyRuntime) {
 	_, stillRegistered := e.strategyProcess[name]
 	if stillRegistered {
 		delete(e.strategyProcess, name)
-		_ = e.router.UnsubscribeAll(name)
+		e.unsubscribeStrategy(name)
 	}
 	e.processMu.Unlock()
 

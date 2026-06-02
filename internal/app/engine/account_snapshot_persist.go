@@ -4,15 +4,14 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
-	"strings"
 	"time"
 
 	"github.com/kainhuck/signalix/internal/models"
-	"github.com/kainhuck/signalix/pkg/exchange/perp"
 	"github.com/kainhuck/signalix/pkg/logger"
 )
 
-func (e *Engine) persistAccountSnapshot(balance *perp.BalanceView, positions []*perp.PositionSnapshot, revision uint64, at time.Time) {
+// PersistAccountSnapshot 持久化账户快照（由 projection refresh 钩子调用）。
+func (e *Engine) PersistAccountSnapshot(balance *models.BalanceView, positions []*models.PositionView, revision uint64, at time.Time) {
 	if e == nil || e.store == nil {
 		return
 	}
@@ -28,7 +27,7 @@ func (e *Engine) persistAccountSnapshot(balance *perp.BalanceView, positions []*
 	}(row)
 }
 
-func encodeAccountSnapshotRow(balance *perp.BalanceView, positions []*perp.PositionSnapshot, revision uint64, at time.Time) (*models.AccountSnapshotRow, error) {
+func encodeAccountSnapshotRow(balance *models.BalanceView, positions []*models.PositionView, revision uint64, at time.Time) (*models.AccountSnapshotRow, error) {
 	if balance == nil {
 		return nil, fmt.Errorf("nil balance")
 	}
@@ -49,14 +48,11 @@ func encodeAccountSnapshotRow(balance *perp.BalanceView, positions []*perp.Posit
 		return nil, err
 	}
 
-	currency := strings.TrimSpace(balance.Currency)
-	totalEquity := strings.TrimSpace(balance.Total)
-
 	return &models.AccountSnapshotRow{
-		SnapshotAt:    at.UTC(),
+		SnapshotAt:    at,
 		Revision:      revision,
-		Currency:      currency,
-		TotalEquity:   totalEquity,
+		Currency:      balance.Currency,
+		TotalEquity:   balance.Total,
 		BalanceJSON:   balanceJSON,
 		PositionsJSON: positionsJSON,
 	}, nil

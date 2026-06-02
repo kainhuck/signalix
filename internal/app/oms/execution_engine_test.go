@@ -4,8 +4,10 @@ import (
 	"context"
 	"strings"
 	"testing"
+	"time"
 
 	"github.com/kainhuck/signalix/internal/app/instrument"
+	"github.com/kainhuck/signalix/internal/app/market"
 	"github.com/kainhuck/signalix/internal/models"
 	"github.com/kainhuck/signalix/internal/testutil"
 	"github.com/kainhuck/signalix/pkg/exchange/perp"
@@ -13,14 +15,18 @@ import (
 
 func TestExecutionEngine_DuplicateSubmitRejected(t *testing.T) {
 	ex := testutil.NewStubExchange()
-	ee := NewExecutionEngine(ex, nil, nil)
+	execs, pe, err := testPerpExecutors(ex)
+	if err != nil {
+		t.Fatal(err)
+	}
+	ee := NewExecutionEngine(execs, nil)
 	ctx, cancel := context.WithCancel(context.Background())
 	defer func() {
 		cancel()
-		_ = ee.Stop()
+		stopTestOMS(ee, pe)
 	}()
 
-	if err := ee.Start(ctx); err != nil {
+	if err := startTestOMS(ctx, ee, pe); err != nil {
 		t.Fatal(err)
 	}
 
@@ -63,13 +69,17 @@ func TestExecutionEngine_SubmitRejectedInvalidSize(t *testing.T) {
 	if err := reg.LoadFrom(context.Background(), ex); err != nil {
 		t.Fatal(err)
 	}
-	ee := NewExecutionEngine(ex, nil, nil, WithContractMetaLookup(reg))
+	execs, pe, err := testPerpExecutors(ex)
+	if err != nil {
+		t.Fatal(err)
+	}
+	ee := NewExecutionEngine(execs, nil, WithContractMetaLookup(reg))
 	ctx, cancel := context.WithCancel(context.Background())
 	defer func() {
 		cancel()
-		_ = ee.Stop()
+		stopTestOMS(ee, pe)
 	}()
-	if err := ee.Start(ctx); err != nil {
+	if err := startTestOMS(ctx, ee, pe); err != nil {
 		t.Fatal(err)
 	}
 
@@ -93,5 +103,29 @@ func TestExecutionEngine_SubmitRejectedInvalidSize(t *testing.T) {
 	ex.Mu.Unlock()
 	if calls != 0 {
 		t.Fatalf("PlaceCalls = %d want 0", calls)
+	}
+}
+
+func TestExecutionEngine_applyOrderEvent_ClientIDFirst(t *testing.T) {
+	t.Parallel()
+	ee := NewExecutionEngine(map[models.Market]market.MarketExecutor{}, nil)
+	ee.orders["local-1"] = &models.Order{
+		ID:         "local-1",
+		ExchangeID: "ex-other",
+		Symbol:     "BTC/USDT",
+		Status:     models.OrderStatusSubmitted,
+		FilledSize: "0",
+	}
+	ee.applyOrderEvent(&models.OrderEvent{
+		Market:     models.MarketPerp,
+		ClientID:   "local-1",
+		ExchangeID: "wrong-ex",
+		Status:     models.OrderStatusFilled,
+		FilledSize: "1",
+		UpdatedAt:  time.Now(),
+	})
+	o, ok := ee.GetOrder("local-1")
+	if !ok || o.Status != models.OrderStatusFilled || o.FilledSize != "1" {
+		t.Fatalf("order after client id match: %+v ok=%v", o, ok)
 	}
 }

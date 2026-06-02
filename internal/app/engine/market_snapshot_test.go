@@ -4,24 +4,23 @@ import (
 	"errors"
 	"testing"
 
-	"github.com/kainhuck/signalix/internal/app/market"
 	"github.com/kainhuck/signalix/internal/models"
 	"github.com/kainhuck/signalix/internal/testutil"
 	"github.com/kainhuck/signalix/pkg/exchange/perp"
 )
 
-func TestTickerSnapshot_routerNil(t *testing.T) {
+func TestTickerSnapshot_marketNotRegistered(t *testing.T) {
 	t.Parallel()
 	e := &Engine{}
 	_, err := e.TickerSnapshot("BTC/USDT")
-	if !errors.Is(err, ErrMarketRouterNotConfigured) {
+	if err == nil || err.Error() != `market "perp" not registered` {
 		t.Fatalf("err = %v", err)
 	}
 }
 
 func TestTickerSnapshot_notInCache(t *testing.T) {
 	t.Parallel()
-	e := &Engine{router: market.NewMarketRouter(testutil.NewStubExchange())}
+	e := &Engine{markets: testPerpMarkets(t, testutil.NewStubExchange())}
 	_, err := e.TickerSnapshot("BTC/USDT")
 	if !errors.Is(err, ErrTickerNotInCache) {
 		t.Fatalf("err = %v", err)
@@ -31,8 +30,10 @@ func TestTickerSnapshot_notInCache(t *testing.T) {
 func TestTickerSnapshot_ok(t *testing.T) {
 	t.Parallel()
 	ex := testutil.NewStubExchange()
-	router := market.NewMarketRouter(ex)
-	e := &Engine{router: router}
+	markets := testPerpMarkets(t, ex)
+	pm := testPerpFromMarkets(t, markets)
+	router := pm.Router()
+	e := &Engine{markets: markets}
 	tick, _ := perp.NewPublicEvent(perp.PublicTicker, &perp.TickerSnapshot{
 		Contract:        "BTC/USDT",
 		Last:            "42000",
@@ -49,19 +50,9 @@ func TestTickerSnapshot_ok(t *testing.T) {
 	}
 }
 
-func TestClosedKlines_limitClamp(t *testing.T) {
-	t.Parallel()
-	if got := normalizeKlineLimit(0); got != 100 {
-		t.Fatalf("0 -> %d", got)
-	}
-	if got := normalizeKlineLimit(3000); got != 2000 {
-		t.Fatalf("3000 -> %d", got)
-	}
-}
-
 func TestClosedKlines_empty(t *testing.T) {
 	t.Parallel()
-	e := &Engine{router: market.NewMarketRouter(testutil.NewStubExchange())}
+	e := &Engine{markets: testPerpMarkets(t, testutil.NewStubExchange())}
 	kl, err := e.ClosedKlines("BTC/USDT", "5m", 10)
 	if err != nil {
 		t.Fatal(err)
@@ -73,8 +64,10 @@ func TestClosedKlines_empty(t *testing.T) {
 
 func TestClosedKlines_ok(t *testing.T) {
 	t.Parallel()
-	router := market.NewMarketRouter(testutil.NewStubExchange())
-	e := &Engine{router: router}
+	markets := testPerpMarkets(t, testutil.NewStubExchange())
+	pm := testPerpFromMarkets(t, markets)
+	router := pm.Router()
+	e := &Engine{markets: markets}
 	router.IngestHistoryKlines("5m", []*models.KlineSeries{{
 		Contract: "BTC/USDT",
 		Bars: []*models.Kline{
@@ -94,8 +87,10 @@ func TestClosedKlines_ok(t *testing.T) {
 func TestListCachedTickers(t *testing.T) {
 	t.Parallel()
 	ex := testutil.NewStubExchange()
-	router := market.NewMarketRouter(ex)
-	e := &Engine{router: router}
+	markets := testPerpMarkets(t, ex)
+	pm := testPerpFromMarkets(t, markets)
+	router := pm.Router()
+	e := &Engine{markets: markets}
 	tick, _ := perp.NewPublicEvent(perp.PublicTicker, &perp.TickerSnapshot{
 		Contract: "BTC/USDT",
 		Last:     "1",

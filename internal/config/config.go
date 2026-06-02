@@ -36,6 +36,7 @@ type Config struct {
 	Channels    ChannelsConfig
 	Decision    DecisionConfig
 	GRPC        GRPCConfig
+	Markets     MarketsConfig
 
 	projectionRefresh   time.Duration
 	restartSettings     RestartSettings
@@ -179,6 +180,11 @@ type DecisionConfig struct {
 	DefaultSizeDivisor int `mapstructure:"default_size_divisor"`
 }
 
+// MarketsConfig 启用的交易市场列表。
+type MarketsConfig struct {
+	Enabled []string `mapstructure:"enabled"`
+}
+
 type GRPCConfig struct {
 	Enabled         bool   `mapstructure:"enabled"`
 	Addr            string `mapstructure:"addr"`
@@ -218,6 +224,7 @@ func Load() (*Config, error) {
 		} `mapstructure:"projection"`
 		Decision DecisionConfig `mapstructure:"decision"`
 		GRPC     GRPCConfig     `mapstructure:"grpc"`
+		Markets  MarketsConfig  `mapstructure:"markets"`
 	}
 	if err := v.Unmarshal(&raw); err != nil {
 		return nil, fmt.Errorf("parse config: %w", err)
@@ -269,6 +276,7 @@ func Load() (*Config, error) {
 		Channels:            raw.Channels,
 		Decision:            raw.Decision,
 		GRPC:                normalizeGRPC(raw.GRPC),
+		Markets:             raw.Markets,
 		projectionRefresh:   refresh,
 		restartSettings:     restart,
 		killSwitchSettings:  parseKillSwitchSettings(raw.Risk.KillSwitch),
@@ -494,6 +502,8 @@ func setDefaults(v *viper.Viper) {
 
 	v.SetDefault("projection.refresh_interval", "10s")
 	v.SetDefault("decision.default_size_divisor", 10)
+
+	v.SetDefault("markets.enabled", []string{"perp"})
 
 	v.SetDefault("grpc.enabled", false)
 	v.SetDefault("grpc.addr", "127.0.0.1:50051")

@@ -7,7 +7,6 @@ import (
 
 	"github.com/kainhuck/signalix/internal/models"
 	"github.com/kainhuck/signalix/internal/ports"
-	"github.com/kainhuck/signalix/pkg/exchange/perp"
 )
 
 type snapshotCaptureStore struct {
@@ -58,7 +57,7 @@ func TestPersistAccountSnapshot_asyncSave(t *testing.T) {
 	e := &Engine{store: cap, ctx: context.Background()}
 
 	at := time.Date(2026, 5, 26, 12, 0, 0, 0, time.UTC)
-	e.persistAccountSnapshot(&perp.BalanceView{
+	e.PersistAccountSnapshot(&models.BalanceView{
 		Currency: "USDT",
 		Total:    "100",
 	}, nil, 2, at)
@@ -75,5 +74,5 @@ func TestPersistAccountSnapshot_asyncSave(t *testing.T) {
 
 func TestPersistAccountSnapshot_nilStore(t *testing.T) {
 	e := &Engine{ctx: context.Background()}
-	e.persistAccountSnapshot(&perp.BalanceView{Total: "1"}, nil, 1, time.Now())
+	e.PersistAccountSnapshot(&models.BalanceView{Total: "1"}, nil, 1, time.Now())
 }

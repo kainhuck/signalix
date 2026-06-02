@@ -1,10 +1,12 @@
 package engine
 
 import (
+	"context"
 	"fmt"
 	"strings"
 
-	"github.com/kainhuck/signalix/pkg/exchange/perp"
+	"github.com/kainhuck/signalix/internal/app/market"
+	"github.com/kainhuck/signalix/internal/models"
 )
 
 func (e *Engine) setStrategyInterval(name, interval string) {
@@ -29,39 +31,52 @@ func (e *Engine) strategyInterval(name string) (string, bool) {
 	return iv, ok
 }
 
-func (e *Engine) rpcGetBalance() (interface{}, error) {
-	if e.accountProjection == nil {
-		return nil, fmt.Errorf("account projection not configured")
+func (e *Engine) marketAccount(m models.Market) (market.MarketAccount, error) {
+	if e == nil {
+		return nil, fmt.Errorf("engine not configured")
 	}
-	bal, _, _, err := e.accountProjection.Snapshot(perp.Contract("BTC/USDT"))
+	mk, ok := e.markets[m]
+	if !ok || mk == nil {
+		return nil, fmt.Errorf("market %q not registered", m)
+	}
+	return mk, nil
+}
+
+func (e *Engine) rpcGetBalance() (interface{}, error) {
+	acct, err := e.marketAccount(models.MarketPerp)
 	if err != nil {
 		return nil, err
 	}
-	return balanceToRPC(bal), nil
+	bv, err := acct.Balance(context.Background(), "USDT")
+	if err != nil {
+		return nil, err
+	}
+	return balanceViewToRPC(bv), nil
 }
 
 func (e *Engine) rpcGetPosition(symbol string) (interface{}, error) {
-	if e.accountProjection == nil {
-		return nil, fmt.Errorf("account projection not configured")
-	}
-	contract := perp.Contract(strings.TrimSpace(symbol))
-	if contract == "" {
-		return nil, fmt.Errorf("symbol is required")
-	}
-	_, pos, _, err := e.accountProjection.Snapshot(contract)
+	acct, err := e.marketAccount(models.MarketPerp)
 	if err != nil {
 		return nil, err
 	}
-	if pos == nil {
+	pv, err := acct.Position(context.Background(), symbol)
+	if err != nil {
+		return nil, err
+	}
+	if pv == nil {
 		return nil, nil
 	}
-	return positionToRPC(pos), nil
+	return positionViewToRPC(pv), nil
 }
 
 func (e *Engine) rpcGetKlines(strategyName string, params map[string]interface{}) (interface{}, error) {
+	acct, err := e.marketAccount(models.MarketPerp)
+	if err != nil {
+		return nil, err
+	}
 	sym, _ := params["symbol"].(string)
-	contract := perp.Contract(strings.TrimSpace(sym))
-	if contract == "" {
+	sym = strings.TrimSpace(sym)
+	if sym == "" {
 		return nil, fmt.Errorf("symbol is required")
 	}
 	interval, _ := params["interval"].(string)
@@ -82,39 +97,43 @@ func (e *Engine) rpcGetKlines(strategyName string, params map[string]interface{}
 	case int64:
 		limit = int(v)
 	}
-	return e.ClosedKlines(contract, interval, limit)
+	return acct.Klines(sym, interval, limit)
 }
 
 func (e *Engine) rpcGetTicker(symbol string) (interface{}, error) {
-	snap, err := e.TickerSnapshot(perp.Contract(strings.TrimSpace(symbol)))
+	acct, err := e.marketAccount(models.MarketPerp)
 	if err != nil {
 		return nil, err
 	}
-	return tickerToRPC(snap), nil
+	t, err := acct.Ticker(strings.TrimSpace(symbol))
+	if err != nil {
+		return nil, err
+	}
+	return tickerViewToRPC(t), nil
 }
 
-func tickerToRPC(s *perp.TickerSnapshot) map[string]interface{} {
-	if s == nil {
+func tickerViewToRPC(t *models.Ticker) map[string]interface{} {
+	if t == nil {
 		return nil
 	}
 	return map[string]interface{}{
-		"contract":         string(s.Contract),
-		"last":             s.Last,
-		"mark_price":       s.MarkPrice,
-		"index_price":      s.IndexPrice,
-		"funding_rate":     s.FundingRate,
-		"change_pct_24h":   s.ChangePct24h,
-		"volume_24h":       s.Volume24h,
-		"volume_24h_base":  s.Volume24hBase,
-		"volume_24h_quote": s.Volume24hQuote,
-		"open_interest":    s.OpenInterest,
-		"low_24h":          s.Low24h,
-		"high_24h":         s.High24h,
-		"timestamp_millis": s.TimestampMillis,
+		"contract":         string(t.Contract),
+		"last":             t.Last,
+		"mark_price":       t.MarkPrice,
+		"index_price":      t.IndexPrice,
+		"funding_rate":     t.FundingRate,
+		"change_pct_24h":   t.ChangePct24h,
+		"volume_24h":       t.Volume24h,
+		"volume_24h_base":  t.Volume24hBase,
+		"volume_24h_quote": t.Volume24hQuote,
+		"open_interest":    t.OpenInterest,
+		"low_24h":          t.Low24h,
+		"high_24h":         t.High24h,
+		"timestamp_millis": t.TimestampMillis,
 	}
 }
 
-func balanceToRPC(b *perp.BalanceView) map[string]interface{} {
+func balanceViewToRPC(b *models.BalanceView) map[string]interface{} {
 	if b == nil {
 		return nil
 	}
@@ -127,13 +146,13 @@ func balanceToRPC(b *perp.BalanceView) map[string]interface{} {
 	}
 }
 
-func positionToRPC(p *perp.PositionSnapshot) map[string]interface{} {
+func positionViewToRPC(p *models.PositionView) map[string]interface{} {
 	if p == nil {
 		return nil
 	}
 	return map[string]interface{}{
-		"contract":       string(p.Contract),
-		"side":           string(p.Side),
+		"contract":       p.Symbol,
+		"side":           p.Side,
 		"size":           p.Size,
 		"entry_price":    p.EntryPrice,
 		"mark_price":     p.MarkPrice,

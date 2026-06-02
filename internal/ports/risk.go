@@ -8,7 +8,7 @@ import (
 	"github.com/shopspring/decimal"
 )
 
-// RiskContext 单笔订单过风控时的只读上下文（由 Engine 组装）。
+// RiskContext 单笔订单过风控时的只读上下文（由 Engine / MarketRisk 组装）。
 type RiskContext struct {
 	StrategyName string
 	Signal       *models.Signal
@@ -22,16 +22,18 @@ type RiskContext struct {
 	OpensExposure      bool
 	IncreasingExposure bool
 
-	OrderNotionalUSDT        decimal.Decimal
-	PositionNotionalUSDT     decimal.Decimal
-	PostPositionNotionalUSDT decimal.Decimal
-	TotalExposureUSDT        decimal.Decimal
-	PostTotalExposureUSDT    decimal.Decimal
-	AccountEquityUSDT        decimal.Decimal
-	DailyLossUSDT            decimal.Decimal
-	DrawdownRatio            decimal.Decimal
-	PostLeverage             decimal.Decimal
-	NotionalUSDTPerContract  decimal.Decimal
+	QuoteCcy string // 计价币种；perp 为 USDT
+
+	OrderNotional        decimal.Decimal
+	PositionNotional     decimal.Decimal
+	PostPositionNotional decimal.Decimal
+	TotalExposure        decimal.Decimal
+	PostTotalExposure    decimal.Decimal
+	AccountEquity        decimal.Decimal
+	DailyLoss            decimal.Decimal
+	DrawdownRatio        decimal.Decimal
+	PostLeverage         decimal.Decimal
+	NotionalPerUnit      decimal.Decimal
 }
 
 // RiskEvaluator 风控评估端口（实现可为静态规则、gRPC 远程等）。

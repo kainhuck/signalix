@@ -2,9 +2,9 @@ package engine
 
 import (
 	"context"
+	"strings"
 	"testing"
 
-	"github.com/kainhuck/signalix/internal/app/market"
 	"github.com/kainhuck/signalix/internal/app/strategy"
 	"github.com/kainhuck/signalix/internal/models"
 	"github.com/kainhuck/signalix/pkg/exchange/perp"
@@ -57,6 +57,26 @@ func (h *historyExchange) UserEvents() <-chan *perp.UserEvent {
 	return ch
 }
 
+func (h *historyExchange) TagFromLocal(localID string) string {
+	localID = strings.TrimSpace(localID)
+	if localID == "" {
+		return ""
+	}
+	return "hist:" + localID
+}
+
+func (h *historyExchange) LocalFromTag(tag string) (string, bool) {
+	tag = strings.TrimSpace(tag)
+	if !strings.HasPrefix(tag, "hist:") {
+		return "", false
+	}
+	local := strings.TrimPrefix(tag, "hist:")
+	if local == "" {
+		return "", false
+	}
+	return local, true
+}
+
 type historyRuntime struct {
 	recordingStrategyRuntime
 	lastHistory *models.HistoryPayload
@@ -79,15 +99,15 @@ func TestWarmupHistorySendHistory(t *testing.T) {
 		},
 	}
 	rec := &historyRuntime{recordingStrategyRuntime: recordingStrategyRuntime{name: "s1", ctx: context.Background()}}
+	markets := testPerpMarkets(t, ex)
 	e := &Engine{
-		ctx:      context.Background(),
-		exchange: ex,
-		router:   market.NewMarketRouter(ex),
+		ctx:     context.Background(),
+		markets: markets,
 	}
 	st := &strategy.Strategy{
 		StrategyConfig: strategy.StrategyConfig{
 			Name:        "s1",
-			Symbols:     []perp.Contract{"BTC/USDT"},
+			Symbols:     []string{"BTC/USDT"},
 			HistoryBars: 100,
 		},
 	}
@@ -113,7 +133,8 @@ func TestWarmupHistorySkipsWhenZero(t *testing.T) {
 	t.Parallel()
 
 	rec := &historyRuntime{recordingStrategyRuntime: recordingStrategyRuntime{ctx: context.Background()}}
-	e := &Engine{ctx: context.Background(), exchange: &historyExchange{}}
+	markets := testPerpMarkets(t, &historyExchange{})
+	e := &Engine{ctx: context.Background(), markets: markets}
 	st := &strategy.Strategy{StrategyConfig: strategy.StrategyConfig{HistoryBars: 0}}
 
 	if err := e.warmupHistory(st, rec, "5m"); err != nil {

@@ -8,32 +8,31 @@ import (
 	"time"
 
 	"github.com/kainhuck/signalix/internal/app/instrument"
-	"github.com/kainhuck/signalix/internal/app/projection"
+	"github.com/kainhuck/signalix/internal/app/market"
 	"github.com/kainhuck/signalix/internal/models"
 	"github.com/kainhuck/signalix/internal/ports"
 	"github.com/kainhuck/signalix/pkg/exchange/perp"
 	"github.com/kainhuck/signalix/pkg/logger"
 )
 
-// ExecutionEngine 执行引擎（OMS：单 goroutine 串行处理提交、撤单、同步与用户流更新）。
+// ExecutionEngine 执行引擎（OMS：单 goroutine 串行处理提交、撤单、同步与归一化订单事件）。
 type ExecutionEngine struct {
-	exchange   ports.Exchange
-	acctProj   *projection.AccountProjection
-	store      ports.OrderStore
-	metaLookup instrument.ContractMetaLookup
-	orders     map[string]*models.Order // order ID -> order
-	mu         sync.RWMutex
+	executors     map[models.Market]market.MarketExecutor
+	defaultMarket models.Market
+	store         ports.OrderStore
+	metaLookup    instrument.ContractMetaLookup
+	orders        map[string]*models.Order
+	mu            sync.RWMutex
 
 	orderUpdateCh chan *models.Order
+	eventCh       chan *models.OrderEvent
 	cmdCh         chan *omsCmd
 
-	// runCtx 由 Start 注入，与引擎生命周期一致；用于 sendOrderUpdate 在关停时可退出。
 	runCtx context.Context
 
 	runWg    sync.WaitGroup
 	stopOnce sync.Once
 
-	// started 在 run goroutine 启动后置 1，避免在未 Start 时向 cmdCh 投递 flush 导致死锁。
 	started int32
 
 	maxRetries    int
@@ -54,14 +53,15 @@ type ExecutionStats struct {
 	mu              sync.RWMutex
 }
 
-// NewExecutionEngine 创建执行引擎；projection 可为 nil（仅测试），生产路径应注入 AccountProjection。
-func NewExecutionEngine(exchange ports.Exchange, acctProj *projection.AccountProjection, store ports.OrderStore, opts ...Option) *ExecutionEngine {
+// NewExecutionEngine 创建执行引擎。
+func NewExecutionEngine(executors map[models.Market]market.MarketExecutor, store ports.OrderStore, opts ...Option) *ExecutionEngine {
 	e := &ExecutionEngine{
-		exchange:      exchange,
-		acctProj:      acctProj,
+		executors:     executors,
+		defaultMarket: models.MarketPerp,
 		store:         store,
 		orders:        make(map[string]*models.Order),
 		orderUpdateCh: make(chan *models.Order, 100),
+		eventCh:       make(chan *models.OrderEvent, 100),
 		cmdCh:         make(chan *omsCmd, 100),
 		maxRetries:    3,
 		retryInterval: time.Second * 2,
@@ -76,6 +76,7 @@ func NewExecutionEngine(exchange ports.Exchange, acctProj *projection.AccountPro
 func (e *ExecutionEngine) Start(ctx context.Context) error {
 	e.runCtx = ctx
 	atomic.StoreInt32(&e.started, 1)
+	e.startEventFanIn(ctx)
 	e.runWg.Add(1)
 	go func() {
 		defer e.runWg.Done()
@@ -93,8 +94,41 @@ func (e *ExecutionEngine) Stop() error {
 	return nil
 }
 
+func (e *ExecutionEngine) startEventFanIn(ctx context.Context) {
+	if e.executors == nil {
+		return
+	}
+	for _, ex := range e.executors {
+		if ex == nil {
+			continue
+		}
+		ch := ex.OrderEvents()
+		e.runWg.Add(1)
+		go func(events <-chan *models.OrderEvent) {
+			defer e.runWg.Done()
+			for {
+				select {
+				case <-ctx.Done():
+					return
+				case ev, ok := <-events:
+					if !ok {
+						return
+					}
+					if ev == nil {
+						continue
+					}
+					select {
+					case e.eventCh <- ev:
+					case <-ctx.Done():
+						return
+					}
+				}
+			}
+		}(ch)
+	}
+}
+
 func (e *ExecutionEngine) run(ctx context.Context) {
-	userCh := e.exchange.UserEvents()
 	for {
 		select {
 		case <-ctx.Done():
@@ -110,22 +144,33 @@ func (e *ExecutionEngine) run(ctx context.Context) {
 			case omsOpSubmit:
 				e.execSubmit(ctx, cmd)
 			case omsOpCancel:
-				e.execCancel(cmd)
+				e.execCancel(ctx, cmd)
 			case omsOpSync:
 				e.execSync(cmd)
 			case omsOpFlush:
 				e.execFlush(cmd)
 			}
-		case ev, ok := <-userCh:
+		case ev, ok := <-e.eventCh:
 			if !ok {
 				return
 			}
-			if e.acctProj != nil {
-				e.acctProj.OnUserEvent(ctx, ev)
-			}
-			e.dispatchUserEvent(ev)
+			e.applyOrderEvent(ev)
 		}
 	}
+}
+
+func (e *ExecutionEngine) executorFor(o *models.Order) market.MarketExecutor {
+	if e == nil || o == nil || e.executors == nil {
+		return nil
+	}
+	m := o.Market
+	if !m.Valid() {
+		m = e.defaultMarket
+	}
+	if ex, ok := e.executors[m]; ok && ex != nil {
+		return ex
+	}
+	return nil
 }
 
 func (e *ExecutionEngine) execSubmit(ctx context.Context, cmd *omsCmd) {
@@ -145,6 +190,9 @@ func (e *ExecutionEngine) execSubmit(ctx context.Context, cmd *omsCmd) {
 		return
 	}
 	e.orders[order.ID] = order
+	if !order.Market.Valid() {
+		order.Market = e.defaultMarket
+	}
 	order.Status = models.OrderStatusPending
 	now := time.Now()
 	order.CreatedAt = now
@@ -161,7 +209,7 @@ func (e *ExecutionEngine) execSubmit(ctx context.Context, cmd *omsCmd) {
 	cmd.reply <- e.submitWithRetry(ctx, order)
 }
 
-func (e *ExecutionEngine) execCancel(cmd *omsCmd) {
+func (e *ExecutionEngine) execCancel(ctx context.Context, cmd *omsCmd) {
 	if cmd.reply == nil {
 		return
 	}
@@ -183,10 +231,12 @@ func (e *ExecutionEngine) execCancel(cmd *omsCmd) {
 		return
 	}
 
-	if err := e.exchange.Cancel(cmd.ctx, &perp.CancelParams{
-		Contract: order.Symbol,
-		OrderID:  order.ExchangeID,
-	}); err != nil {
+	exec := e.executorFor(order)
+	if exec == nil {
+		cmd.reply <- fmt.Errorf("no market executor for order")
+		return
+	}
+	if err := exec.Cancel(cmd.ctx, order); err != nil {
 		cmd.reply <- fmt.Errorf("failed to cancel order: %w", err)
 		return
 	}
@@ -219,20 +269,17 @@ func (e *ExecutionEngine) execSync(cmd *omsCmd) {
 		return
 	}
 
-	exchangeOrder, err := e.exchange.GetOrder(cmd.ctx, order.Symbol, order.ExchangeID)
-	if err != nil {
-		cmd.reply <- fmt.Errorf("failed to get order from exchange: %w", err)
+	exec := e.executorFor(order)
+	if exec == nil {
+		cmd.reply <- fmt.Errorf("no market executor for order")
 		return
 	}
-
-	e.mu.Lock()
-	order.Status = models.OrderStatus(exchangeOrder.Status)
-	order.FilledSize = exchangeOrder.FilledSize
-	order.UpdatedAt = exchangeOrder.UpdatedAt
-	e.mu.Unlock()
-
-	e.sendOrderUpdate(order)
-
+	oe, err := exec.Sync(cmd.ctx, order)
+	if err != nil {
+		cmd.reply <- fmt.Errorf("failed to sync order from exchange: %w", err)
+		return
+	}
+	e.applyOrderEvent(oe)
 	cmd.reply <- nil
 }
 
@@ -286,9 +333,15 @@ func (e *ExecutionEngine) SubmitOrder(ctx context.Context, order *models.Order) 
 	}
 }
 
-// submitWithRetry 仅在 OMS run goroutine 内调用。
 func (e *ExecutionEngine) submitWithRetry(ctx context.Context, order *models.Order) error {
 	if err := e.validateOrderForPlace(order); err != nil {
+		e.handleSubmitError(order, err)
+		return err
+	}
+
+	exec := e.executorFor(order)
+	if exec == nil {
+		err := fmt.Errorf("no market executor for order")
 		e.handleSubmitError(order, err)
 		return err
 	}
@@ -318,14 +371,13 @@ func (e *ExecutionEngine) submitWithRetry(ctx context.Context, order *models.Ord
 			e.stats.mu.Unlock()
 		}
 
-		req := e.buildOrderRequest(order)
-		resp, err := e.exchange.Place(ctx, req)
+		exchangeID, err := exec.Place(ctx, order)
 		if err != nil {
 			lastErr = err
 			continue
 		}
 
-		e.handleSubmitSuccess(order, resp)
+		e.handleSubmitSuccess(order, exchangeID)
 		return nil
 	}
 
@@ -334,23 +386,9 @@ func (e *ExecutionEngine) submitWithRetry(ctx context.Context, order *models.Ord
 	return err
 }
 
-func (e *ExecutionEngine) buildOrderRequest(order *models.Order) *perp.PlaceRequest {
-	// ClientID 与本地 Order.ID 一致，作为所侧幂等键（Gate text 等）；重试 Place 复用同一 ClientID。
-	return &perp.PlaceRequest{
-		Contract:    order.Symbol,
-		Side:        perp.Side(order.Side),
-		Type:        perp.OrderType(order.OrderType),
-		Size:        order.Size,
-		Price:       order.Price,
-		TimeInForce: perp.TIFGTC,
-		ReduceOnly:  false,
-		ClientID:    order.ID,
-	}
-}
-
-func (e *ExecutionEngine) handleSubmitSuccess(order *models.Order, resp *perp.OrderSnapshot) {
+func (e *ExecutionEngine) handleSubmitSuccess(order *models.Order, exchangeID string) {
 	e.mu.Lock()
-	order.ExchangeID = resp.ExchangeOrderID
+	order.ExchangeID = exchangeID
 	order.Status = models.OrderStatusSubmitted
 	order.UpdatedAt = time.Now()
 	e.mu.Unlock()
@@ -477,6 +515,9 @@ func (e *ExecutionEngine) HydrateFromSnapshot(orders []*models.Order) {
 			continue
 		}
 		if c := cloneOrder(o); c != nil {
+			if !c.Market.Valid() {
+				c.Market = e.defaultMarket
+			}
 			e.orders[c.ID] = c
 		}
 	}
@@ -505,22 +546,22 @@ func (e *ExecutionEngine) FlushOrdersToStore(ctx context.Context) error {
 	}
 }
 
-// dispatchUserEvent 处理用户流订单更新（仅在 OMS goroutine 内调用）。
-func (e *ExecutionEngine) dispatchUserEvent(update *perp.UserEvent) {
-	if update == nil || update.Kind != perp.UserOrderUpdate {
-		return
-	}
-	ov, ok := update.Order()
-	if !ok {
+func (e *ExecutionEngine) applyOrderEvent(ev *models.OrderEvent) {
+	if ev == nil {
 		return
 	}
 
 	e.mu.Lock()
 	var order *models.Order
-	for _, o := range e.orders {
-		if o.ExchangeID == ov.ExchangeOrderID {
-			order = o
-			break
+	if ev.ClientID != "" {
+		order = e.orders[ev.ClientID]
+	}
+	if order == nil && ev.ExchangeID != "" {
+		for _, o := range e.orders {
+			if o.ExchangeID == ev.ExchangeID {
+				order = o
+				break
+			}
 		}
 	}
 	if order == nil {
@@ -528,9 +569,9 @@ func (e *ExecutionEngine) dispatchUserEvent(update *perp.UserEvent) {
 		return
 	}
 
-	order.Status = models.OrderStatus(ov.Status)
-	order.FilledSize = ov.FilledSize
-	order.UpdatedAt = ov.UpdatedAt
+	order.Status = ev.Status
+	order.FilledSize = ev.FilledSize
+	order.UpdatedAt = ev.UpdatedAt
 	filled := order.Status == models.OrderStatusFilled
 	e.mu.Unlock()
 
@@ -543,7 +584,6 @@ func (e *ExecutionEngine) dispatchUserEvent(update *perp.UserEvent) {
 	}
 }
 
-// sendOrderUpdate 发送订单更新（正常路径阻塞发送；关停时若 ctx 已取消则不再无限阻塞）。
 func (e *ExecutionEngine) sendOrderUpdate(order *models.Order) {
 	if e.runCtx == nil {
 		select {

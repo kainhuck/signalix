@@ -1,10 +1,11 @@
-package market
+package perp
 
 import (
 	"context"
 	"sync"
 	"time"
 
+	"github.com/kainhuck/signalix/internal/app/market"
 	"github.com/kainhuck/signalix/internal/models"
 	"github.com/kainhuck/signalix/internal/ports"
 	"github.com/kainhuck/signalix/pkg/exchange/perp"
@@ -40,7 +41,7 @@ type MarketRouter struct {
 	klineHistMu  sync.RWMutex
 	klineHistMax int
 
-	marketCh chan MarketUpdate
+	marketCh chan market.MarketUpdate
 
 	ctx    context.Context
 	cancel context.CancelFunc
@@ -59,7 +60,7 @@ func NewMarketRouter(exchange ports.Exchange, opts ...Option) *MarketRouter {
 		klineCache:     make(map[candleKey]*perp.CandlestickSnapshot),
 		klineHistory:   make(map[candleKey][]*models.Kline),
 		klineHistMax:   DefaultKlineHistoryMax,
-		marketCh:       make(chan MarketUpdate, 1000),
+		marketCh:       make(chan market.MarketUpdate, 1000),
 		ctx:            ctx,
 		cancel:         cancel,
 	}
@@ -87,13 +88,12 @@ func (mr *MarketRouter) Start() {
 func (mr *MarketRouter) Stop() error {
 	logger.InfoContext(mr.ctx, "Stopping Market Router...")
 	mr.cancel()
-	close(mr.marketCh)
 	logger.InfoContext(mr.ctx, "Market Router stopped")
 	return nil
 }
 
-// Subscribe 订阅 K 线；引擎始终订 ticker 写缓存，subscribeTicker 为 true 时额外向策略推送 tick。
-func (mr *MarketRouter) Subscribe(strategyName string, symbols []perp.Contract, interval string, subscribeTicker bool) error {
+// SubscribeContracts 订阅 K 线（perp 合约）；引擎始终订 ticker 写缓存，subscribeTicker 为 true 时额外向策略推送 tick。
+func (mr *MarketRouter) SubscribeContracts(strategyName string, symbols []perp.Contract, interval string, subscribeTicker bool) error {
 	mr.subMu.Lock()
 	defer mr.subMu.Unlock()
 
@@ -155,8 +155,8 @@ func (mr *MarketRouter) Subscribe(strategyName string, symbols []perp.Contract, 
 	return nil
 }
 
-// Unsubscribe 取消订阅（需与 Subscribe 使用相同 interval）。
-func (mr *MarketRouter) Unsubscribe(strategyName string, symbols []perp.Contract, interval string) error {
+// UnsubscribeContracts 取消订阅（需与 SubscribeContracts 使用相同 interval）。
+func (mr *MarketRouter) UnsubscribeContracts(strategyName string, symbols []perp.Contract, interval string) error {
 	mr.subMu.Lock()
 	defer mr.subMu.Unlock()
 
@@ -316,10 +316,11 @@ func (mr *MarketRouter) onTicker(ev *perp.PublicEvent) {
 	mr.subMu.RUnlock()
 
 	for _, strategyName := range strategyList {
-		mr.emit(MarketUpdate{
+		mr.emit(market.MarketUpdate{
+			Market:       models.MarketPerp,
 			StrategyName: strategyName,
-			Kind:         MarketUpdateTicker,
-			Ticker:       ticker,
+			Kind:         market.MarketUpdateTicker,
+			Ticker:       models.TickerFromSnapshot(ticker),
 		})
 	}
 }
@@ -352,10 +353,11 @@ func (mr *MarketRouter) onCandlestick(ev *perp.PublicEvent) {
 	mr.subMu.RUnlock()
 
 	for _, strategyName := range strategyList {
-		mr.emit(MarketUpdate{
+		mr.emit(market.MarketUpdate{
+			Market:       models.MarketPerp,
 			StrategyName: strategyName,
-			Kind:         MarketUpdateKline,
-			Kline:        snap,
+			Kind:         market.MarketUpdateKline,
+			Kline:        models.KlineFromSnapshot(snap),
 		})
 	}
 }
@@ -368,7 +370,7 @@ func (mr *MarketRouter) copyStrategyNames(strategies map[string]bool) []string {
 	return out
 }
 
-func (mr *MarketRouter) emit(upd MarketUpdate) {
+func (mr *MarketRouter) emit(upd market.MarketUpdate) {
 	select {
 	case mr.marketCh <- upd:
 	case <-mr.ctx.Done():
@@ -377,11 +379,6 @@ func (mr *MarketRouter) emit(upd MarketUpdate) {
 			logger.String("strategy", upd.StrategyName),
 			logger.Any("kind", upd.Kind))
 	}
-}
-
-// GetMarketChannel 获取行情通道
-func (mr *MarketRouter) GetMarketChannel() <-chan MarketUpdate {
-	return mr.marketCh
 }
 
 // GetCachedTicker 获取缓存的 ticker。

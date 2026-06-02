@@ -18,7 +18,11 @@ import (
 func TestEvaluateStrategyRiskMaxOpenOrders(t *testing.T) {
 	t.Parallel()
 	ex := testutil.NewStubExchange()
-	ee := oms.NewExecutionEngine(ex, nil, nil)
+	execs, _, err := testOMSExecutors(ex)
+	if err != nil {
+		t.Fatal(err)
+	}
+	ee := oms.NewExecutionEngine(execs, nil)
 	existing := &models.Order{
 		ID:           "existing",
 		Symbol:       "BTC/USDT",
@@ -43,7 +47,7 @@ func TestEvaluateStrategyRiskMaxOpenOrders(t *testing.T) {
 			"s1": {
 				StrategyConfig: strategy.StrategyConfig{
 					Name:    "s1",
-					Symbols: []perp.Contract{"BTC/USDT"},
+					Symbols: []string{"BTC/USDT"},
 				},
 				RiskOverrides: ov,
 			},
@@ -53,14 +57,14 @@ func TestEvaluateStrategyRiskMaxOpenOrders(t *testing.T) {
 	order := &models.Order{ID: "o2", Symbol: "BTC/USDT", Size: "1"}
 	sig := &models.Signal{Symbol: "BTC/USDT", Direction: models.DirectionLong}
 	base := &ports.RiskContext{
-		StrategyName:      "s1",
-		Signal:            sig,
-		Order:             order,
-		OpenOrders:        ee.NonFinalOrderCount(),
-		Positions:         0,
-		ProjectionReady:   true,
-		OpensExposure:     true,
-		AccountEquityUSDT: decimal.NewFromInt(100000),
+		StrategyName:    "s1",
+		Signal:          sig,
+		Order:           order,
+		OpenOrders:      ee.NonFinalOrderCount(),
+		Positions:       0,
+		ProjectionReady: true,
+		OpensExposure:   true,
+		AccountEquity:   decimal.NewFromInt(100000),
 	}
 
 	v, _, err := e.evaluateStrategyRisk(context.Background(), "s1", sig, order, base)
@@ -109,7 +113,7 @@ func TestOpenPositionCountForStrategy(t *testing.T) {
 	}()
 
 	e := &Engine{accountProjection: proj}
-	n, err := e.openPositionCountForStrategy([]perp.Contract{"BTC/USDT", "SOL/USDT"})
+	n, err := e.openPositionCountForStrategy([]string{"BTC/USDT", "SOL/USDT"})
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -127,11 +131,11 @@ func TestEvaluateRulesReduceStack(t *testing.T) {
 	})
 	order := &models.Order{Size: "10"}
 	rc := &ports.RiskContext{
-		Order:             order,
-		Signal:            &models.Signal{Direction: models.DirectionLong},
-		ProjectionReady:   true,
-		OpensExposure:     true,
-		AccountEquityUSDT: decimal.NewFromInt(100000),
+		Order:           order,
+		Signal:          &models.Signal{Direction: models.DirectionLong},
+		ProjectionReady: true,
+		OpensExposure:   true,
+		AccountEquity:   decimal.NewFromInt(100000),
 	}
 	v1 := EvaluateRules(strat, rc)
 	if v1.AdjustedSize != "3" {
