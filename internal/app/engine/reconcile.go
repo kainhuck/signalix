@@ -9,7 +9,6 @@ import (
 	"github.com/kainhuck/signalix/internal/app/market"
 	"github.com/kainhuck/signalix/internal/models"
 	"github.com/kainhuck/signalix/internal/ports"
-	"github.com/kainhuck/signalix/pkg/exchange/perp"
 	"github.com/kainhuck/signalix/pkg/logger"
 )
 
@@ -90,7 +89,7 @@ func reconcileWithExecutors(ctx context.Context, markets map[models.Market]marke
 
 		ev, err := exec.Sync(ctx, o)
 		if err != nil {
-			if perp.IsOrderNotFound(err) {
+			if ports.IsOrderNotFound(err) {
 				prev := o.Status
 				o.Status = models.OrderStatusCancelled
 				o.UpdatedAt = time.Now()

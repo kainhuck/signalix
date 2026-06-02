@@ -8,7 +8,6 @@ import (
 
 	"github.com/kainhuck/signalix/internal/app/strategy"
 	"github.com/kainhuck/signalix/internal/app/strategy/scaffold"
-	"github.com/kainhuck/signalix/pkg/exchange/perp"
 	"gopkg.in/yaml.v3"
 )
 
@@ -87,7 +86,7 @@ func TestCreate_mergeSymbols(t *testing.T) {
 		StrategiesDir: dir,
 		Name:          "s1",
 		TemplateID:    "trend",
-		Symbols:       []perp.Contract{"ETH/USDT"},
+		Symbols:       []string{"ETH/USDT"},
 	})
 	if err != nil {
 		t.Fatal(err)

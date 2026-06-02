@@ -6,6 +6,7 @@ import (
 	"fmt"
 	"runtime/debug"
 	"sort"
+	"strings"
 	"sync"
 	"sync/atomic"
 	"time"
@@ -14,7 +15,6 @@ import (
 	"github.com/kainhuck/signalix/internal/adapters/strategy/pythonipc"
 	"github.com/kainhuck/signalix/internal/app/instrument"
 	"github.com/kainhuck/signalix/internal/app/market"
-	mktperp "github.com/kainhuck/signalix/internal/app/market/perp"
 	"github.com/kainhuck/signalix/internal/app/oms"
 	"github.com/kainhuck/signalix/internal/app/projection"
 	apprisk "github.com/kainhuck/signalix/internal/app/risk"
@@ -23,7 +23,6 @@ import (
 	"github.com/kainhuck/signalix/internal/domain/risk"
 	"github.com/kainhuck/signalix/internal/models"
 	"github.com/kainhuck/signalix/internal/ports"
-	"github.com/kainhuck/signalix/pkg/exchange/perp"
 	"github.com/kainhuck/signalix/pkg/logger"
 )
 
@@ -40,6 +39,7 @@ type Engine struct {
 
 	// 依赖
 	markets           map[models.Market]market.Market
+	metaLookup        instrument.ContractMetaLookup
 	loader            *strategy.StrategyLoader
 	executionEngine   *oms.ExecutionEngine
 	accountProjection *projection.AccountProjection
@@ -103,7 +103,7 @@ type Engine struct {
 	strategyLogSubs    map[uint64]*strategyLogSubscription
 }
 
-// NewEngine 创建策略引擎；markets 须包含 models.MarketPerp 的 *mktperp.PerpMarket。
+// NewEngine 创建策略引擎；AccountProjection / MetaLookup 由 main 注入（perp 场景来自 PerpMarket）。
 func NewEngine(strategyDir string, markets map[models.Market]market.Market, build BuildParams, opts ...EngineOption) *Engine {
 	ctx, cancel := context.WithCancel(context.Background())
 	ch := build.Channels
@@ -122,22 +122,20 @@ func NewEngine(strategyDir string, markets map[models.Market]market.Market, buil
 		omsRetries = 3
 	}
 
-	pm, err := mktperp.PerpFromMarkets(markets)
-	if err != nil {
-		logger.WarnContext(ctx, "perp market missing from registry", logger.Any("error", err))
-	}
-
 	loader := strategy.NewStrategyLoader(ctx, strategyDir)
 	equityTracker := apprisk.NewEquityTracker()
-	if pm != nil {
-		pm.AttachEquityHook(equityTracker.OnEquityUpdate)
+
+	metaLookup := build.MetaLookup
+	if metaLookup == nil {
+		metaLookup = instrument.NewRegistry()
 	}
 
 	e := &Engine{
 		strategyProcess:     make(map[string]strategy.StrategyRuntime),
 		markets:             markets,
+		metaLookup:          metaLookup,
 		loader:              loader,
-		accountProjection:   nil,
+		accountProjection:   build.AccountProjection,
 		defaultInterval:     build.DefaultInterval,
 		restartCfg:          build.Restart,
 		crashTracker:        newCrashTracker(),
@@ -167,38 +165,26 @@ func NewEngine(strategyDir string, markets map[models.Market]market.Market, buil
 		cmdBuf = 100
 	}
 	executors := make(map[models.Market]market.MarketExecutor)
-	metaLookup := instrument.NewRegistry()
 	for mk, m := range markets {
 		if m != nil {
 			executors[mk] = m
 		}
-	}
-	if pm != nil {
-		e.accountProjection = pm.Projection()
-		metaLookup = pm.Registry()
 	}
 	e.executionEngine = oms.NewExecutionEngine(executors, e.store,
 		oms.WithChannelBuffers(omsBuf, cmdBuf),
 		oms.WithMaxRetries(omsRetries),
 		oms.WithContractMetaLookup(metaLookup),
 	)
-	if pm != nil {
-		pm.BindRisk(mktperp.PerpRiskConfig{
-			Execution:     e.executionEngine,
-			Equity:        equityTracker,
-			NeedsNotional: e,
-		})
-	}
 
 	return e
 }
 
-func (e *Engine) perp() *mktperp.PerpMarket {
+// ExecutionEngine 返回 OMS 执行引擎（供 main 在 NewEngine 后 BindRisk）。
+func (e *Engine) ExecutionEngine() *oms.ExecutionEngine {
 	if e == nil {
 		return nil
 	}
-	pm, _ := e.markets[models.MarketPerp].(*mktperp.PerpMarket)
-	return pm
+	return e.executionEngine
 }
 
 func (e *Engine) SetAllStrategy(strategies map[string]*strategy.Strategy) {
@@ -275,7 +261,6 @@ func (e *Engine) Start() error {
 
 	if e.store != nil {
 		e.startStrategyLogWriter()
-		e.accountProjection.SetRefreshHook(e.persistAccountSnapshot)
 	}
 
 	if err := e.accountProjection.Start(e.ctx); err != nil {
@@ -587,7 +572,7 @@ func (e *Engine) launchStrategy(st *strategy.Strategy) error {
 		return fmt.Errorf("strategy %q: %w", st.Name, err)
 	}
 	if err := e.subscribeStrategy(st, interval); err != nil {
-		return fmt.Errorf("failed to subscribe strategy %q: %v", st.Name, err)
+		return fmt.Errorf("failed to subscribe strategy %q: %w", st.Name, err)
 	}
 
 	// 检查策略是否已经在运行
@@ -685,10 +670,13 @@ func (e *Engine) warmupHistory(st *strategy.Strategy, sp strategy.StrategyRuntim
 	return nil
 }
 
-func contractsToStrings(cs []perp.Contract) []string {
-	out := make([]string, 0, len(cs))
-	for _, c := range cs {
-		out = append(out, string(c))
+func contractsToStrings(symbols []string) []string {
+	out := make([]string, 0, len(symbols))
+	for _, s := range symbols {
+		s = strings.TrimSpace(s)
+		if s != "" {
+			out = append(out, s)
+		}
 	}
 	return out
 }

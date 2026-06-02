@@ -9,7 +9,6 @@ import (
 	"github.com/kainhuck/signalix/internal/app/strategy"
 	"github.com/kainhuck/signalix/internal/config"
 	"github.com/kainhuck/signalix/internal/models"
-	"github.com/kainhuck/signalix/pkg/exchange/perp"
 )
 
 func TestStrategyRuntimeSnapshot_notInCatalog(t *testing.T) {
@@ -31,7 +30,7 @@ func TestStrategyRuntimeSnapshot_catalogOnly(t *testing.T) {
 		StrategyConfig: strategy.StrategyConfig{
 			Name:    "alpha",
 			Enabled: true,
-			Symbols: []perp.Contract{"BTC/USDT"},
+			Symbols: []string{"BTC/USDT"},
 		},
 	})
 	snap, err := e.StrategyRuntimeSnapshot("alpha")

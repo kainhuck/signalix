@@ -17,6 +17,8 @@ type Market interface {
 	Start(ctx context.Context) error
 	// Stop 停止市场后台工作。
 	Stop() error
+	// Ping 探测交易所连通性（健康检查用）。
+	Ping(ctx context.Context) error
 
 	MarketFeed
 	MarketDecider
@@ -54,4 +56,6 @@ type MarketAccount interface {
 	Position(ctx context.Context, symbol string) (*models.PositionView, error)
 	Ticker(symbol string) (*models.Ticker, error)
 	Klines(symbol, interval string, limit int) ([]*models.Kline, error)
+	ListPositions(ctx context.Context) ([]*models.PositionView, error)
+	ListTickers() (map[string]*models.Ticker, error)
 }

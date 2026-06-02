@@ -27,6 +27,7 @@ func newMockMarket(kind models.Market) *mockMarket {
 func (m *mockMarket) Kind() models.Market         { return m.kind }
 func (m *mockMarket) Start(context.Context) error { return nil }
 func (m *mockMarket) Stop() error                 { return nil }
+func (m *mockMarket) Ping(context.Context) error  { return nil }
 
 func (m *mockMarket) Subscribe(context.Context, SubscribeRequest) error { return nil }
 func (m *mockMarket) Unsubscribe(string) error                          { return nil }
@@ -56,6 +57,10 @@ func (m *mockMarket) Position(context.Context, string) (*models.PositionView, er
 }
 func (m *mockMarket) Ticker(string) (*models.Ticker, error)               { return nil, nil }
 func (m *mockMarket) Klines(string, string, int) ([]*models.Kline, error) { return nil, nil }
+func (m *mockMarket) ListPositions(context.Context) ([]*models.PositionView, error) {
+	return nil, nil
+}
+func (m *mockMarket) ListTickers() (map[string]*models.Ticker, error) { return nil, nil }
 
 // 编译期断言：mockMarket 同时满足聚合接口与全部窄接口。
 var (

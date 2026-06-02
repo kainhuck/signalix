@@ -6,7 +6,6 @@ import (
 	enginev1 "github.com/kainhuck/signalix/api/gen/go/signalix/engine/v1"
 	"github.com/kainhuck/signalix/internal/app/engine"
 	"github.com/kainhuck/signalix/internal/app/strategy/scaffold"
-	"github.com/kainhuck/signalix/pkg/exchange/perp"
 	"google.golang.org/grpc/codes"
 	"google.golang.org/grpc/status"
 )
@@ -37,7 +36,7 @@ func mapScaffoldErr(err error) error {
 func templateMetaToProto(m scaffold.TemplateMeta) *enginev1.StrategyTemplate {
 	syms := make([]string, 0, len(m.DefaultSymbols))
 	for _, s := range m.DefaultSymbols {
-		syms = append(syms, string(s))
+		syms = append(syms, s)
 	}
 	return &enginev1.StrategyTemplate{
 		Id:              m.ID,
@@ -53,10 +52,7 @@ func createStrategyOptionsFromProto(req *enginev1.CreateStrategyRequest) scaffol
 		TemplateID: req.GetTemplateId(),
 	}
 	if syms := req.GetSymbols(); len(syms) > 0 {
-		opts.Symbols = make([]perp.Contract, 0, len(syms))
-		for _, s := range syms {
-			opts.Symbols = append(opts.Symbols, perp.Contract(s))
-		}
+		opts.Symbols = append([]string(nil), syms...)
 	}
 	if req.Interval != nil {
 		v := req.GetInterval()

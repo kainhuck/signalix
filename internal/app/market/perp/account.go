@@ -6,6 +6,7 @@ import (
 	"strconv"
 	"strings"
 
+	"github.com/kainhuck/signalix/internal/app/market"
 	"github.com/kainhuck/signalix/internal/models"
 	"github.com/kainhuck/signalix/pkg/exchange/perp"
 )
@@ -57,7 +58,7 @@ func (p *PerpMarket) Ticker(symbol string) (*models.Ticker, error) {
 	}
 	snap, ok := p.router.GetCachedTicker(contract)
 	if !ok {
-		return nil, fmt.Errorf("%w: %s", ErrTickerNotInCache, contract)
+		return nil, fmt.Errorf("%w: %s", market.ErrTickerNotInCache, contract)
 	}
 	return models.TickerFromSnapshot(snap), nil
 }
@@ -115,6 +116,42 @@ func positionViewFromPerp(pos *perp.PositionSnapshot) *models.PositionView {
 		Leverage:      lev,
 		UpdatedAt:     pos.UpdatedAt,
 	}
+}
+
+// ListPositions 满足 market.MarketAccount。
+func (p *PerpMarket) ListPositions(ctx context.Context) ([]*models.PositionView, error) {
+	_ = ctx
+	if p == nil || p.proj == nil {
+		return nil, fmt.Errorf("account projection not configured")
+	}
+	raw, err := p.proj.AllPositions()
+	if err != nil {
+		return nil, err
+	}
+	out := make([]*models.PositionView, 0, len(raw))
+	for _, pos := range raw {
+		if pos == nil {
+			continue
+		}
+		out = append(out, positionViewFromPerp(pos))
+	}
+	return out, nil
+}
+
+// ListTickers 满足 market.MarketAccount。
+func (p *PerpMarket) ListTickers() (map[string]*models.Ticker, error) {
+	if p == nil || p.router == nil {
+		return nil, market.ErrMarketRouterNotConfigured
+	}
+	raw := p.router.GetAllCachedTickers()
+	out := make(map[string]*models.Ticker, len(raw))
+	for contract, snap := range raw {
+		if snap == nil {
+			continue
+		}
+		out[string(contract)] = models.TickerFromSnapshot(snap)
+	}
+	return out, nil
 }
 
 func normalizeKlineLimit(limit int) int {

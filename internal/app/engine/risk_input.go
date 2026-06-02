@@ -17,7 +17,7 @@ func (e *Engine) buildRiskContext(ctx context.Context, mk models.Market, strateg
 	return m.BuildRiskContext(ctx, strategyName, signal, order)
 }
 
-// NeedsNotional 实现 perp.PerpRiskNotionalGate。
+// NeedsNotional 实现 market.NotionalGate。
 func (e *Engine) NeedsNotional(increasingExposure bool) bool {
 	return e.riskNeedsLeverage() || (increasingExposure && e.riskNeedsPositionSize())
 }

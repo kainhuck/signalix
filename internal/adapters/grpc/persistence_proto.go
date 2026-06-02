@@ -10,7 +10,6 @@ import (
 
 	enginev1 "github.com/kainhuck/signalix/api/gen/go/signalix/engine/v1"
 	"github.com/kainhuck/signalix/internal/models"
-	"github.com/kainhuck/signalix/pkg/exchange/perp"
 	"github.com/kainhuck/signalix/pkg/logger"
 )
 
@@ -65,7 +64,7 @@ func accountSnapshotToProto(ctx context.Context, row *models.AccountSnapshotRow,
 	return out
 }
 
-func decodePersistedBalanceJSON(raw []byte) (*perp.BalanceView, error) {
+func decodePersistedBalanceJSON(raw []byte) (*models.BalanceView, error) {
 	if len(raw) == 0 {
 		return nil, fmt.Errorf("empty balance json")
 	}
@@ -73,7 +72,7 @@ func decodePersistedBalanceJSON(raw []byte) (*perp.BalanceView, error) {
 	if err := json.Unmarshal(raw, &m); err != nil {
 		return nil, err
 	}
-	b := &perp.BalanceView{
+	b := &models.BalanceView{
 		Currency:  stringField(m, "currency"),
 		Total:     stringField(m, "total"),
 		Available: stringField(m, "available"),
@@ -85,7 +84,7 @@ func decodePersistedBalanceJSON(raw []byte) (*perp.BalanceView, error) {
 	return b, nil
 }
 
-func decodePersistedPositionsJSON(raw []byte) ([]*perp.PositionSnapshot, error) {
+func decodePersistedPositionsJSON(raw []byte) ([]*models.PositionView, error) {
 	if len(raw) == 0 {
 		return nil, nil
 	}
@@ -93,19 +92,24 @@ func decodePersistedPositionsJSON(raw []byte) ([]*perp.PositionSnapshot, error) 
 	if err := json.Unmarshal(raw, &items); err != nil {
 		return nil, err
 	}
-	out := make([]*perp.PositionSnapshot, 0, len(items))
+	out := make([]*models.PositionView, 0, len(items))
 	for _, m := range items {
 		if m == nil {
 			continue
 		}
-		p := &perp.PositionSnapshot{
-			Contract:      perp.Contract(stringField(m, "contract")),
-			Side:          perp.PositionSide(stringField(m, "side")),
+		lev := ""
+		if lv := int64Field(m, "leverage"); lv > 0 {
+			lev = strconv.FormatInt(lv, 10)
+		}
+		p := &models.PositionView{
+			Market:        models.MarketPerp,
+			Symbol:        stringField(m, "contract"),
+			Side:          stringField(m, "side"),
 			Size:          stringField(m, "size"),
 			EntryPrice:    stringField(m, "entry_price"),
 			MarkPrice:     stringField(m, "mark_price"),
 			UnrealizedPnl: stringField(m, "unrealized_pnl"),
-			Leverage:      int(int64Field(m, "leverage")),
+			Leverage:      lev,
 		}
 		if ts := int64Field(m, "updated_at"); ts > 0 {
 			p.UpdatedAt = time.Unix(ts, 0).UTC()

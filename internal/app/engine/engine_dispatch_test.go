@@ -11,7 +11,6 @@ import (
 	"github.com/kainhuck/signalix/internal/domain/risk"
 	"github.com/kainhuck/signalix/internal/models"
 	"github.com/kainhuck/signalix/internal/ports"
-	"github.com/kainhuck/signalix/pkg/exchange/perp"
 	"github.com/shopspring/decimal"
 )
 
@@ -36,6 +35,7 @@ func newDispatchTestMarket(kind models.Market) *dispatchTestMarket {
 func (m *dispatchTestMarket) Kind() models.Market         { return m.kind }
 func (m *dispatchTestMarket) Start(context.Context) error { return nil }
 func (m *dispatchTestMarket) Stop() error                 { return nil }
+func (m *dispatchTestMarket) Ping(context.Context) error  { return nil }
 
 func (m *dispatchTestMarket) Subscribe(_ context.Context, req market.SubscribeRequest) error {
 	m.mu.Lock()
@@ -87,6 +87,10 @@ func (m *dispatchTestMarket) Ticker(string) (*models.Ticker, error) { return nil
 func (m *dispatchTestMarket) Klines(string, string, int) ([]*models.Kline, error) {
 	return nil, nil
 }
+func (m *dispatchTestMarket) ListPositions(context.Context) ([]*models.PositionView, error) {
+	return nil, nil
+}
+func (m *dispatchTestMarket) ListTickers() (map[string]*models.Ticker, error) { return nil, nil }
 
 var _ market.Market = (*dispatchTestMarket)(nil)
 
@@ -148,13 +152,13 @@ func TestSubscribeStrategy_routesByMarket(t *testing.T) {
 	}
 
 	if err := e.subscribeStrategy(&strategy.Strategy{
-		StrategyConfig: strategy.StrategyConfig{Name: "alpha", Symbols: []perp.Contract{"BTC/USDT"}},
+		StrategyConfig: strategy.StrategyConfig{Name: "alpha", Symbols: []string{"BTC/USDT"}},
 		Market:         models.MarketPerp,
 	}, "1m"); err != nil {
 		t.Fatal(err)
 	}
 	if err := e.subscribeStrategy(&strategy.Strategy{
-		StrategyConfig: strategy.StrategyConfig{Name: "beta", Symbols: []perp.Contract{"ETH/USDT"}},
+		StrategyConfig: strategy.StrategyConfig{Name: "beta", Symbols: []string{"ETH/USDT"}},
 		Market:         models.MarketSpot,
 	}, "5m"); err != nil {
 		t.Fatal(err)

@@ -75,10 +75,7 @@ func TestHandleProcessExitNoDoubleHandle(t *testing.T) {
 	ctx, cancel := context.WithCancel(context.Background())
 	defer cancel()
 
-	markets, err := NewTestPerpMarkets(testutil.NewStubExchange())
-	if err != nil {
-		t.Fatal(err)
-	}
+	markets := testPerpMarkets(t, testutil.NewStubExchange())
 	e := &Engine{
 		ctx:             ctx,
 		markets:         markets,

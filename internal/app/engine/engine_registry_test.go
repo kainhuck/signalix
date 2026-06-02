@@ -15,7 +15,7 @@ func TestNewEngine_loadsContractMetaRegistry(t *testing.T) {
 		QuantoMultiplier: "0.0001",
 		OrderSizeMin:     "1",
 	}}
-	eng := NewEngine(t.TempDir(), testPerpMarkets(t, ex), BuildParams{})
+	eng := newTestEngine(t, t.TempDir(), ex)
 	meta, err := eng.ContractMetaLookup().ContractMeta("BTC/USDT")
 	if err != nil {
 		t.Fatalf("ContractMeta = %v", err)

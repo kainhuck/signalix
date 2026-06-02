@@ -11,7 +11,7 @@ import (
 func TestCreateStrategyScaffold_reload(t *testing.T) {
 	t.Parallel()
 	dir := t.TempDir()
-	e := NewEngine(dir, testPerpMarkets(t, testutil.NewStubExchange()), BuildParams{})
+	e := newTestEngine(t, dir, testutil.NewStubExchange())
 	if err := e.LoadStrategies(); err != nil {
 		t.Fatal(err)
 	}

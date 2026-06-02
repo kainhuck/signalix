@@ -47,7 +47,7 @@ func TestEvaluateStrategyRiskMaxOpenOrders(t *testing.T) {
 			"s1": {
 				StrategyConfig: strategy.StrategyConfig{
 					Name:    "s1",
-					Symbols: []perp.Contract{"BTC/USDT"},
+					Symbols: []string{"BTC/USDT"},
 				},
 				RiskOverrides: ov,
 			},
@@ -113,7 +113,7 @@ func TestOpenPositionCountForStrategy(t *testing.T) {
 	}()
 
 	e := &Engine{accountProjection: proj}
-	n, err := e.openPositionCountForStrategy([]perp.Contract{"BTC/USDT", "SOL/USDT"})
+	n, err := e.openPositionCountForStrategy([]string{"BTC/USDT", "SOL/USDT"})
 	if err != nil {
 		t.Fatal(err)
 	}

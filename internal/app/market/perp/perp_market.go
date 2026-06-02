@@ -106,6 +106,22 @@ func (p *PerpMarket) BindRisk(cfg PerpRiskConfig) {
 // Kind 满足 Market。
 func (p *PerpMarket) Kind() models.Market { return models.MarketPerp }
 
+// Ping 满足 market.Market。
+func (p *PerpMarket) Ping(ctx context.Context) error {
+	if p == nil || p.exchange == nil {
+		return fmt.Errorf("perp market not configured")
+	}
+	return p.exchange.Ping(ctx)
+}
+
+// DecisionEngine 返回 perp 决策引擎（供 main BindRisk 使用）。
+func (p *PerpMarket) DecisionEngine() *decision.DecisionEngine {
+	if p == nil {
+		return nil
+	}
+	return p.de
+}
+
 // Start 启动行情泵与用户流泵。
 func (p *PerpMarket) Start(ctx context.Context) error {
 	if p == nil {

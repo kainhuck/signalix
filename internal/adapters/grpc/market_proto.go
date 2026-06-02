@@ -5,9 +5,8 @@ import (
 
 	enginev1 "github.com/kainhuck/signalix/api/gen/go/signalix/engine/v1"
 	"github.com/kainhuck/signalix/internal/app/engine"
-	mktperp "github.com/kainhuck/signalix/internal/app/market/perp"
+	"github.com/kainhuck/signalix/internal/app/market"
 	"github.com/kainhuck/signalix/internal/models"
-	"github.com/kainhuck/signalix/pkg/exchange/perp"
 	"google.golang.org/grpc/codes"
 	"google.golang.org/grpc/status"
 )
@@ -16,7 +15,7 @@ func mapMarketErr(err error) error {
 	if err == nil {
 		return nil
 	}
-	if errors.Is(err, mktperp.ErrMarketRouterNotConfigured) {
+	if errors.Is(err, market.ErrMarketRouterNotConfigured) {
 		return status.Error(codes.FailedPrecondition, "market router not configured")
 	}
 	if errors.Is(err, engine.ErrTickerNotInCache) {
@@ -29,7 +28,7 @@ func mapMarketErr(err error) error {
 	return status.Errorf(codes.Internal, "market snapshot: %v", err)
 }
 
-func tickerToProto(t *perp.TickerSnapshot) *enginev1.Ticker {
+func tickerToProto(t *models.Ticker) *enginev1.Ticker {
 	if t == nil {
 		return nil
 	}

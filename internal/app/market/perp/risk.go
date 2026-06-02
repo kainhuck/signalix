@@ -27,18 +27,13 @@ type PerpRiskEquity interface {
 	DrawdownRatio() decimal.Decimal
 }
 
-// PerpRiskNotionalGate 由 Engine 实现，判断是否需要计算名义字段。
-type PerpRiskNotionalGate interface {
-	NeedsNotional(increasingExposure bool) bool
-}
-
 // PerpRiskConfig perp market.MarketRisk 依赖。
 type PerpRiskConfig struct {
 	Proj          *projection.AccountProjection
 	Decision      *decision.DecisionEngine
 	Execution     PerpRiskOMS
 	Equity        PerpRiskEquity
-	NeedsNotional PerpRiskNotionalGate
+	NeedsNotional market.NotionalGate
 }
 
 type perpRisk struct {
@@ -46,7 +41,7 @@ type perpRisk struct {
 	decision      *decision.DecisionEngine
 	execution     PerpRiskOMS
 	equity        PerpRiskEquity
-	needsNotional PerpRiskNotionalGate
+	needsNotional market.NotionalGate
 }
 
 // NewPerpRisk 构造 perp 的 market.MarketRisk。

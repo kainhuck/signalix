@@ -107,7 +107,7 @@ func TestWarmupHistorySendHistory(t *testing.T) {
 	st := &strategy.Strategy{
 		StrategyConfig: strategy.StrategyConfig{
 			Name:        "s1",
-			Symbols:     []perp.Contract{"BTC/USDT"},
+			Symbols:     []string{"BTC/USDT"},
 			HistoryBars: 100,
 		},
 	}

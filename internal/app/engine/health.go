@@ -3,6 +3,8 @@ package engine
 import (
 	"context"
 	"time"
+
+	"github.com/kainhuck/signalix/internal/models"
 )
 
 const (
@@ -111,13 +113,13 @@ func (e *Engine) HealthReport(ctx context.Context, skipExchangePing bool) Health
 }
 
 func (e *Engine) checkExchange(ctx context.Context) (pass bool, message string) {
-	pm := e.perp()
-	if pm == nil || pm.Exchange() == nil {
+	m := e.marketFor(models.MarketPerp)
+	if m == nil {
 		return false, "not configured"
 	}
 	pingCtx, cancel := context.WithTimeout(ctx, healthExchangePingTimeout)
 	defer cancel()
-	if err := pm.Exchange().Ping(pingCtx); err != nil {
+	if err := m.Ping(pingCtx); err != nil {
 		return false, err.Error()
 	}
 	return true, ""

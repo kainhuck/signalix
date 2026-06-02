@@ -9,7 +9,6 @@ import (
 
 	"github.com/kainhuck/signalix/internal/domain/risk"
 	"github.com/kainhuck/signalix/internal/models"
-	"github.com/kainhuck/signalix/pkg/exchange/perp"
 	"github.com/kainhuck/signalix/pkg/logger"
 	"gopkg.in/yaml.v3"
 )
@@ -23,7 +22,7 @@ var (
 type StrategyConfig struct {
 	Name            string                 `yaml:"name"`             // 策略名称
 	Enabled         bool                   `yaml:"enabled"`          // 是否启用
-	Symbols         []perp.Contract        `yaml:"symbols"`          // 策略运行市场
+	Symbols         []string               `yaml:"symbols"`          // 策略运行市场
 	Interval        string                 `yaml:"interval"`         // K 线周期（引擎订阅）
 	HistoryBars     int                    `yaml:"history_bars"`     // REST 预热根数；0 表示不预热
 	SubscribeTicker bool                   `yaml:"subscribe_ticker"` // 默认 false：引擎仍订 ticker 供定价，不向策略发 tick
