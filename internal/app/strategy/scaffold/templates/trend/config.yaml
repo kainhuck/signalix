@@ -1,5 +1,6 @@
 name: trend_placeholder
 enabled: false
+# market: perp   # optional; default perp
 symbols:
   - BTC/USDT
 interval: "5m"

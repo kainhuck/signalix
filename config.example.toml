@@ -5,6 +5,10 @@
 #   配置文件路径         $SIGNALIX_WORK_DIR/config.toml
 #   SQLite 数据库路径    $SIGNALIX_WORK_DIR/data/signalix.db  （固定，不可在 TOML 中覆盖）
 #
+# 策略 config.yaml 字段说明（各策略子目录，与全局 config.toml 分离）：
+#   symbols: ["BTC/USDT"]     # 合约/交易对字符串列表
+#   market: perp              # 可选；省略时默认 perp（EMN-4 多 market 路由）
+#
 # 首次使用：
 #   mkdir -p ~/.signalix/data ~/.signalix/strategies
 #   cp config.example.toml ~/.signalix/config.toml
@@ -46,6 +50,12 @@ crash_window = "5m"
 initial_backoff = "3s"
 max_backoff = "60s"
 backoff_multiplier = 2
+
+# ------------------------------------------------------------------------------
+# 启用市场（缺省 ["perp"]；当前 build 仅支持 perp，spot 会启动失败）
+# ------------------------------------------------------------------------------
+[markets]
+enabled = ["perp"]
 
 # ------------------------------------------------------------------------------
 # 交易所（当前仅 gateio 适配器）

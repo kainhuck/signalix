@@ -21,7 +21,8 @@ Signalix orchestrates market data, account projection, decision-making, risk che
 
 ## Features
 
-- **Perpetual abstraction** (`pkg/exchange/perp`): unified connect, market data, trading, account views, and user streams
+- **Market abstraction** (`internal/app/market`): engine orchestrates `map[models.Market]market.Market`; perp is the first implementation under `market/perp`
+- **Perpetual exchange model** (`pkg/exchange/perp`): unified connect, market data, trading, account views, and user streams
 - **Gate.io adapter**: REST / WebSocket with testnet and live configuration
 - **Multi-strategy isolation**: one Python process per strategy; a single crash does not take down the engine
 - **Full trading pipeline**: MarketRouter → strategy IPC → DecisionEngine → risk → OMS
@@ -38,9 +39,9 @@ Signalix orchestrates market data, account projection, decision-making, risk che
 └──────────────┘              │  (Go engine)    │
                               └────────┬────────┘
                                        │
-         ┌─────────────────────────────┼─────────────────────────────┐
-         ▼                             ▼                             ▼
-  MarketRouter               Python strategy(ies)              ExecutionEngine
+          ┌─────────────────────────────┼─────────────────────────────┐
+          ▼                             ▼                             ▼
+  market.Market (perp)       Python strategy(ies)              ExecutionEngine
   AccountProjection          stdin/stdout IPC                       (OMS)
          │                             │                             │
          └─────────────────────────────┴─────────────────────────────┘
@@ -191,6 +192,7 @@ symbols:
   - BTC/USDT
 interval: 1m
 history_bars: 200
+# market: perp   # optional; default perp when omitted
 parameters:
   ma_fast: 10
   ma_slow: 30
@@ -206,17 +208,18 @@ signalix/
 ├── api/gen/go/             # Generated Go code
 ├── cmd/signalixd/          # Engine entrypoint
 ├── internal/
-│   ├── app/                # engine, oms, projection, market, decision, strategy
-│   ├── adapters/           # gateio, pythonipc, sqlite, grpc
+│   ├── app/                # engine, oms, projection, market (+ perp/), decision, strategy
+│   ├── adapters/           # gateio, pythonipc, sqlite, grpc (models→proto shim)
 │   ├── domain/risk/        # Risk rules
 │   ├── ports/              # Port interfaces
-│   └── models/
-├── pkg/exchange/perp/      # Perpetual domain model & Gate.io implementation
+│   └── models/             # Market-neutral views
+├── pkg/exchange/perp/      # Perpetual DTO & Gate.io adapter
 ├── sdk/python/             # Python SDK
 ├── config.example.toml
-├── docs/                   # Architecture & product design
-└── templates/              # Strategy templates
+└── docs/                   # Architecture & product design
 ```
+
+Strategy scaffold templates live in `internal/app/strategy/scaffold/templates/` (embedded; exposed via gRPC `ListTemplates` / `CreateStrategy`).
 
 ## Known limitations
 
@@ -228,9 +231,9 @@ Global risk rules in `[risk]` include position lock, daily loss, drawdown, lever
 
 ## Roadmap
 
-- Live-trading hardening: kill switch, per-strategy risk limits
 - HTTP gateway (OpenAPI + auth, backed by engine gRPC)
-- More exchanges, contract metadata cache, backtest / paper mode
+- Spot market registration in `signalixd` (spot pipeline already archived separately)
+- More exchanges, backtest / unified paper mode
 
 ## Documentation
 

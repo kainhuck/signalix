@@ -64,38 +64,44 @@
 ## 3. 目录结构（当前）
 
 ```
-cmd/signalixd/
+cmd/signalixd/          # 配置加载、markets 装配、Engine 生命周期、可选 gRPC
 internal/
   app/
-    engine/           # 编排、IPC RPC、策略生命周期
-    market/           # MarketRouter：订阅、ticker/K 线缓存与分发
-    strategy/         # Catalog 加载
-    decision/         # Signal → Order
-    oms/              # ExecutionEngine（单写者 OMS）
-    projection/       # AccountProjection
+    engine/             # 编排、IPC RPC、策略生命周期（市场中性，零 perp import）
+    market/             # Market 接口 + perp/ 子包（PerpMarket、Router、Executor…）
+    strategy/           # Catalog 加载；scaffold 内置模版（embed）
+    decision/           # Signal → Order
+    oms/                # ExecutionEngine（单写者 OMS）
+    projection/         # AccountProjection（perp 实现细节，Engine 经注入消费）
+    instrument/         # 合约元数据 Registry
   domain/risk/
   ports/
   adapters/
     exchange/gateio/
     strategy/pythonipc/
     store/sqlite/
-    grpc/
+    grpc/               # gRPC 服务；models.* ↔ proto 转换（shim 层）
+  models/               # 市场中性视图（BalanceView、PositionView、Ticker…）
 api/
-  proto/              # signalix.engine.v1
-  gen/go/             # buf generate 输出
-sdk/python/           # 策略 SDK
+  proto/                # signalix.engine.v1
+  gen/go/               # buf generate 输出
+pkg/exchange/perp/      # 永续 DTO 与 Gate adapter；perp 子包实现 ports.Exchange
+sdk/python/             # 策略 SDK
 ```
+
+**依赖组装（`cmd/signalixd`）**：按 `config.toml` `[markets].enabled` 实例化各 `market.Market`（当前仅 `perp`）；注入 `BuildParams.AccountProjection` / `MetaLookup` → `NewEngine` → `BindRisk` + projection refresh hook → `Start`。
 
 ---
 
 ## 4. 核心子系统
 
-### 4.1 Market Router
+### 4.1 Market 抽象与 perp 实现
 
-- 公共 WS → 归一化 → 按策略订阅表 fan-out
-- 缓存 ticker；K 线环形缓冲供 `get_klines` RPC
-- REST 预热历史 K 线 → IPC `history` + 灌缓冲
-- **不负责**下单
+- **`internal/app/market`**：引擎对「一个已接入市场」的统一接口（`MarketFeed` / `MarketDecider` / `MarketExecutor` / `MarketRisk` / `MarketAccount`），方法签名仅使用 `models.*` 与 `ports.*`。
+- **`internal/app/market/perp`**：永续第一个实现；内含 **MarketRouter**（公共 WS → 归一化 → 按策略订阅 fan-out）、PerpExecutor、PerpDecider、PerpRisk。
+- Engine 持有 `map[models.Market]market.Market`；每 market 独立 `pumpMarketUpdates` goroutine（EMN-4）。
+- 缓存 ticker；K 线环形缓冲供 `get_klines` RPC；REST 预热历史 K 线 → IPC `history` + 灌缓冲。
+- **不负责**下单（下单经 OMS → `MarketExecutor`）。
 
 ### 4.2 Strategy Runtime
 
@@ -124,6 +130,7 @@ sdk/python/           # 策略 SDK
 
 - 定时 REST 全量 + 私有 WS 增量（持仓、余额）
 - 读者：Decision、Risk、策略 RPC `get_balance` / `get_position` / `get_ticker`
+- Engine 快照 API 输出 `models.BalanceView` / `models.PositionView`；gRPC adapter 转 proto（EMN-5）
 
 ### 4.7 Persistence
 
@@ -139,9 +146,10 @@ sdk/python/           # 策略 SDK
 
 ```mermaid
 flowchart LR
-  WS[Gate Public WS] --> MR[MarketRouter]
-  MR --> IPC[Python IPC tick/kline/history]
-  MR --> CACHE[ticker + kline buffer]
+  WS[Gate Public WS] --> PM[perp.PerpMarket / Router]
+  PM --> ENG[Engine pumpMarketUpdates]
+  ENG --> IPC[Python IPC tick/kline/history]
+  PM --> CACHE[ticker + kline buffer]
 ```
 
 ### 5.2 交易路径
@@ -160,8 +168,8 @@ flowchart TD
 
 ```mermaid
 flowchart LR
-  CLIENT[grpcurl / 自动化] --> GRPC[gRPC Server]
-  GRPC --> ENG[Engine]
+  CLIENT[grpcurl / 自动化] --> GRPC[gRPC adapter]
+  GRPC --> ENG[Engine models API]
   ENG --> OMS
   ENG --> STRAT[Strategy lifecycle]
 ```
@@ -171,14 +179,15 @@ flowchart LR
 ### 5.4 启动顺序（当前）
 
 1. 加载配置；连接交易所
-2. `loadSnapshotAndReconcile`（若启用 SQLite）
-3. `AccountProjection.Start`
-4. `ExecutionEngine.Start`（user stream）
-5. Engine dispatch goroutines；MarketRouter 订阅
-6. 加载并 `StartStrategy` 各 enabled 策略
-7. 可选：gRPC Server 监听
+2. 按 `[markets].enabled` 构造 `map[models.Market]market.Market`（perp：`NewPerpMarket` + EquityHook）
+3. `NewEngine`（注入 `AccountProjection`、`MetaLookup`、markets map）
+4. perp `BindRisk` + projection refresh hook（`PersistAccountSnapshot`）
+5. `loadSnapshotAndReconcile`（若启用 SQLite）
+6. `eng.Start`：`AccountProjection.Start` → `ExecutionEngine.Start` → dispatch goroutines → 各 market `Start`
+7. 加载并 `StartStrategy` 各 enabled 策略
+8. 可选：gRPC Server 监听
 
-关停顺序相反：停策略 → 刷盘 → 停 OMS / projection → 断所。
+关停顺序相反：停策略 → 刷盘 → 停 OMS / projection → 各 market `Stop` → 断所。
 
 ---
 
@@ -191,7 +200,7 @@ flowchart LR
 - **Readiness**：`GetHealth`（`engine` / `account_projection` / `exchange` 检查；`skip_exchange_ping` 可跳过所探测）
 - **Account**：`GetBalance` / `GetPosition` / `ListPositions`（`AccountProjection` 只读快照）
 - **Strategy**：`ListStrategies`（catalog + 运行时字段，不要求 engine running）、`GetStrategyStatus`（单策略快照，要求 running）
-- **Market**：`GetTicker` / `GetKlines` / `ListTickers`（`MarketRouter` 缓存/缓冲只读；v1 无 REST 回源）
+- **Market**：`GetTicker` / `GetKlines` / `ListTickers`（Engine → `MarketAccount` 缓存/缓冲只读；v1 无 REST 回源）
 - **Scaffold**：`ListTemplates` / `CreateStrategy`（内置模版写 `{strategies_dir}` + 自动 reload catalog）
 - **Emergency**：`ActivateKillSwitch` / `DeactivateKillSwitch` / `GetKillSwitchStatus`（EH-3；内存态，重启后默认 OFF）
 - **未实现 / 推迟**：行情 REST 回源、Unix socket
@@ -202,7 +211,8 @@ flowchart LR
 
 | 组件 | 模型 |
 |------|------|
-| MarketRouter | 单分发；per-strategy 发送 |
+| perp MarketRouter | 单分发；per-strategy 发送 |
+| Engine market pump | 每 registered market 一 goroutine |
 | Strategy IPC | 每策略：读消息、stderr、心跳各 goroutine |
 | Signal / Order dispatch | 各单 goroutine + channel |
 | OMS | 单写者 loop |
@@ -229,8 +239,10 @@ flowchart LR
 | Kill Switch | 已实现 | 不持久化；拒开仓、允 Flat/撤单 |
 | 策略 IPC `get_ticker` | 已实现 | 读 tickerCache；与 gRPC `GetTicker` 同源 |
 | HTTP 网关 | 无 | 独立服务，REST → gRPC |
-| 合约元数据 | **已实现** | Connect 后 Registry；Decision sizing + OMS Place 前校验 → [spec-driven-dev/archive/contract-metadata-cache/](../spec-driven-dev/archive/contract-metadata-cache/) |
+| 合约元数据 | **已实现** | Connect 后 Registry；Decision sizing + OMS Place 前校验 → [contract-metadata-cache](../spec-driven-dev/archive/contract-metadata-cache/) |
 | REST rate_limit | 已实现 | `exchange.rate_limit` req/s → gateio `waitREST` |
+| Engine 市场中性化 | **已实现** | Engine 零 perp import；main 装配 perp → [engine-market-neutral](../spec-driven-dev/archive/engine-market-neutral/) EMN-1～5 |
+| spot 市场接入 | 未实现 | `markets.enabled` 暂仅支持 `perp`；spot 管线已单独归档 |
 
 ---
 
@@ -247,5 +259,5 @@ flowchart LR
 - 行为变更时同步更新本节与 [PRODUCT_DESIGN.md](./PRODUCT_DESIGN.md) 状态表。
 - Proto 变更后运行 `make proto` 并更新 README 示例。
 
-**文档版本**：v0.2  
-**最后更新**：开源整理；反映 `internal/app` 当前布局
+**文档版本**：v0.3  
+**最后更新**：2026-06-02；反映 EMN-5（Engine 市场中性化）与 `internal/app/market` 布局
