@@ -228,7 +228,7 @@ func (c *Client) Place(ctx context.Context, req *perp.PlaceRequest) (*perp.Order
 		fo.Tif = mapTIF(req.TimeInForce)
 	}
 	if cid := strings.TrimSpace(req.ClientID); cid != "" {
-		fo.Text = normalizeClientOrderID(cid)
+		fo.Text = perp.NormalizeClientOrderID(cid)
 	}
 
 	if err := c.waitREST(ctx); err != nil {
@@ -248,7 +248,7 @@ func (c *Client) Cancel(ctx context.Context, p *perp.CancelParams) error {
 	}
 	id := strings.TrimSpace(p.OrderID)
 	if id == "" {
-		id = normalizeClientOrderID(p.ClientOrderID)
+		id = perp.NormalizeClientOrderID(p.ClientOrderID)
 	}
 	if id == "" {
 		return perp.NewError(perp.ErrInvalidParameter, "OrderID or ClientOrderID required", nil)

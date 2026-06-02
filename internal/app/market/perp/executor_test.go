@@ -22,9 +22,14 @@ func (p *pumpTestExchange) UserEvents() <-chan *perp.UserEvent {
 }
 
 func orderUserEvent(exchangeID string) *perp.UserEvent {
+	return orderUserEventWithGateText(exchangeID, "", perp.OrderSubmitted)
+}
+
+func orderUserEventWithGateText(exchangeID, gateText string, status perp.OrderStatus) *perp.UserEvent {
 	ev, err := perp.NewUserEvent(perp.UserOrderUpdate, &perp.OrderSnapshot{
 		ExchangeOrderID: exchangeID,
-		Status:          perp.OrderSubmitted,
+		ClientID:        gateText,
+		Status:          status,
 	})
 	if err != nil {
 		panic(err)
@@ -32,13 +37,109 @@ func orderUserEvent(exchangeID string) *perp.UserEvent {
 	return ev
 }
 
+func TestPerpExecutorUserEventClientID_UUID(t *testing.T) {
+	t.Parallel()
+
+	localID := "550e8400-e29b-41d4-a716-446655440000"
+	gateText := perp.NormalizeClientOrderID(localID)
+
+	ex := &pumpTestExchange{userCh: make(chan *perp.UserEvent, 4)}
+	p := &PerpExecutor{
+		exchange:        ex,
+		orderEvents:     make(chan *models.OrderEvent, 4),
+		gateTextToLocal: make(map[string]string),
+	}
+	p.registerGateText(localID)
+
+	ctx, cancel := context.WithCancel(context.Background())
+	defer cancel()
+	if err := p.Start(ctx); err != nil {
+		t.Fatal(err)
+	}
+	defer func() { _ = p.Stop() }()
+
+	ex.userCh <- orderUserEventWithGateText("ex-wrong", gateText, perp.OrderSubmitted)
+
+	select {
+	case oe := <-p.orderEvents:
+		if oe.ClientID != localID {
+			t.Fatalf("ClientID = %q, want %q", oe.ClientID, localID)
+		}
+		if oe.ExchangeID != "ex-wrong" {
+			t.Fatalf("ExchangeID = %q", oe.ExchangeID)
+		}
+	case <-time.After(500 * time.Millisecond):
+		t.Fatal("timeout waiting for order event")
+	}
+}
+
+func TestPerpExecutorUserEventClientID_short(t *testing.T) {
+	t.Parallel()
+
+	localID := "abc123"
+	gateText := perp.NormalizeClientOrderID(localID)
+
+	ex := &pumpTestExchange{userCh: make(chan *perp.UserEvent, 4)}
+	p := &PerpExecutor{
+		exchange:        ex,
+		orderEvents:     make(chan *models.OrderEvent, 4),
+		gateTextToLocal: make(map[string]string),
+	}
+	ctx, cancel := context.WithCancel(context.Background())
+	defer cancel()
+	if err := p.Start(ctx); err != nil {
+		t.Fatal(err)
+	}
+	defer func() { _ = p.Stop() }()
+
+	ex.userCh <- orderUserEventWithGateText("ex-1", gateText, perp.OrderSubmitted)
+
+	select {
+	case oe := <-p.orderEvents:
+		if oe.ClientID != localID {
+			t.Fatalf("ClientID = %q, want %q", oe.ClientID, localID)
+		}
+	case <-time.After(500 * time.Millisecond):
+		t.Fatal("timeout waiting for order event")
+	}
+}
+
+func TestPerpExecutorPlaceRegistersGateText(t *testing.T) {
+	t.Parallel()
+
+	localID := "550e8400-e29b-41d4-a716-446655440000"
+	gateText := perp.NormalizeClientOrderID(localID)
+
+	ex := &pumpTestExchange{userCh: make(chan *perp.UserEvent, 4)}
+	p := NewPerpExecutor(PerpExecutorConfig{Exchange: ex})
+	ctx := context.Background()
+	_, err := p.Place(ctx, &models.Order{
+		ID:        localID,
+		Symbol:    "BTC/USDT",
+		Side:      models.OrderSideBuy,
+		OrderType: models.OrderTypeMarket,
+		Size:      "1",
+	})
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	p.gateTextMu.Lock()
+	got, ok := p.gateTextToLocal[gateText]
+	p.gateTextMu.Unlock()
+	if !ok || got != localID {
+		t.Fatalf("gate text index: ok=%v got=%q want=%q", ok, got, localID)
+	}
+}
+
 func TestPerpExecutorPumpDropsWhenFull(t *testing.T) {
 	t.Parallel()
 
 	ex := &pumpTestExchange{userCh: make(chan *perp.UserEvent, 8)}
 	p := &PerpExecutor{
-		exchange:    ex,
-		orderEvents: make(chan *models.OrderEvent, 1),
+		exchange:        ex,
+		orderEvents:     make(chan *models.OrderEvent, 1),
+		gateTextToLocal: make(map[string]string),
 	}
 	ctx, cancel := context.WithCancel(context.Background())
 	defer cancel()

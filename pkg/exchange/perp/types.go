@@ -185,6 +185,7 @@ type (
 		FilledSize      string
 		AvgPrice        string
 		Status          OrderStatus
+		ClientID        string // Gate text 原值（normalize 后）
 		CreatedAt       time.Time
 		UpdatedAt       time.Time
 	}

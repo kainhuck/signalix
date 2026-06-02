@@ -3,6 +3,7 @@ package perp
 import (
 	"context"
 	"fmt"
+	"strings"
 	"sync"
 
 	"github.com/kainhuck/signalix/internal/app/market"
@@ -27,6 +28,9 @@ type PerpExecutor struct {
 	proj        *projection.AccountProjection
 	orderEvents chan *models.OrderEvent
 
+	gateTextMu      sync.Mutex
+	gateTextToLocal map[string]string
+
 	mu      sync.Mutex
 	runCtx  context.Context
 	cancel  context.CancelFunc
@@ -37,9 +41,10 @@ type PerpExecutor struct {
 // NewPerpExecutor 构造 perp 执行器。
 func NewPerpExecutor(cfg PerpExecutorConfig) *PerpExecutor {
 	return &PerpExecutor{
-		exchange:    cfg.Exchange,
-		proj:        cfg.Proj,
-		orderEvents: make(chan *models.OrderEvent, perpOrderEventBuf),
+		exchange:        cfg.Exchange,
+		proj:            cfg.Proj,
+		orderEvents:     make(chan *models.OrderEvent, perpOrderEventBuf),
+		gateTextToLocal: make(map[string]string),
 	}
 }
 
@@ -109,6 +114,7 @@ func (p *PerpExecutor) Place(ctx context.Context, o *models.Order) (string, erro
 	if resp == nil {
 		return "", fmt.Errorf("nil place response")
 	}
+	p.registerGateText(o.ID)
 	return resp.ExchangeOrderID, nil
 }
 
@@ -174,12 +180,61 @@ func (p *PerpExecutor) pump(ctx context.Context) {
 			if p.proj != nil {
 				p.proj.OnUserEvent(ctx, ev)
 			}
-			oe := orderEventFromUserEvent(ev)
+			oe, gateText := p.orderEventFromUserEvent(ev)
 			if oe == nil {
 				continue
 			}
 			p.emitOrderEvent(ctx, oe)
+			if gateText != "" && isTerminalOrderStatus(oe.Status) {
+				p.unregisterGateText(gateText)
+			}
 		}
+	}
+}
+
+func (p *PerpExecutor) registerGateText(localID string) {
+	if p == nil || localID == "" {
+		return
+	}
+	gateText := perp.GateTextFromClientOrderID(localID)
+	if gateText == "" {
+		return
+	}
+	p.gateTextMu.Lock()
+	p.gateTextToLocal[gateText] = localID
+	p.gateTextMu.Unlock()
+}
+
+func (p *PerpExecutor) unregisterGateText(gateText string) {
+	gateText = strings.TrimSpace(gateText)
+	if p == nil || gateText == "" {
+		return
+	}
+	p.gateTextMu.Lock()
+	delete(p.gateTextToLocal, gateText)
+	p.gateTextMu.Unlock()
+}
+
+func (p *PerpExecutor) resolveLocalClientID(gateText string) string {
+	gateText = strings.TrimSpace(gateText)
+	if gateText == "" {
+		return ""
+	}
+	p.gateTextMu.Lock()
+	local, ok := p.gateTextToLocal[gateText]
+	p.gateTextMu.Unlock()
+	if ok {
+		return local
+	}
+	return perp.LocalClientIDFromGateText(gateText)
+}
+
+func isTerminalOrderStatus(st models.OrderStatus) bool {
+	switch st {
+	case models.OrderStatusFilled, models.OrderStatusCancelled, models.OrderStatusRejected:
+		return true
+	default:
+		return false
 	}
 }
 
@@ -194,21 +249,23 @@ func (p *PerpExecutor) emitOrderEvent(ctx context.Context, oe *models.OrderEvent
 	}
 }
 
-func orderEventFromUserEvent(ev *perp.UserEvent) *models.OrderEvent {
-	if ev == nil || ev.Kind != perp.UserOrderUpdate {
-		return nil
+func (p *PerpExecutor) orderEventFromUserEvent(ev *perp.UserEvent) (*models.OrderEvent, string) {
+	if p == nil || ev == nil || ev.Kind != perp.UserOrderUpdate {
+		return nil, ""
 	}
 	ov, ok := ev.Order()
 	if !ok || ov == nil {
-		return nil
+		return nil, ""
 	}
+	gateText := strings.TrimSpace(ov.ClientID)
 	return &models.OrderEvent{
 		Market:     models.MarketPerp,
 		ExchangeID: ov.ExchangeOrderID,
+		ClientID:   p.resolveLocalClientID(gateText),
 		Status:     models.OrderStatus(ov.Status),
 		FilledSize: ov.FilledSize,
 		UpdatedAt:  ov.UpdatedAt,
-	}
+	}, gateText
 }
 
 var _ market.MarketExecutor = (*PerpExecutor)(nil)

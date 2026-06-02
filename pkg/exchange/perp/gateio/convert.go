@@ -1,8 +1,6 @@
 package gateio
 
 import (
-	"crypto/sha256"
-	"encoding/hex"
 	"math"
 	"strconv"
 	"strings"
@@ -129,6 +127,7 @@ func orderViewFromFutures(fo gateapi.FuturesOrder) *perp.OrderSnapshot {
 		FilledSize:      trimFloatString(futuresFilled(fo)),
 		AvgPrice:        avg,
 		Status:          mapFuturesOrderStatus(fo),
+		ClientID:        strings.TrimSpace(fo.Text),
 		CreatedAt:       futuresTime(fo.CreateTime),
 		UpdatedAt:       futuresTime(fo.UpdateTime),
 	}
@@ -206,24 +205,4 @@ func positionView(contract string, p gateapi.Position) (*perp.PositionSnapshot, 
 		Leverage:      int(parseFloat(levStr)),
 		UpdatedAt:     ts,
 	}, nil
-}
-
-// gateOrderTextMaxLen Gate 永续下单 text（客户自定义 ID）最大长度。
-const gateOrderTextMaxLen = 30
-
-// normalizeClientOrderID 转为 Gate text 字段（须 t- 前缀，总长 ≤30）。
-func normalizeClientOrderID(id string) string {
-	raw := strings.TrimSpace(id)
-	if raw == "" {
-		return ""
-	}
-	if strings.HasPrefix(raw, "t-") {
-		raw = strings.TrimPrefix(raw, "t-")
-	}
-	const bodyMax = gateOrderTextMaxLen - 2 // 保留 "t-" 前缀
-	if len(raw) > bodyMax {
-		sum := sha256.Sum256([]byte(raw))
-		raw = hex.EncodeToString(sum[:])[:bodyMax]
-	}
-	return "t-" + raw
 }
