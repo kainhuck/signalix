@@ -4,6 +4,7 @@ import (
 	"context"
 	"sync"
 	"testing"
+	"time"
 
 	"github.com/kainhuck/signalix/internal/app/market"
 	"github.com/kainhuck/signalix/pkg/exchange/perp"
@@ -226,4 +227,64 @@ func TestUnsubscribeAllClearsCandleSubs(t *testing.T) {
 		t.Fatalf("unexpected update after unsubscribe: %+v", u)
 	default:
 	}
+}
+
+func TestRouterStopConcurrentEmitNoPanic(t *testing.T) {
+	t.Parallel()
+
+	ex := newRecordingExchange()
+	mr := NewMarketRouter(ex, WithBufferSize(4))
+
+	var wg sync.WaitGroup
+	stopEmit := make(chan struct{})
+	wg.Add(1)
+	go func() {
+		defer wg.Done()
+		for {
+			select {
+			case <-stopEmit:
+				return
+			default:
+				mr.emit(market.MarketUpdate{
+					StrategyName: "s1",
+					Kind:         market.MarketUpdateTicker,
+				})
+			}
+		}
+	}()
+
+	var stopErr error
+	var stopPanicked any
+	stopDone := make(chan struct{})
+	go func() {
+		defer close(stopDone)
+		defer func() { stopPanicked = recover() }()
+		stopErr = mr.Stop()
+	}()
+
+	select {
+	case <-stopDone:
+	case <-time.After(2 * time.Second):
+		close(stopEmit)
+		wg.Wait()
+		t.Fatal("Stop blocked")
+	}
+	close(stopEmit)
+	wg.Wait()
+
+	if stopPanicked != nil {
+		t.Fatalf("Stop panicked: %v", stopPanicked)
+	}
+	if stopErr != nil {
+		t.Fatalf("Stop: %v", stopErr)
+	}
+
+	func() {
+		defer func() {
+			if r := recover(); r != nil {
+				t.Fatalf("emit after Stop panicked: %v", r)
+			}
+		}()
+		mr.emit(market.MarketUpdate{StrategyName: "s1", Kind: market.MarketUpdateTicker})
+	}()
 }

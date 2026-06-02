@@ -2,12 +2,81 @@ package perp
 
 import (
 	"context"
+	"fmt"
 	"testing"
+	"time"
 
 	"github.com/kainhuck/signalix/internal/models"
 	"github.com/kainhuck/signalix/internal/testutil"
 	"github.com/kainhuck/signalix/pkg/exchange/perp"
 )
+
+// pumpTestExchange 提供可写 UserEvents channel 的测试替身。
+type pumpTestExchange struct {
+	testutil.StubExchange
+	userCh chan *perp.UserEvent
+}
+
+func (p *pumpTestExchange) UserEvents() <-chan *perp.UserEvent {
+	return p.userCh
+}
+
+func orderUserEvent(exchangeID string) *perp.UserEvent {
+	ev, err := perp.NewUserEvent(perp.UserOrderUpdate, &perp.OrderSnapshot{
+		ExchangeOrderID: exchangeID,
+		Status:          perp.OrderSubmitted,
+	})
+	if err != nil {
+		panic(err)
+	}
+	return ev
+}
+
+func TestPerpExecutorPumpDropsWhenFull(t *testing.T) {
+	t.Parallel()
+
+	ex := &pumpTestExchange{userCh: make(chan *perp.UserEvent, 8)}
+	p := &PerpExecutor{
+		exchange:    ex,
+		orderEvents: make(chan *models.OrderEvent, 1),
+	}
+	ctx, cancel := context.WithCancel(context.Background())
+	defer cancel()
+	if err := p.Start(ctx); err != nil {
+		t.Fatal(err)
+	}
+	defer func() { _ = p.Stop() }()
+
+	sent := make(chan struct{})
+	go func() {
+		for i := 0; i < 3; i++ {
+			ex.userCh <- orderUserEvent(fmt.Sprintf("ex-%d", i))
+		}
+		close(sent)
+	}()
+
+	select {
+	case <-sent:
+	case <-time.After(500 * time.Millisecond):
+		t.Fatal("pump blocked sending user events")
+	}
+
+	time.Sleep(20 * time.Millisecond)
+
+	var received int
+drain:
+	for {
+		select {
+		case <-p.orderEvents:
+			received++
+		default:
+			break drain
+		}
+	}
+	if received != 1 {
+		t.Fatalf("received %d order events, want 1 (rest dropped)", received)
+	}
+}
 
 func TestPerpExecutorPlace(t *testing.T) {
 	t.Parallel()

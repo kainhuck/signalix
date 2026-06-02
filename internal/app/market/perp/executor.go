@@ -10,6 +10,7 @@ import (
 	"github.com/kainhuck/signalix/internal/models"
 	"github.com/kainhuck/signalix/internal/ports"
 	"github.com/kainhuck/signalix/pkg/exchange/perp"
+	"github.com/kainhuck/signalix/pkg/logger"
 )
 
 const perpOrderEventBuf = 64
@@ -177,12 +178,19 @@ func (p *PerpExecutor) pump(ctx context.Context) {
 			if oe == nil {
 				continue
 			}
-			select {
-			case p.orderEvents <- oe:
-			case <-ctx.Done():
-				return
-			}
+			p.emitOrderEvent(ctx, oe)
 		}
+	}
+}
+
+func (p *PerpExecutor) emitOrderEvent(ctx context.Context, oe *models.OrderEvent) {
+	select {
+	case p.orderEvents <- oe:
+	case <-ctx.Done():
+	default:
+		logger.WarnContext(ctx, "Channel full, dropping order event",
+			logger.String("exchange_id", oe.ExchangeID),
+			logger.Any("status", oe.Status))
 	}
 }
 

@@ -88,7 +88,6 @@ func (mr *MarketRouter) Start() {
 func (mr *MarketRouter) Stop() error {
 	logger.InfoContext(mr.ctx, "Stopping Market Router...")
 	mr.cancel()
-	close(mr.marketCh)
 	logger.InfoContext(mr.ctx, "Market Router stopped")
 	return nil
 }
@@ -378,11 +377,6 @@ func (mr *MarketRouter) emit(upd market.MarketUpdate) {
 			logger.String("strategy", upd.StrategyName),
 			logger.Any("kind", upd.Kind))
 	}
-}
-
-// GetMarketChannel 获取行情通道
-func (mr *MarketRouter) GetMarketChannel() <-chan market.MarketUpdate {
-	return mr.marketCh
 }
 
 // GetCachedTicker 获取缓存的 ticker。
