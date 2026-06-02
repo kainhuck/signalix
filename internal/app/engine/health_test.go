@@ -19,7 +19,7 @@ func (p *pingFailExchange) Ping(context.Context) error {
 
 func newEngineForHealthTest(t *testing.T, ex ports.Exchange, running, startProjection bool) *Engine {
 	t.Helper()
-	e := NewEngine(t.TempDir(), ex, BuildParams{})
+	e := NewEngine(t.TempDir(), testPerpMarkets(t, ex), BuildParams{})
 	if startProjection {
 		if err := e.accountProjection.Start(t.Context()); err != nil {
 			t.Fatal(err)

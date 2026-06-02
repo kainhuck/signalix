@@ -12,7 +12,6 @@ import (
 
 	"github.com/google/uuid"
 	"github.com/kainhuck/signalix/internal/adapters/strategy/pythonipc"
-	"github.com/kainhuck/signalix/internal/app/decision"
 	"github.com/kainhuck/signalix/internal/app/instrument"
 	"github.com/kainhuck/signalix/internal/app/market"
 	"github.com/kainhuck/signalix/internal/app/oms"
@@ -39,18 +38,12 @@ type Engine struct {
 	processMu       sync.RWMutex
 
 	// 依赖
-	exchange           ports.Exchange
-	feed               market.MarketFeed
-	router             *market.MarketRouter // 过渡：decision TickerLookup + RPC 缓存读取
-	loader             *strategy.StrategyLoader
-	decider            market.MarketDecider
-	perpRisk           market.MarketRisk
-	perpExecutor       *market.PerpExecutor
-	executionEngine    *oms.ExecutionEngine
-	instrumentRegistry *instrument.Registry
-	accountProjection  *projection.AccountProjection
-	riskEvaluator      ports.RiskEvaluator
-	store              ports.PersistenceStore
+	markets           map[models.Market]market.Market
+	loader            *strategy.StrategyLoader
+	executionEngine   *oms.ExecutionEngine
+	accountProjection *projection.AccountProjection
+	riskEvaluator     ports.RiskEvaluator
+	store             ports.PersistenceStore
 
 	// persistenceSettings 资产快照/策略日志保留与清理周期。
 	persistenceSettings config.PersistenceSettings
@@ -109,11 +102,11 @@ type Engine struct {
 	strategyLogSubs    map[uint64]*strategyLogSubscription
 }
 
-// NewEngine 创建策略引擎；可通过 EngineOption 覆盖风控等默认行为。
-func NewEngine(strategyDir string, exchange ports.Exchange, build BuildParams, opts ...EngineOption) *Engine {
+// NewEngine 创建策略引擎；markets 须包含 models.MarketPerp 的 *market.PerpMarket。
+func NewEngine(strategyDir string, markets map[models.Market]market.Market, build BuildParams, opts ...EngineOption) *Engine {
 	ctx, cancel := context.WithCancel(context.Background())
 	ch := build.Channels
-	signalBuf, orderBuf, mainBuf, marketBuf := ch.Signal, ch.Order, ch.MainOrder, ch.Market
+	signalBuf, orderBuf, mainBuf := ch.Signal, ch.Order, ch.MainOrder
 	if signalBuf <= 0 {
 		signalBuf = 100
 	}
@@ -123,45 +116,27 @@ func NewEngine(strategyDir string, exchange ports.Exchange, build BuildParams, o
 	if mainBuf <= 0 {
 		mainBuf = 100
 	}
-	if marketBuf <= 0 {
-		marketBuf = 1000
-	}
-	divisor := build.DecisionDivisor
-	if divisor <= 0 {
-		divisor = 10
-	}
 	omsRetries := build.OMSMaxRetries
 	if omsRetries <= 0 {
 		omsRetries = 3
 	}
 
-	loader := strategy.NewStrategyLoader(ctx, strategyDir)
-	equityTracker := apprisk.NewEquityTracker()
-	proj := projection.NewAccountProjection(exchange,
-		projection.WithRefreshInterval(build.ProjectionRefresh),
-		projection.WithEquityHook(equityTracker.OnEquityUpdate),
-	)
-	router := market.NewMarketRouter(exchange, market.WithBufferSize(marketBuf))
-
-	reg := instrument.NewRegistry()
-	if err := reg.LoadFrom(ctx, exchange); err != nil {
-		logger.WarnContext(ctx, "contract meta registry load failed", logger.Any("error", err))
+	pm, err := market.PerpFromMarkets(markets)
+	if err != nil {
+		logger.WarnContext(ctx, "perp market missing from registry", logger.Any("error", err))
 	}
 
-	de := decision.NewDecisionEngine(proj,
-		decision.WithDefaultSizeDivisor(divisor),
-		decision.WithContractMetaLookup(reg),
-		decision.WithTickerLookup(router),
-	)
+	loader := strategy.NewStrategyLoader(ctx, strategyDir)
+	equityTracker := apprisk.NewEquityTracker()
+	if pm != nil {
+		pm.AttachEquityHook(equityTracker.OnEquityUpdate)
+	}
 
 	e := &Engine{
 		strategyProcess:     make(map[string]strategy.StrategyRuntime),
-		exchange:            exchange,
-		feed:                router,
+		markets:             markets,
 		loader:              loader,
-		router:              router,
-		decider:             market.NewPerpDecider(de),
-		instrumentRegistry:  reg,
+		accountProjection:   nil,
 		defaultInterval:     build.DefaultInterval,
 		restartCfg:          build.Restart,
 		crashTracker:        newCrashTracker(),
@@ -170,7 +145,6 @@ func NewEngine(strategyDir string, exchange ports.Exchange, build BuildParams, o
 		equityTracker:       equityTracker,
 		killSwitchCfg:       build.KillSwitch,
 		persistenceSettings: build.Persistence,
-		accountProjection:   proj,
 		riskEvaluator:       NewStaticRiskEvaluator(risk.DefaultRules()),
 		signalCh:            make(chan *models.StrategySignal, signalBuf),
 		orderCh:             make(chan *models.Order, orderBuf),
@@ -191,26 +165,49 @@ func NewEngine(strategyDir string, exchange ports.Exchange, build BuildParams, o
 	if cmdBuf <= 0 {
 		cmdBuf = 100
 	}
-	e.perpExecutor = market.NewPerpExecutor(market.PerpExecutorConfig{
-		Exchange: exchange,
-		Proj:     proj,
-	})
-	e.executionEngine = oms.NewExecutionEngine(map[models.Market]market.MarketExecutor{
-		models.MarketPerp: e.perpExecutor,
-	}, e.store,
+	executors := map[models.Market]market.MarketExecutor{}
+	metaLookup := instrument.NewRegistry()
+	if pm != nil {
+		e.accountProjection = pm.Projection()
+		executors[models.MarketPerp] = pm.Executor()
+		metaLookup = pm.Registry()
+	}
+	e.executionEngine = oms.NewExecutionEngine(executors, e.store,
 		oms.WithChannelBuffers(omsBuf, cmdBuf),
 		oms.WithMaxRetries(omsRetries),
-		oms.WithContractMetaLookup(reg),
+		oms.WithContractMetaLookup(metaLookup),
 	)
-	e.perpRisk = market.NewPerpRisk(market.PerpRiskConfig{
-		Proj:          proj,
-		Decision:      de,
-		Execution:     e.executionEngine,
-		Equity:        equityTracker,
-		NeedsNotional: e,
-	})
+	if pm != nil {
+		pm.BindRisk(market.PerpRiskConfig{
+			Execution:     e.executionEngine,
+			Equity:        equityTracker,
+			NeedsNotional: e,
+		})
+	}
 
 	return e
+}
+
+func (e *Engine) perp() *market.PerpMarket {
+	if e == nil {
+		return nil
+	}
+	pm, _ := e.markets[models.MarketPerp].(*market.PerpMarket)
+	return pm
+}
+
+func (e *Engine) perpFeed() market.MarketFeed {
+	if m := e.markets[models.MarketPerp]; m != nil {
+		return m
+	}
+	return nil
+}
+
+func (e *Engine) perpDecider() market.MarketDecider {
+	if m := e.markets[models.MarketPerp]; m != nil {
+		return m
+	}
+	return nil
 }
 
 func (e *Engine) SetAllStrategy(strategies map[string]*strategy.Strategy) {
@@ -311,8 +308,13 @@ func (e *Engine) Start() error {
 
 	logger.InfoContext(e.ctx, "Strategy Engine started", "strategies", len(e.strategies))
 
-	if err := e.perpExecutor.Start(e.ctx); err != nil {
-		return err
+	for _, m := range e.markets {
+		if m == nil {
+			continue
+		}
+		if err := m.Start(e.ctx); err != nil {
+			return err
+		}
 	}
 	if err := e.executionEngine.Start(e.ctx); err != nil {
 		return err
@@ -321,13 +323,6 @@ func (e *Engine) Start() error {
 		e.orderPumpWg.Add(1)
 		go e.orderFanoutLoop()
 	})
-
-	// 启动路由器
-	e.wg.Add(1)
-	go func() {
-		defer e.wg.Done()
-		e.router.Start()
-	}()
 
 	// 获取市场路由信息并发送到对应的策略
 	e.wg.Add(1)
@@ -366,9 +361,14 @@ func (e *Engine) Start() error {
 }
 
 func (e *Engine) dispatchMarket() {
+	feed := e.perpFeed()
+	if feed == nil {
+		<-e.ctx.Done()
+		return
+	}
 	for {
 		select {
-		case marketUpdate := <-e.feed.Updates():
+		case marketUpdate := <-feed.Updates():
 			switch marketUpdate.Kind {
 			case market.MarketUpdateTicker:
 				e.dispatchTickerUpdate(marketUpdate)
@@ -439,7 +439,7 @@ func (e *Engine) dispatchSignal() {
 				continue
 			}
 
-			order, err := e.decider.Decide(e.ctx, signal.StrategyName, signal.Signal)
+			order, err := e.perpDecider().Decide(e.ctx, signal.StrategyName, signal.Signal)
 			if err != nil {
 				logger.ErrorContext(e.ctx, "failed to process signal", logger.Any("error", err))
 				continue
@@ -524,7 +524,13 @@ func (e *Engine) Stop() error {
 
 	e.running.Store(false)
 
-	e.router.Stop()
+	for _, m := range e.markets {
+		if m != nil {
+			if err := m.Stop(); err != nil {
+				logger.ErrorContext(e.ctx, "market stop", logger.Any("error", err))
+			}
+		}
+	}
 
 	// 停止所有策略
 	if err := e.StopAllStrategies(); err != nil {
@@ -557,11 +563,6 @@ func (e *Engine) Stop() error {
 	}
 	if err := e.executionEngine.Stop(); err != nil {
 		logger.ErrorContext(e.ctx, "execution engine stop", logger.Any("error", err))
-	}
-	if e.perpExecutor != nil {
-		if err := e.perpExecutor.Stop(); err != nil {
-			logger.ErrorContext(e.ctx, "perp executor stop", logger.Any("error", err))
-		}
 	}
 
 	e.orderPumpWg.Wait()
@@ -598,7 +599,7 @@ func (e *Engine) launchStrategy(st *strategy.Strategy) error {
 	if err != nil {
 		return fmt.Errorf("strategy %q: %w", st.Name, err)
 	}
-	if err := e.feed.Subscribe(e.ctx, market.SubscribeRequest{
+	if err := e.perpFeed().Subscribe(e.ctx, market.SubscribeRequest{
 		Strategy:   st.Name,
 		Symbols:    contractsToStrings(st.Symbols),
 		Interval:   interval,
@@ -663,7 +664,7 @@ func (e *Engine) warmupHistory(st *strategy.Strategy, sp strategy.StrategyRuntim
 		return nil
 	}
 
-	payload, err := e.feed.WarmupHistory(e.ctx, market.SubscribeRequest{
+	payload, err := e.perpFeed().WarmupHistory(e.ctx, market.SubscribeRequest{
 		Strategy: st.Name,
 		Symbols:  contractsToStrings(st.Symbols),
 		Interval: interval,
@@ -711,7 +712,7 @@ func (e *Engine) StopStrategy(name string) error {
 	}
 	delete(e.strategyProcess, name)
 
-	_ = e.feed.Unsubscribe(name)
+	_ = e.perpFeed().Unsubscribe(name)
 	e.removeStrategyInterval(name)
 
 	e.processMu.Unlock()
@@ -927,7 +928,7 @@ func (e *Engine) handleProcessExit(sp strategy.StrategyRuntime) {
 	_, stillRegistered := e.strategyProcess[name]
 	if stillRegistered {
 		delete(e.strategyProcess, name)
-		_ = e.feed.Unsubscribe(name)
+		_ = e.perpFeed().Unsubscribe(name)
 	}
 	e.processMu.Unlock()
 

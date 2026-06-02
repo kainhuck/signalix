@@ -42,7 +42,11 @@ func TestReconcileWithExchange_OrderNotFoundMarksCancelled(t *testing.T) {
 		t.Fatal(err)
 	}
 	ex := testutil.NewStubExchange()
-	reconcileWithExchange(ctx, ex, st, orders)
+	markets, err := NewTestPerpMarkets(ex)
+	if err != nil {
+		t.Fatal(err)
+	}
+	reconcileWithExecutors(ctx, markets, st, orders)
 
 	again, err := st.ListNonTerminalOrders(ctx)
 	if err != nil {
@@ -95,7 +99,11 @@ func TestReconcileWithExchange_AppliesExchangeView(t *testing.T) {
 			UpdatedAt:       time.Date(2026, 1, 2, 3, 4, 5, 0, time.UTC),
 		}, nil
 	}
-	reconcileWithExchange(ctx, ex, st, orders)
+	markets, err := NewTestPerpMarkets(ex)
+	if err != nil {
+		t.Fatal(err)
+	}
+	reconcileWithExecutors(ctx, markets, st, orders)
 
 	orders2, err := st.ListNonTerminalOrders(ctx)
 	if err != nil {

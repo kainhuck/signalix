@@ -10,6 +10,7 @@ import (
 type Order struct {
 	ID           string        `json:"id"`
 	ExchangeID   string        `json:"exchange_id,omitempty"`
+	Market       Market        `json:"market,omitempty"`
 	Symbol       perp.Contract `json:"symbol"`
 	Side         OrderSide     `json:"side"`
 	OrderType    OrderType     `json:"order_type"`

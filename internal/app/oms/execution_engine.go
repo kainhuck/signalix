@@ -163,7 +163,11 @@ func (e *ExecutionEngine) executorFor(o *models.Order) market.MarketExecutor {
 	if e == nil || o == nil || e.executors == nil {
 		return nil
 	}
-	if ex, ok := e.executors[e.defaultMarket]; ok && ex != nil {
+	m := o.Market
+	if !m.Valid() {
+		m = e.defaultMarket
+	}
+	if ex, ok := e.executors[m]; ok && ex != nil {
 		return ex
 	}
 	return nil
@@ -186,6 +190,9 @@ func (e *ExecutionEngine) execSubmit(ctx context.Context, cmd *omsCmd) {
 		return
 	}
 	e.orders[order.ID] = order
+	if !order.Market.Valid() {
+		order.Market = e.defaultMarket
+	}
 	order.Status = models.OrderStatusPending
 	now := time.Now()
 	order.CreatedAt = now
@@ -508,6 +515,9 @@ func (e *ExecutionEngine) HydrateFromSnapshot(orders []*models.Order) {
 			continue
 		}
 		if c := cloneOrder(o); c != nil {
+			if !c.Market.Valid() {
+				c.Market = e.defaultMarket
+			}
 			e.orders[c.ID] = c
 		}
 	}

@@ -4,7 +4,6 @@ import (
 	"context"
 	"testing"
 
-	"github.com/kainhuck/signalix/internal/app/market"
 	"github.com/kainhuck/signalix/internal/app/strategy"
 	"github.com/kainhuck/signalix/internal/models"
 	"github.com/kainhuck/signalix/pkg/exchange/perp"
@@ -79,12 +78,10 @@ func TestWarmupHistorySendHistory(t *testing.T) {
 		},
 	}
 	rec := &historyRuntime{recordingStrategyRuntime: recordingStrategyRuntime{name: "s1", ctx: context.Background()}}
-	router := market.NewMarketRouter(ex)
+	markets := testPerpMarkets(t, ex)
 	e := &Engine{
-		ctx:      context.Background(),
-		exchange: ex,
-		feed:     router,
-		router:   router,
+		ctx:     context.Background(),
+		markets: markets,
 	}
 	st := &strategy.Strategy{
 		StrategyConfig: strategy.StrategyConfig{
@@ -115,7 +112,8 @@ func TestWarmupHistorySkipsWhenZero(t *testing.T) {
 	t.Parallel()
 
 	rec := &historyRuntime{recordingStrategyRuntime: recordingStrategyRuntime{ctx: context.Background()}}
-	e := &Engine{ctx: context.Background(), exchange: &historyExchange{}}
+	markets := testPerpMarkets(t, &historyExchange{})
+	e := &Engine{ctx: context.Background(), markets: markets}
 	st := &strategy.Strategy{StrategyConfig: strategy.StrategyConfig{HistoryBars: 0}}
 
 	if err := e.warmupHistory(st, rec, "5m"); err != nil {

@@ -11,7 +11,9 @@ import (
 	signalixgrpc "github.com/kainhuck/signalix/internal/adapters/grpc"
 	"github.com/kainhuck/signalix/internal/adapters/store/sqlite"
 	"github.com/kainhuck/signalix/internal/app/engine"
+	"github.com/kainhuck/signalix/internal/app/market"
 	"github.com/kainhuck/signalix/internal/config"
+	"github.com/kainhuck/signalix/internal/models"
 	"github.com/kainhuck/signalix/pkg/exchange/perp"
 	perpgate "github.com/kainhuck/signalix/pkg/exchange/perp/gateio"
 	"github.com/kainhuck/signalix/pkg/logger"
@@ -64,8 +66,39 @@ func main() {
 		return
 	}
 
+	enabled, err := cfg.EnabledMarkets()
+	if err != nil {
+		logger.Error("markets config", "error", err)
+		return
+	}
+
 	build := engine.BuildParamsFromConfig(cfg)
-	eng := engine.NewEngine(cfg.StrategiesDir, c, build,
+	markets := make(map[models.Market]market.Market)
+	for _, m := range enabled {
+		switch m {
+		case models.MarketPerp:
+			pm, err := market.NewPerpMarket(context.Background(), market.PerpMarketConfig{
+				Exchange:          c,
+				MarketBuf:         cfg.Channels.Market,
+				DecisionDivisor:   cfg.Decision.DefaultSizeDivisor,
+				ProjectionRefresh: cfg.ProjectionRefreshInterval(),
+			})
+			if err != nil {
+				logger.Error("perp market init failed", "error", err)
+				return
+			}
+			markets[m] = pm
+		default:
+			logger.Error("unsupported market", "market", m)
+			return
+		}
+	}
+	if len(markets) == 0 {
+		logger.Error("no markets enabled")
+		return
+	}
+
+	eng := engine.NewEngine(cfg.StrategiesDir, markets, build,
 		engine.WithPersistence(st),
 		engine.WithRiskRules(cfg.RiskRules()),
 	)

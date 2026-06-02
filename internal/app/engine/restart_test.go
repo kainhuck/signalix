@@ -5,9 +5,9 @@ import (
 	"testing"
 	"time"
 
-	"github.com/kainhuck/signalix/internal/app/market"
 	"github.com/kainhuck/signalix/internal/app/strategy"
 	"github.com/kainhuck/signalix/internal/config"
+	"github.com/kainhuck/signalix/internal/testutil"
 )
 
 func TestPruneCrashTimes(t *testing.T) {
@@ -75,14 +75,16 @@ func TestHandleProcessExitNoDoubleHandle(t *testing.T) {
 	ctx, cancel := context.WithCancel(context.Background())
 	defer cancel()
 
-	router := market.NewMarketRouter(nil)
+	markets, err := NewTestPerpMarkets(testutil.NewStubExchange())
+	if err != nil {
+		t.Fatal(err)
+	}
 	e := &Engine{
 		ctx:             ctx,
+		markets:         markets,
 		restartCfg:      config.RestartSettings{Enabled: false, CrashWindow: time.Minute, MaxCrashes: 3},
 		crashTracker:    newCrashTracker(),
 		strategyProcess: map[string]strategy.StrategyRuntime{},
-		feed:            router,
-		router:          router,
 	}
 
 	sp := &recordingStrategyRuntime{name: "s1", ctx: ctx}

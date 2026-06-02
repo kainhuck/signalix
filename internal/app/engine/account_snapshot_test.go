@@ -20,7 +20,7 @@ func TestBalanceSnapshot_projectionNotConfigured(t *testing.T) {
 
 func TestBalanceSnapshot_notReady(t *testing.T) {
 	t.Parallel()
-	e := NewEngine(t.TempDir(), testutil.NewStubExchange(), BuildParams{})
+	e := NewEngine(t.TempDir(), testPerpMarkets(t, testutil.NewStubExchange()), BuildParams{})
 	_, err := e.BalanceSnapshot()
 	if !errors.Is(err, projection.ErrProjectionNotReady) {
 		t.Fatalf("err = %v", err)
@@ -29,7 +29,7 @@ func TestBalanceSnapshot_notReady(t *testing.T) {
 
 func TestBalanceSnapshot_ok(t *testing.T) {
 	t.Parallel()
-	e := NewEngine(t.TempDir(), testutil.NewStubExchange(), BuildParams{})
+	e := NewEngine(t.TempDir(), testPerpMarkets(t, testutil.NewStubExchange()), BuildParams{})
 	if err := e.accountProjection.Start(t.Context()); err != nil {
 		t.Fatal(err)
 	}
@@ -44,7 +44,7 @@ func TestBalanceSnapshot_ok(t *testing.T) {
 
 func TestPositionSnapshot_noPosition(t *testing.T) {
 	t.Parallel()
-	e := NewEngine(t.TempDir(), testutil.NewStubExchange(), BuildParams{})
+	e := NewEngine(t.TempDir(), testPerpMarkets(t, testutil.NewStubExchange()), BuildParams{})
 	if err := e.accountProjection.Start(t.Context()); err != nil {
 		t.Fatal(err)
 	}
@@ -67,7 +67,7 @@ func TestAllPositionsSnapshot_withPositions(t *testing.T) {
 			Size:     "1",
 		},
 	}
-	e := NewEngine(t.TempDir(), ex, BuildParams{})
+	e := NewEngine(t.TempDir(), testPerpMarkets(t, ex), BuildParams{})
 	if err := e.accountProjection.Start(t.Context()); err != nil {
 		t.Fatal(err)
 	}
@@ -82,7 +82,7 @@ func TestAllPositionsSnapshot_withPositions(t *testing.T) {
 
 func TestAllPositionsSnapshot_empty(t *testing.T) {
 	t.Parallel()
-	e := NewEngine(t.TempDir(), testutil.NewStubExchange(), BuildParams{})
+	e := NewEngine(t.TempDir(), testPerpMarkets(t, testutil.NewStubExchange()), BuildParams{})
 	if err := e.accountProjection.Start(t.Context()); err != nil {
 		t.Fatal(err)
 	}

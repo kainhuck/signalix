@@ -111,12 +111,13 @@ func (e *Engine) HealthReport(ctx context.Context, skipExchangePing bool) Health
 }
 
 func (e *Engine) checkExchange(ctx context.Context) (pass bool, message string) {
-	if e.exchange == nil {
+	pm := e.perp()
+	if pm == nil || pm.Exchange() == nil {
 		return false, "not configured"
 	}
 	pingCtx, cancel := context.WithTimeout(ctx, healthExchangePingTimeout)
 	defer cancel()
-	if err := e.exchange.Ping(pingCtx); err != nil {
+	if err := pm.Exchange().Ping(pingCtx); err != nil {
 		return false, err.Error()
 	}
 	return true, ""

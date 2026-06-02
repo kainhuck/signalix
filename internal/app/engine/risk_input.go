@@ -2,6 +2,7 @@ package engine
 
 import (
 	"context"
+	"fmt"
 
 	"github.com/kainhuck/signalix/internal/domain/risk"
 	"github.com/kainhuck/signalix/internal/models"
@@ -9,7 +10,11 @@ import (
 )
 
 func (e *Engine) buildRiskContext(ctx context.Context, strategyName string, signal *models.Signal, order *models.Order) (*ports.RiskContext, error) {
-	return e.perpRisk.BuildRiskContext(ctx, strategyName, signal, order)
+	m := e.markets[models.MarketPerp]
+	if m == nil {
+		return nil, fmt.Errorf("market %q not registered", models.MarketPerp)
+	}
+	return m.BuildRiskContext(ctx, strategyName, signal, order)
 }
 
 // NeedsNotional 实现 market.PerpRiskNotionalGate。

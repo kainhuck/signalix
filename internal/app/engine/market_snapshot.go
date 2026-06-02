@@ -1,78 +1,78 @@
 package engine
 
 import (
-	"errors"
 	"fmt"
 	"strings"
 
+	"github.com/kainhuck/signalix/internal/app/market"
 	"github.com/kainhuck/signalix/internal/models"
 	"github.com/kainhuck/signalix/pkg/exchange/perp"
 )
 
-// ErrMarketRouterNotConfigured 表示引擎未配置 MarketRouter。
-var ErrMarketRouterNotConfigured = errors.New("market router not configured")
+// ErrTickerNotInCache 表示 ticker 不在缓存中（与 market 包同源语义）。
+var ErrTickerNotInCache = market.ErrTickerNotInCache
 
-// ErrTickerNotInCache 表示 ticker 不在 MarketRouter 缓存中。
-var ErrTickerNotInCache = errors.New("ticker not in cache")
-
-func normalizeKlineLimit(limit int) int {
-	if limit <= 0 {
-		return 100
-	}
-	if limit > 2000 {
-		return 2000
-	}
-	return limit
+func (e *Engine) perpAccount() (market.MarketAccount, error) {
+	return e.marketAccount(models.MarketPerp)
 }
 
-func (e *Engine) requireMarketRouter() error {
-	if e == nil || e.router == nil {
-		return ErrMarketRouterNotConfigured
-	}
-	return nil
-}
-
-// TickerSnapshot 返回单合约 ticker 缓存快照。
+// TickerSnapshot 返回单合约 ticker 缓存快照（gRPC shim）。
 func (e *Engine) TickerSnapshot(contract perp.Contract) (*perp.TickerSnapshot, error) {
-	if err := e.requireMarketRouter(); err != nil {
+	acct, err := e.perpAccount()
+	if err != nil {
 		return nil, err
 	}
 	contract = perp.Contract(strings.TrimSpace(string(contract)))
 	if contract == "" {
 		return nil, fmt.Errorf("symbol is required")
 	}
-	snap, ok := e.router.GetCachedTicker(contract)
-	if !ok {
-		return nil, fmt.Errorf("%w: %s", ErrTickerNotInCache, contract)
-	}
-	return snap, nil
-}
-
-// ListCachedTickers 返回 ticker 缓存全量副本。
-func (e *Engine) ListCachedTickers() (map[perp.Contract]*perp.TickerSnapshot, error) {
-	if err := e.requireMarketRouter(); err != nil {
+	t, err := acct.Ticker(string(contract))
+	if err != nil {
 		return nil, err
 	}
-	return e.router.GetAllCachedTickers(), nil
+	return tickerModelToPerpSnapshot(t), nil
+}
+
+// ListCachedTickers 返回 ticker 缓存全量副本（gRPC shim）。
+func (e *Engine) ListCachedTickers() (map[perp.Contract]*perp.TickerSnapshot, error) {
+	pm := e.perp()
+	if pm == nil || pm.Router() == nil {
+		return nil, market.ErrMarketRouterNotConfigured
+	}
+	raw := pm.Router().GetAllCachedTickers()
+	out := make(map[perp.Contract]*perp.TickerSnapshot, len(raw))
+	for k, v := range raw {
+		out[k] = v
+	}
+	return out, nil
 }
 
 // ClosedKlines 返回最近 limit 根收盘 K 线（时间升序）。
 func (e *Engine) ClosedKlines(contract perp.Contract, interval string, limit int) ([]*models.Kline, error) {
-	if err := e.requireMarketRouter(); err != nil {
+	acct, err := e.perpAccount()
+	if err != nil {
 		return nil, err
 	}
-	contract = perp.Contract(strings.TrimSpace(string(contract)))
-	if contract == "" {
-		return nil, fmt.Errorf("symbol is required")
+	return acct.Klines(string(contract), interval, limit)
+}
+
+func tickerModelToPerpSnapshot(t *models.Ticker) *perp.TickerSnapshot {
+	if t == nil {
+		return nil
 	}
-	interval = strings.TrimSpace(interval)
-	if interval == "" {
-		return nil, fmt.Errorf("interval is required")
+	return &perp.TickerSnapshot{
+		Contract:        perp.Contract(t.Contract),
+		Last:            t.Last,
+		MarkPrice:       t.MarkPrice,
+		IndexPrice:      t.IndexPrice,
+		FundingRate:     t.FundingRate,
+		ChangePct24h:    t.ChangePct24h,
+		Volume24h:       t.Volume24h,
+		Volume24hBase:   t.Volume24hBase,
+		Volume24hQuote:  t.Volume24hQuote,
+		OpenInterest:    t.OpenInterest,
+		Low24h:          t.Low24h,
+		High24h:         t.High24h,
+		TimestampMillis: t.TimestampMillis,
 	}
-	limit = normalizeKlineLimit(limit)
-	klines := e.router.ListClosedKlines(contract, interval, limit)
-	if klines == nil {
-		return []*models.Kline{}, nil
-	}
-	return klines, nil
 }

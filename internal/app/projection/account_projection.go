@@ -72,6 +72,16 @@ func (p *AccountProjection) Start(ctx context.Context) error {
 	return nil
 }
 
+// SetEquityHook 在 Start 之前注册权益钩子（供引擎注入 EquityTracker）。
+func (p *AccountProjection) SetEquityHook(h EquityHook) {
+	if p == nil || h == nil {
+		return
+	}
+	p.mu.Lock()
+	p.equityHook = h
+	p.mu.Unlock()
+}
+
 // Stop 等待后台 goroutine 结束；幂等。
 func (p *AccountProjection) Stop() {
 	p.stopOnce.Do(func() {

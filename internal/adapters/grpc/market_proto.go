@@ -5,6 +5,7 @@ import (
 
 	enginev1 "github.com/kainhuck/signalix/api/gen/go/signalix/engine/v1"
 	"github.com/kainhuck/signalix/internal/app/engine"
+	"github.com/kainhuck/signalix/internal/app/market"
 	"github.com/kainhuck/signalix/internal/models"
 	"github.com/kainhuck/signalix/pkg/exchange/perp"
 	"google.golang.org/grpc/codes"
@@ -15,7 +16,7 @@ func mapMarketErr(err error) error {
 	if err == nil {
 		return nil
 	}
-	if errors.Is(err, engine.ErrMarketRouterNotConfigured) {
+	if errors.Is(err, market.ErrMarketRouterNotConfigured) {
 		return status.Error(codes.FailedPrecondition, "market router not configured")
 	}
 	if errors.Is(err, engine.ErrTickerNotInCache) {

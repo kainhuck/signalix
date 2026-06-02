@@ -14,9 +14,13 @@ import (
 func TestCreateStrategy_engineNotRunning(t *testing.T) {
 	t.Parallel()
 	dir := t.TempDir()
-	e := engine.NewEngine(dir, testutil.NewStubExchange(), engine.BuildParams{})
+	markets, err := engine.NewTestPerpMarkets(testutil.NewStubExchange())
+	if err != nil {
+		t.Fatal(err)
+	}
+	e := engine.NewEngine(dir, markets, engine.BuildParams{})
 	svc := NewEngineService(e)
-	_, err := svc.CreateStrategy(context.Background(), &enginev1.CreateStrategyRequest{
+	_, err = svc.CreateStrategy(context.Background(), &enginev1.CreateStrategyRequest{
 		Name:       "x",
 		TemplateId: "trend",
 	})
@@ -28,7 +32,11 @@ func TestCreateStrategy_engineNotRunning(t *testing.T) {
 func TestListTemplates_ok(t *testing.T) {
 	t.Parallel()
 	dir := t.TempDir()
-	e := engine.NewEngine(dir, testutil.NewStubExchange(), engine.BuildParams{})
+	markets, err := engine.NewTestPerpMarkets(testutil.NewStubExchange())
+	if err != nil {
+		t.Fatal(err)
+	}
+	e := engine.NewEngine(dir, markets, engine.BuildParams{})
 	svc := NewEngineService(e)
 	reply, err := svc.ListTemplates(context.Background(), &enginev1.ListTemplatesRequest{})
 	if err != nil {
