@@ -67,3 +67,4 @@ test/
 # Added by code-review-graph
 .code-review-graph/
 .cursorrules
+.opencode.json
