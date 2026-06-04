@@ -1,6 +1,8 @@
 package gateio
 
 import (
+	"net/http"
+	"net/url"
 	"strings"
 	"sync"
 
@@ -40,6 +42,13 @@ func WithWSURL(url string) Option {
 	return func(c *Client) { c.wsURLOverride = strings.TrimSpace(url) }
 }
 
+// WithProxy 设置 HTTP 代理地址，同时作用于 REST 与 WebSocket。
+func WithProxy(proxyURL string) Option {
+	return func(c *Client) {
+		c.proxyURL = strings.TrimSpace(proxyURL)
+	}
+}
+
 // WithRateLimit sets a global REST rate limit (requests per second); <=0 disables.
 func WithRateLimit(requestsPerSecond int) Option {
 	return func(c *Client) {
@@ -65,6 +74,7 @@ type Client struct {
 	paper            bool
 	restBaseOverride string
 	wsURLOverride    string
+	proxyURL         string
 
 	log exchange.Logger
 
@@ -107,6 +117,15 @@ func NewClient(apiKey, secret string, opts ...Option) *Client {
 		c.gate.ChangeBasePath(c.restBaseOverride)
 	} else if c.paper {
 		c.gate.ChangeBasePath("https://api-testnet.gateapi.io/api/v4")
+	}
+	if c.proxyURL != "" {
+		if u, err := url.Parse(c.proxyURL); err == nil {
+			c.gate.GetConfig().HTTPClient = &http.Client{
+				Transport: &http.Transport{
+					Proxy: http.ProxyURL(u),
+				},
+			}
+		}
 	}
 	return c
 }

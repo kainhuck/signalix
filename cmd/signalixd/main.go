@@ -50,6 +50,9 @@ func main() {
 	if ex.RESTBasePath != "" {
 		gateOpts = append(gateOpts, perpgate.WithRESTBasePath(ex.RESTBasePath))
 	}
+	if ex.Proxy != "" {
+		gateOpts = append(gateOpts, perpgate.WithProxy(ex.Proxy))
+	}
 
 	c := exad.NewClient(ex.APIKey, ex.APISecret, gateOpts...)
 	parts := perp.ConnectParts{

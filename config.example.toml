@@ -79,6 +79,8 @@ max_retries = 3
 public_ws_buffer = 512
 # 私有 WS 事件通道容量
 private_ws_buffer = 256
+# HTTP(S) 代理地址，同时作用于 REST 与 WebSocket（空 = 不使用代理）
+# proxy = "http://127.0.0.1:8080"
 
 
 [exchange.connect]

@@ -6,6 +6,8 @@ import (
 	"crypto/sha512"
 	"encoding/hex"
 	"fmt"
+	"net/http"
+	"net/url"
 	"sync"
 	"sync/atomic"
 	"time"
@@ -70,6 +72,11 @@ func (h *wsHub) connect(ctx context.Context) error {
 	h.mu.Unlock()
 
 	dialer := websocket.Dialer{HandshakeTimeout: 10 * time.Second}
+	if h.c.proxyURL != "" {
+		if u, err := url.Parse(h.c.proxyURL); err == nil {
+			dialer.Proxy = http.ProxyURL(u)
+		}
+	}
 	conn, _, err := dialer.DialContext(ctx, h.wsURL, nil)
 	if err != nil {
 		return perp.NewError(perp.ErrConnection, "websocket dial", err)
