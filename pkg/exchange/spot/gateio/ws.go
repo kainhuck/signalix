@@ -12,7 +12,7 @@ import (
 	"sync/atomic"
 	"time"
 
-	"github.com/kainhuck/signalix/pkg/exchange/perp"
+	"github.com/kainhuck/signalix/pkg/exchange/spot"
 
 	"github.com/gorilla/websocket"
 )
@@ -31,7 +31,6 @@ type wsHub struct {
 	wg        sync.WaitGroup
 	ioStarted int32
 
-	// activeSubs[channel][subKey] = payload snapshot for reconnect
 	activeSubs map[string]map[string][]string
 	subMu      sync.RWMutex
 
@@ -40,9 +39,12 @@ type wsHub struct {
 }
 
 func newWSHub(c *Client) *wsHub {
-	wsURL := "wss://fx-ws.gateio.ws/v4/ws/usdt"
+	wsURL := "wss://api.gateio.ws/ws/v4/"
 	if c.paper {
-		wsURL = "wss://ws-testnet.gate.com/v4/ws/futures/usdt"
+		wsURL = "wss://ws-testnet.gate.com/v4/ws/spot"
+	}
+	if c.wsURLOverride != "" {
+		wsURL = c.wsURLOverride
 	}
 	ctx, cancel := context.WithCancel(context.Background())
 	return &wsHub{
@@ -79,7 +81,7 @@ func (h *wsHub) connect(ctx context.Context) error {
 	}
 	conn, _, err := dialer.DialContext(ctx, h.wsURL, nil)
 	if err != nil {
-		return perp.NewError(perp.ErrConnection, "websocket dial", err)
+		return spot.NewError(spot.ErrConnection, "websocket dial", err)
 	}
 
 	h.mu.Lock()
@@ -110,15 +112,15 @@ func (h *wsHub) shutdown() error {
 	return nil
 }
 
-func (h *wsHub) subscribe(ctx context.Context, subs []*perp.Subscription) error {
+func (h *wsHub) subscribe(ctx context.Context, subs []*spot.Subscription) error {
 	return h.setSubscriptions(ctx, subs, "subscribe", true)
 }
 
-func (h *wsHub) unsubscribe(ctx context.Context, subs []*perp.Subscription) error {
+func (h *wsHub) unsubscribe(ctx context.Context, subs []*spot.Subscription) error {
 	return h.setSubscriptions(ctx, subs, "unsubscribe", false)
 }
 
-func (h *wsHub) setSubscriptions(ctx context.Context, subs []*perp.Subscription, event string, track bool) error {
+func (h *wsHub) setSubscriptions(ctx context.Context, subs []*spot.Subscription, event string, track bool) error {
 	conn, err := h.requireConn()
 	if err != nil {
 		return err
@@ -130,7 +132,7 @@ func (h *wsHub) setSubscriptions(ctx context.Context, subs []*perp.Subscription,
 		ch := normalizeWSChannel(sub.Channel)
 		spec, ok := wsChannelSpecFor(ch)
 		if !ok {
-			return perp.NewError(perp.ErrNotSupported, "unsupported channel "+ch, nil)
+			return spot.NewError(spot.ErrNotSupported, "unsupported channel "+ch, nil)
 		}
 		subCopy := *sub
 		subCopy.Channel = ch
@@ -171,7 +173,9 @@ func (h *wsHub) writeChannelEvent(conn *websocket.Conn, spec *wsChannelSpec, eve
 		"time":    ts,
 		"channel": spec.name,
 		"event":   event,
-		"payload": payload,
+	}
+	if len(payload) > 0 {
+		msg["payload"] = payload
 	}
 	if spec.scope == wsScopePrivate {
 		msg["auth"] = map[string]string{
@@ -181,7 +185,7 @@ func (h *wsHub) writeChannelEvent(conn *websocket.Conn, spec *wsChannelSpec, eve
 		}
 	}
 	if err := conn.WriteJSON(msg); err != nil {
-		return perp.NewError(perp.ErrConnection, event+" "+spec.name, err)
+		return spot.NewError(spot.ErrConnection, event+" "+spec.name, err)
 	}
 	return nil
 }
@@ -191,7 +195,7 @@ func (h *wsHub) requireConn() (*websocket.Conn, error) {
 	conn := h.conn
 	h.mu.RUnlock()
 	if conn == nil {
-		return nil, perp.NewError(perp.ErrNotConnected, "websocket not connected", nil)
+		return nil, spot.NewError(spot.ErrNotConnected, "websocket not connected", nil)
 	}
 	return conn, nil
 }
@@ -263,7 +267,7 @@ func (h *wsHub) heartbeat() {
 			}
 			ping := map[string]interface{}{
 				"time":    time.Now().Unix(),
-				"channel": "futures.ping",
+				"channel": "spot.ping",
 			}
 			if err := conn.WriteJSON(ping); err != nil {
 				h.c.log.ErrorContext(h.hubCtx, "ws ping", "err", err)

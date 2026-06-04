@@ -104,6 +104,7 @@ type ExchangeConfig struct {
 	Connect         ExchangeConnect `mapstructure:"connect"`
 	PublicWSBuffer  int             `mapstructure:"public_ws_buffer"`
 	PrivateWSBuffer int             `mapstructure:"private_ws_buffer"`
+	Proxy           string          `mapstructure:"proxy"`
 }
 
 type ExchangeConnect struct {
@@ -480,6 +481,7 @@ func setDefaults(v *viper.Viper) {
 	v.SetDefault("exchange.connect.private_ws", true)
 	v.SetDefault("exchange.public_ws_buffer", 512)
 	v.SetDefault("exchange.private_ws_buffer", 256)
+	v.SetDefault("exchange.proxy", "")
 
 	v.SetDefault("risk.enable_risk_control", true)
 	v.SetDefault("risk.max_order_size", 100000.0)
