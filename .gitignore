@@ -65,6 +65,6 @@ signalix.db
 
 test/
 # Added by code-review-graph
-.code-review-graph/
+.codegraph/
 .cursorrules
 .opencode.json
