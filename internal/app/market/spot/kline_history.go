@@ -18,7 +18,7 @@ func (sr *SpotRouter) WarmupHistory(ctx context.Context, req market.SubscribeReq
 	series := make([]*models.KlineSeries, 0, len(req.Symbols))
 	for _, sym := range req.Symbols {
 		pair := spot.CanonicalPair(sym)
-		snaps, err := sr.client.ListCandlesticks(ctx, &spot.ListCandlesticksQuery{
+		snaps, err := sr.exchange.ListCandlesticks(ctx, &spot.ListCandlesticksQuery{
 			Pair:     pair,
 			Interval: req.Interval,
 			Limit:    bars,

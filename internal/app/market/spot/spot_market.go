@@ -10,11 +10,10 @@ import (
 	"github.com/kainhuck/signalix/internal/models"
 	"github.com/kainhuck/signalix/internal/ports"
 	"github.com/kainhuck/signalix/pkg/exchange/spot"
-	spgate "github.com/kainhuck/signalix/pkg/exchange/spot/gateio"
 )
 
 type SpotMarket struct {
-	client   *spgate.Client
+	exchange ports.SpotExchange
 	router   *SpotRouter
 	decider  market.MarketDecider
 	executor *SpotExecutor
@@ -26,14 +25,14 @@ type SpotMarket struct {
 var _ market.Market = (*SpotMarket)(nil)
 
 type SpotMarketConfig struct {
-	Client          *spgate.Client
+	Exchange        ports.SpotExchange
 	MarketBuf       int
 	DecisionDivisor int
 }
 
 func NewSpotMarket(ctx context.Context, cfg SpotMarketConfig) (*SpotMarket, error) {
-	if cfg.Client == nil {
-		return nil, fmt.Errorf("spot client is required")
+	if cfg.Exchange == nil {
+		return nil, fmt.Errorf("spot exchange is required")
 	}
 	marketBuf := cfg.MarketBuf
 	if marketBuf <= 0 {
@@ -44,12 +43,12 @@ func NewSpotMarket(ctx context.Context, cfg SpotMarketConfig) (*SpotMarket, erro
 		divisor = 10
 	}
 
-	router := NewSpotRouter(cfg.Client, WithBufferSize(marketBuf))
-	executor := NewSpotExecutor(cfg.Client)
-	decider := NewSpotDecider(cfg.Client, router, divisor)
+	router := NewSpotRouter(cfg.Exchange, WithBufferSize(marketBuf))
+	executor := NewSpotExecutor(cfg.Exchange)
+	decider := NewSpotDecider(cfg.Exchange, router, divisor)
 
 	return &SpotMarket{
-		client:   cfg.Client,
+		exchange: cfg.Exchange,
 		router:   router,
 		decider:  decider,
 		executor: executor,
@@ -66,10 +65,10 @@ func (s *SpotMarket) BindRisk(execution SpotRiskOMS, equity SpotRiskEquity) {
 func (s *SpotMarket) Kind() models.Market { return models.MarketSpot }
 
 func (s *SpotMarket) Ping(ctx context.Context) error {
-	if s == nil || s.client == nil {
+	if s == nil || s.exchange == nil {
 		return fmt.Errorf("spot market not configured")
 	}
-	return s.client.Ping(ctx)
+	return s.exchange.Ping(ctx)
 }
 
 func (s *SpotMarket) Start(ctx context.Context) error {
@@ -102,9 +101,9 @@ func (s *SpotMarket) Stop() error {
 	return nil
 }
 
-func (s *SpotMarket) Router()    *SpotRouter { return s.router }
-func (s *SpotMarket) Executor()  *SpotExecutor { return s.executor }
-func (s *SpotMarket) Client()    *spgate.Client { return s.client }
+func (s *SpotMarket) Router()   *SpotRouter { return s.router }
+func (s *SpotMarket) Executor() *SpotExecutor { return s.executor }
+func (s *SpotMarket) Exchange() ports.SpotExchange { return s.exchange }
 
 func (s *SpotMarket) Subscribe(ctx context.Context, req market.SubscribeRequest) error {
 	return s.router.Subscribe(ctx, req)
@@ -159,10 +158,10 @@ func (s *SpotMarket) BuildRiskContext(ctx context.Context, strategy string, sig 
 }
 
 func (s *SpotMarket) Balance(ctx context.Context, currency string) (*models.BalanceView, error) {
-	if s == nil || s.client == nil {
+	if s == nil || s.exchange == nil {
 		return nil, fmt.Errorf("spot market not configured")
 	}
-	bv, err := s.client.Balance(ctx, currency)
+	bv, err := s.exchange.Balance(ctx, currency)
 	if err != nil {
 		return nil, err
 	}

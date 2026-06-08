@@ -24,7 +24,7 @@ type candleKey struct {
 
 // MarketRouter 行情数据路由器
 type MarketRouter struct {
-	exchange ports.Exchange
+	exchange ports.PerpExchange
 
 	tickerRef      map[perp.Contract]int             // 引擎侧 WS 订阅引用（与 subscribe_ticker 无关）
 	tickerPushSubs map[perp.Contract]map[string]bool // subscribe_ticker=true 时向策略 fan-out
@@ -48,7 +48,7 @@ type MarketRouter struct {
 }
 
 // NewMarketRouter 创建行情路由器
-func NewMarketRouter(exchange ports.Exchange, opts ...Option) *MarketRouter {
+func NewMarketRouter(exchange ports.PerpExchange, opts ...Option) *MarketRouter {
 	ctx, cancel := context.WithCancel(context.Background())
 
 	mr := &MarketRouter{

@@ -8,15 +8,15 @@ import (
 
 	"github.com/kainhuck/signalix/internal/app/market"
 	"github.com/kainhuck/signalix/internal/models"
+	"github.com/kainhuck/signalix/internal/ports"
 	"github.com/kainhuck/signalix/pkg/exchange/spot"
-	spgate "github.com/kainhuck/signalix/pkg/exchange/spot/gateio"
 	"github.com/kainhuck/signalix/pkg/logger"
 )
 
 const spotOrderEventBuf = 100
 
 type SpotExecutor struct {
-	client      *spgate.Client
+	exchange    ports.SpotExchange
 	orderEvents chan *models.OrderEvent
 
 	mu      sync.Mutex
@@ -26,15 +26,15 @@ type SpotExecutor struct {
 	started bool
 }
 
-func NewSpotExecutor(client *spgate.Client) *SpotExecutor {
+func NewSpotExecutor(exchange ports.SpotExchange) *SpotExecutor {
 	return &SpotExecutor{
-		client:      client,
+		exchange:    exchange,
 		orderEvents: make(chan *models.OrderEvent, spotOrderEventBuf),
 	}
 }
 
 func (e *SpotExecutor) Start(ctx context.Context) error {
-	if e == nil || e.client == nil {
+	if e == nil || e.exchange == nil {
 		return fmt.Errorf("spot executor not configured")
 	}
 	e.mu.Lock()
@@ -73,7 +73,7 @@ func (e *SpotExecutor) Stop() error {
 }
 
 func (e *SpotExecutor) Place(ctx context.Context, o *models.Order) (string, error) {
-	if e == nil || e.client == nil {
+	if e == nil || e.exchange == nil {
 		return "", fmt.Errorf("spot executor not configured")
 	}
 	if o == nil {
@@ -96,7 +96,7 @@ func (e *SpotExecutor) Place(ctx context.Context, o *models.Order) (string, erro
 		req.Size = ""
 	}
 
-	resp, err := e.client.Place(ctx, req)
+	resp, err := e.exchange.Place(ctx, req)
 	if err != nil {
 		return "", err
 	}
@@ -107,27 +107,27 @@ func (e *SpotExecutor) Place(ctx context.Context, o *models.Order) (string, erro
 }
 
 func (e *SpotExecutor) Cancel(ctx context.Context, o *models.Order) error {
-	if e == nil || e.client == nil {
+	if e == nil || e.exchange == nil {
 		return fmt.Errorf("spot executor not configured")
 	}
 	if o == nil {
 		return fmt.Errorf("nil order")
 	}
-	return e.client.Cancel(ctx, &spot.CancelParams{
+	return e.exchange.Cancel(ctx, &spot.CancelParams{
 		Pair:    spot.CanonicalPair(string(o.Symbol)),
 		OrderID: o.ExchangeID,
 	})
 }
 
 func (e *SpotExecutor) Sync(ctx context.Context, o *models.Order) (*models.OrderEvent, error) {
-	if e == nil || e.client == nil {
+	if e == nil || e.exchange == nil {
 		return nil, fmt.Errorf("spot executor not configured")
 	}
 	if o == nil {
 		return nil, fmt.Errorf("nil order")
 	}
 	pair := spot.CanonicalPair(string(o.Symbol))
-	snap, err := e.client.GetOrder(ctx, pair, o.ExchangeID)
+	snap, err := e.exchange.GetOrder(ctx, pair, o.ExchangeID)
 	if err != nil {
 		return nil, err
 	}
@@ -153,7 +153,7 @@ func (e *SpotExecutor) OrderEvents() <-chan *models.OrderEvent {
 }
 
 func (e *SpotExecutor) pump(ctx context.Context) {
-	userCh := e.client.UserEvents()
+	userCh := e.exchange.UserEvents()
 	for {
 		select {
 		case <-ctx.Done():

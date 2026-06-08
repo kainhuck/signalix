@@ -11,7 +11,7 @@ import (
 	"github.com/kainhuck/signalix/internal/ports"
 )
 
-func testPerpMarkets(t *testing.T, ex ports.Exchange) map[models.Market]market.Market {
+func testPerpMarkets(t *testing.T, ex ports.PerpExchange) map[models.Market]market.Market {
 	t.Helper()
 	pm, err := mktperp.NewPerpMarket(context.Background(), mktperp.PerpMarketConfig{Exchange: ex})
 	if err != nil {
@@ -20,7 +20,7 @@ func testPerpMarkets(t *testing.T, ex ports.Exchange) map[models.Market]market.M
 	return map[models.Market]market.Market{models.MarketPerp: pm}
 }
 
-func testPerpSetup(t *testing.T, ex ports.Exchange) (map[models.Market]market.Market, BuildParams, *mktperp.PerpMarket) {
+func testPerpSetup(t *testing.T, ex ports.PerpExchange) (map[models.Market]market.Market, BuildParams, *mktperp.PerpMarket) {
 	t.Helper()
 	pm, err := mktperp.NewPerpMarket(context.Background(), mktperp.PerpMarketConfig{Exchange: ex})
 	if err != nil {
@@ -34,7 +34,7 @@ func testPerpSetup(t *testing.T, ex ports.Exchange) (map[models.Market]market.Ma
 	return markets, build, pm
 }
 
-func newTestEngine(t *testing.T, dir string, ex ports.Exchange, opts ...EngineOption) *Engine {
+func newTestEngine(t *testing.T, dir string, ex ports.PerpExchange, opts ...EngineOption) *Engine {
 	t.Helper()
 	markets, build, pm := testPerpSetup(t, ex)
 	eng := NewEngine(dir, markets, build, opts...)

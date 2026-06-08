@@ -69,7 +69,7 @@ func (de *DecisionEngine) processSignal(ctx context.Context, strategyName string
 		de.rejectSignal()
 		return nil, fmt.Errorf("account projection is not configured")
 	}
-	balance, position, _, err := de.acct.Snapshot(signal.Symbol)
+	balance, position, _, err := de.acct.Snapshot(perp.Contract(signal.Symbol))
 	if err != nil {
 		de.rejectSignal()
 		return nil, fmt.Errorf("account snapshot: %w", err)
@@ -102,10 +102,10 @@ func (de *DecisionEngine) processSignal(ctx context.Context, strategyName string
 	// 创建订单
 	order := &models.Order{
 		ID:           generateOrderID(),
-		Symbol:       signal.Symbol,
-		Side:         side,
-		OrderType:    models.OrderTypeMarket,
-		Size:         de.formatSizeForOrder(ctx, signal.Symbol, size),
+			Symbol:       signal.Symbol,
+			Side:         side,
+			OrderType:    models.OrderTypeMarket,
+			Size:         de.formatSizeForOrder(ctx, perp.Contract(signal.Symbol), size),
 		FilledSize:   "0",
 		Status:       models.OrderStatusPending,
 		CreatedAt:    time.Now(),
@@ -188,7 +188,7 @@ func (de *DecisionEngine) calculateOrderSize(ctx context.Context, signal *models
 	if err != nil {
 		return decimal.Zero, err
 	}
-	return de.notionalUSDTToContracts(ctx, signal.Symbol, notional)
+	return de.notionalUSDTToContracts(ctx, perp.Contract(signal.Symbol), notional)
 }
 
 // determineOrderSide 确定订单方向

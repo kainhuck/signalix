@@ -8,5 +8,5 @@ import (
 )
 
 func TestGateIOClientImplementsExchange(t *testing.T) {
-	var _ ports.Exchange = (*gateio.Client)(nil)
+	var _ ports.PerpExchange = (*gateio.Client)(nil)
 }

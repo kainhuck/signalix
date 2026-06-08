@@ -11,6 +11,7 @@ import (
 	"github.com/kainhuck/signalix/internal/domain/risk"
 	"github.com/kainhuck/signalix/internal/models"
 	"github.com/kainhuck/signalix/internal/ports"
+	exchangeperp "github.com/kainhuck/signalix/pkg/exchange/perp"
 	"github.com/shopspring/decimal"
 )
 
@@ -99,7 +100,7 @@ func (p *perpRisk) BuildRiskContext(ctx context.Context, strategyName string, si
 		return rc, nil
 	}
 
-	position, err := p.proj.PositionForContract(order.Symbol)
+	position, err := p.proj.PositionForContract(exchangeperp.Contract(order.Symbol))
 	if err != nil {
 		return rc, nil
 	}
@@ -128,7 +129,7 @@ func (p *perpRisk) BuildRiskContext(ctx context.Context, strategyName string, si
 		return rc, nil
 	}
 
-	orderNotional, err := p.decision.NotionalForContracts(ctx, order.Symbol, orderQty, posMark)
+	orderNotional, err := p.decision.NotionalForContracts(ctx, exchangeperp.Contract(order.Symbol), orderQty, posMark)
 	if err != nil {
 		return rc, nil
 	}
@@ -139,7 +140,7 @@ func (p *perpRisk) BuildRiskContext(ctx context.Context, strategyName string, si
 
 	if position != nil {
 		posQty, _ := decimal.NewFromString(strings.TrimSpace(position.Size))
-		rc.PositionNotional, err = p.decision.NotionalForContracts(ctx, order.Symbol, posQty, position.MarkPrice)
+		rc.PositionNotional, err = p.decision.NotionalForContracts(ctx, exchangeperp.Contract(order.Symbol), posQty, position.MarkPrice)
 		if err != nil {
 			rc.NotionalAvailable = false
 			return rc, nil

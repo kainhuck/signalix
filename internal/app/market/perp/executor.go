@@ -18,13 +18,13 @@ const perpOrderEventBuf = 64
 
 // PerpExecutorConfig perp market.MarketExecutor 依赖。
 type PerpExecutorConfig struct {
-	Exchange ports.Exchange
+	Exchange ports.PerpExchange
 	Proj     *projection.AccountProjection
 }
 
 // PerpExecutor 实现 perp 的 market.MarketExecutor（含用户流泵与 projection 更新）。
 type PerpExecutor struct {
-	exchange    ports.Exchange
+	exchange    ports.PerpExchange
 	codec       exchangeperp.ClientOrderIDCodec
 	proj        *projection.AccountProjection
 	orderEvents chan *models.OrderEvent
@@ -107,7 +107,7 @@ func (p *PerpExecutor) Place(ctx context.Context, o *models.Order) (string, erro
 		return "", fmt.Errorf("nil order")
 	}
 	req := &exchangeperp.PlaceRequest{
-		Contract:    o.Symbol,
+		Contract:    exchangeperp.Contract(o.Symbol),
 		Side:        exchangeperp.Side(o.Side),
 		Type:        exchangeperp.OrderType(o.OrderType),
 		Size:        o.Size,
@@ -136,7 +136,7 @@ func (p *PerpExecutor) Cancel(ctx context.Context, o *models.Order) error {
 		return fmt.Errorf("nil order")
 	}
 	return p.exchange.Cancel(ctx, &exchangeperp.CancelParams{
-		Contract: o.Symbol,
+			Contract: exchangeperp.Contract(o.Symbol),
 		OrderID:  o.ExchangeID,
 	})
 }
@@ -149,7 +149,7 @@ func (p *PerpExecutor) Sync(ctx context.Context, o *models.Order) (*models.Order
 	if o == nil {
 		return nil, fmt.Errorf("nil order")
 	}
-	snap, err := p.exchange.GetOrder(ctx, o.Symbol, o.ExchangeID)
+	snap, err := p.exchange.GetOrder(ctx, exchangeperp.Contract(o.Symbol), o.ExchangeID)
 	if err != nil {
 		return nil, err
 	}

@@ -22,9 +22,9 @@ var ErrProjectionNotReady = errors.New("account projection not ready")
 
 // AccountProjection 账户余额与持仓的内存投影：定时 REST 全量校准 + OMS 同步 OnUserEvent。
 type AccountProjection struct {
-	exchange        ports.Exchange
+	exchange        ports.PerpExchange
 	mu              sync.RWMutex
-	balance         *perp.BalanceView
+	balances        map[string]*perp.BalanceView
 	positions       map[perp.Contract]*perp.PositionSnapshot
 	revision        uint64
 	ready           bool
@@ -37,9 +37,10 @@ type AccountProjection struct {
 }
 
 // NewAccountProjection 创建账户投影；exchange 用于 Balance/Positions。
-func NewAccountProjection(exchange ports.Exchange, opts ...Option) *AccountProjection {
+func NewAccountProjection(exchange ports.PerpExchange, opts ...Option) *AccountProjection {
 	p := &AccountProjection{
 		exchange:        exchange,
+		balances:        make(map[string]*perp.BalanceView),
 		positions:       make(map[perp.Contract]*perp.PositionSnapshot),
 		refreshInterval: DefaultProjectionRefreshInterval,
 	}
@@ -93,10 +94,11 @@ func (p *AccountProjection) Stop() {
 func (p *AccountProjection) AccountEquity() (decimal.Decimal, error) {
 	p.mu.RLock()
 	defer p.mu.RUnlock()
-	if !p.ready || p.balance == nil {
+	bal := p.balances["USDT"]
+	if !p.ready || bal == nil {
 		return decimal.Zero, ErrProjectionNotReady
 	}
-	total, err := decimal.NewFromString(strings.TrimSpace(p.balance.Total))
+	total, err := decimal.NewFromString(strings.TrimSpace(bal.Total))
 	if err != nil {
 		return decimal.Zero, err
 	}
@@ -157,10 +159,11 @@ func (p *AccountProjection) IsReady() bool {
 func (p *AccountProjection) Snapshot(contract perp.Contract) (balance *perp.BalanceView, position *perp.PositionSnapshot, revision uint64, err error) {
 	p.mu.RLock()
 	defer p.mu.RUnlock()
-	if !p.ready || p.balance == nil {
+	bv := p.balances["USDT"]
+	if !p.ready || bv == nil {
 		return nil, nil, 0, ErrProjectionNotReady
 	}
-	bal := *p.balance
+	bal := *bv
 	if pv, ok := p.positions[contract]; ok && pv != nil {
 		pos := *pv
 		position = &pos
@@ -213,31 +216,38 @@ func (p *AccountProjection) applyPositionUpdate(ev *perp.UserEvent) {
 
 func (p *AccountProjection) applyBalanceUpdate(ev *perp.UserEvent) {
 	snap, ok := ev.Balance()
-	if !ok || snap == nil || p.balance == nil {
+	if !ok || snap == nil {
 		return
 	}
-	if !strings.EqualFold(strings.TrimSpace(snap.Currency), strings.TrimSpace(p.balance.Currency)) {
+	ccy := strings.ToUpper(strings.TrimSpace(snap.Currency))
+	if ccy == "" {
 		return
+	}
+	bal := p.balances[ccy]
+	if bal == nil {
+		bal = &perp.BalanceView{Currency: ccy}
+		p.balances[ccy] = bal
 	}
 	total := strings.TrimSpace(snap.Balance)
 	if total == "" {
 		return
 	}
-	p.balance.Total = total
+	bal.Total = total
 	if snap.UpdatedAt.IsZero() {
-		p.balance.UpdatedAt = time.Now()
+		bal.UpdatedAt = time.Now()
 	} else {
-		p.balance.UpdatedAt = snap.UpdatedAt
+		bal.UpdatedAt = snap.UpdatedAt
 	}
 	p.revision++
 	p.notifyEquityLocked(time.Now())
 }
 
 func (p *AccountProjection) notifyEquityLocked(now time.Time) {
-	if p.equityHook == nil || p.balance == nil {
+	bal := p.balances["USDT"]
+	if p.equityHook == nil || bal == nil {
 		return
 	}
-	eq, err := decimal.NewFromString(strings.TrimSpace(p.balance.Total))
+	eq, err := decimal.NewFromString(strings.TrimSpace(bal.Total))
 	if err != nil {
 		return
 	}
@@ -279,7 +289,7 @@ func (p *AccountProjection) refresh(ctx context.Context) error {
 	var hookAt time.Time
 
 	p.mu.Lock()
-	p.balance = &bc
+	p.balances[bal.Currency] = &bc
 	p.positions = m
 	p.revision++
 	p.ready = true

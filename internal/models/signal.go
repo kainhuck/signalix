@@ -3,20 +3,19 @@ package models
 import (
 	"time"
 
-	"github.com/kainhuck/signalix/pkg/exchange/perp"
 	"github.com/shopspring/decimal"
 )
 
 // Signal 策略信号
 type Signal struct {
-	Symbol     perp.Contract `json:"symbol"`
-	Direction  Direction     `json:"direction"`
-	Strength   float64       `json:"strength"`
-	Price      *string       `json:"price,omitempty"`
-	SizingMode *SizingMode   `json:"sizing_mode,omitempty"`
-	Value      *string       `json:"value,omitempty"`
-	Reason     string        `json:"reason,omitempty"`
-	Timestamp  int64         `json:"timestamp"`
+	Symbol     string      `json:"symbol"`
+	Direction  Direction   `json:"direction"`
+	Strength   float64     `json:"strength"`
+	Price      *string     `json:"price,omitempty"`
+	SizingMode *SizingMode `json:"sizing_mode,omitempty"`
+	Value      *string     `json:"value,omitempty"`
+	Reason     string      `json:"reason,omitempty"`
+	Timestamp  int64       `json:"timestamp"`
 }
 
 type Direction string

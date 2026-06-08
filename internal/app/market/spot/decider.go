@@ -7,30 +7,30 @@ import (
 
 	"github.com/kainhuck/signalix/internal/app/market"
 	"github.com/kainhuck/signalix/internal/models"
+	"github.com/kainhuck/signalix/internal/ports"
 	"github.com/kainhuck/signalix/pkg/exchange/spot"
-	spgate "github.com/kainhuck/signalix/pkg/exchange/spot/gateio"
 	"github.com/shopspring/decimal"
 )
 
 type SpotDecider struct {
-	client  *spgate.Client
-	router  *SpotRouter
-	divisor int
+	exchange ports.SpotExchange
+	router   *SpotRouter
+	divisor  int
 }
 
-func NewSpotDecider(client *spgate.Client, router *SpotRouter, divisor int) market.MarketDecider {
+func NewSpotDecider(exchange ports.SpotExchange, router *SpotRouter, divisor int) market.MarketDecider {
 	if divisor <= 0 {
 		divisor = 10
 	}
 	return &SpotDecider{
-		client:  client,
-		router:  router,
-		divisor: divisor,
+		exchange: exchange,
+		router:   router,
+		divisor:  divisor,
 	}
 }
 
 func (d *SpotDecider) Decide(ctx context.Context, strategy string, sig *models.Signal) (*models.Order, error) {
-	if d == nil || d.client == nil {
+	if d == nil || d.exchange == nil {
 		return nil, fmt.Errorf("spot decider not configured")
 	}
 	if sig == nil {
@@ -108,7 +108,7 @@ func (d *SpotDecider) calculateSize(ctx context.Context, pair spot.Pair, sig *mo
 }
 
 func (d *SpotDecider) calculateBuySize(ctx context.Context, pair spot.Pair, quoteCcy, baseCcy string) (decimal.Decimal, error) {
-	bv, err := d.client.Balance(ctx, quoteCcy)
+	bv, err := d.exchange.Balance(ctx, quoteCcy)
 	if err != nil {
 		return decimal.Zero, fmt.Errorf("balance query for %s: %w", quoteCcy, err)
 	}
@@ -136,7 +136,7 @@ func (d *SpotDecider) calculateBuySize(ctx context.Context, pair spot.Pair, quot
 }
 
 func (d *SpotDecider) calculateSellSize(ctx context.Context, pair spot.Pair, baseCcy string) (decimal.Decimal, error) {
-	bv, err := d.client.Balance(ctx, baseCcy)
+	bv, err := d.exchange.Balance(ctx, baseCcy)
 	if err != nil {
 		return decimal.Zero, fmt.Errorf("balance query for %s: %w", baseCcy, err)
 	}

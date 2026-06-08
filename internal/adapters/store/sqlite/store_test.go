@@ -7,7 +7,6 @@ import (
 	"time"
 
 	"github.com/kainhuck/signalix/internal/models"
-	"github.com/kainhuck/signalix/pkg/exchange/perp"
 )
 
 func TestStoreSaveOrderListNonTerminal(t *testing.T) {
@@ -96,7 +95,7 @@ func TestReconcileContractRoundTrip(t *testing.T) {
 	o := &models.Order{
 		ID:           "c1",
 		StrategyName: "s",
-		Symbol:       perp.Contract("ETH/USDT"),
+		Symbol: "ETH/USDT",
 		Side:         models.OrderSideSell,
 		OrderType:    models.OrderTypeMarket,
 		Size:         "2",

@@ -16,7 +16,7 @@ func (e *ExecutionEngine) validateOrderForPlace(order *models.Order) error {
 	if e == nil || e.metaLookup == nil {
 		return nil
 	}
-	meta, err := e.metaLookup.ContractMeta(order.Symbol)
+	meta, err := 	e.metaLookup.ContractMeta(perp.Contract(order.Symbol))
 	if err != nil {
 		return err
 	}

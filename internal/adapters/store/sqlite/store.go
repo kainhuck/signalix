@@ -13,7 +13,6 @@ import (
 
 	"github.com/kainhuck/signalix/internal/models"
 	"github.com/kainhuck/signalix/internal/ports"
-	"github.com/kainhuck/signalix/pkg/exchange/perp"
 )
 
 const schemaVersion = 2
@@ -248,7 +247,7 @@ func scanOrder(sc interface {
 	o := &models.Order{
 		ID:           id,
 		StrategyName: strat,
-		Symbol:       perp.Contract(sym),
+		Symbol: sym,
 		Side:         models.OrderSide(side),
 		OrderType:    models.OrderType(otype),
 		Size:         size,

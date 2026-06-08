@@ -11,7 +11,7 @@ import (
 	"github.com/kainhuck/signalix/internal/app/market"
 	"github.com/kainhuck/signalix/internal/models"
 	"github.com/kainhuck/signalix/internal/ports"
-	"github.com/kainhuck/signalix/pkg/exchange/perp"
+
 	"github.com/kainhuck/signalix/pkg/logger"
 )
 
@@ -448,7 +448,7 @@ func (e *ExecutionEngine) GetAllOrders() []*models.Order {
 }
 
 // GetOrdersBySymbol 获取指定 symbol 的订单
-func (e *ExecutionEngine) GetOrdersBySymbol(symbol perp.Contract) []*models.Order {
+func (e *ExecutionEngine) GetOrdersBySymbol(symbol string) []*models.Order {
 	e.mu.RLock()
 	defer e.mu.RUnlock()
 

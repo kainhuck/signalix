@@ -7,6 +7,7 @@ import (
 
 	"github.com/kainhuck/signalix/internal/app/market"
 	"github.com/kainhuck/signalix/internal/models"
+	"github.com/kainhuck/signalix/internal/ports"
 	"github.com/kainhuck/signalix/pkg/exchange/perp"
 	"github.com/kainhuck/signalix/pkg/exchange/spot"
 	spgate "github.com/kainhuck/signalix/pkg/exchange/spot/gateio"
@@ -21,7 +22,7 @@ const (
 )
 
 type SpotRouter struct {
-	client *spgate.Client
+	exchange ports.SpotExchange
 
 	tickerRef      map[spot.Pair]int
 	tickerPushSubs map[spot.Pair]map[string]bool
@@ -44,11 +45,11 @@ type SpotRouter struct {
 	cancel context.CancelFunc
 }
 
-func NewSpotRouter(client *spgate.Client, opts ...RouterOption) *SpotRouter {
+func NewSpotRouter(exchange ports.SpotExchange, opts ...RouterOption) *SpotRouter {
 	ctx, cancel := context.WithCancel(context.Background())
 
 	sr := &SpotRouter{
-		client:         client,
+		exchange:       exchange,
 		tickerRef:      make(map[spot.Pair]int),
 		tickerPushSubs: make(map[spot.Pair]map[string]bool),
 		candleSubs:     make(map[pairCandleKey]map[string]bool),
@@ -71,7 +72,7 @@ func (sr *SpotRouter) Start() {
 
 	for {
 		select {
-		case ev := <-sr.client.PublicEvents():
+		case ev := <-sr.exchange.PublicEvents():
 			sr.OnPublicEvent(ev)
 		case <-sr.ctx.Done():
 			return
@@ -148,7 +149,7 @@ func (sr *SpotRouter) SubscribePairs(strategyName string, pairs []spot.Pair, int
 		return nil
 	}
 
-	if err := sr.client.Subscribe(sr.ctx, subs); err != nil {
+	if err := sr.exchange.Subscribe(sr.ctx, subs); err != nil {
 		return err
 	}
 
@@ -281,7 +282,7 @@ func (sr *SpotRouter) exchangeUnsubscribe(tickerPairs []spot.Pair, candleSubs []
 	if len(subs) == 0 {
 		return nil
 	}
-	return sr.client.Unsubscribe(sr.ctx, subs)
+	return sr.exchange.Unsubscribe(sr.ctx, subs)
 }
 
 func (sr *SpotRouter) onTicker(ev *spot.PublicEvent) {
