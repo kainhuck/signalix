@@ -14,9 +14,11 @@ import (
 )
 
 type SpotMarket struct {
-	client  *spgate.Client
-	router  *SpotRouter
-	decider market.MarketDecider
+	client   *spgate.Client
+	router   *SpotRouter
+	decider  market.MarketDecider
+	executor *SpotExecutor
+	risk     market.MarketRisk
 
 	routerWg sync.WaitGroup
 }
@@ -24,8 +26,9 @@ type SpotMarket struct {
 var _ market.Market = (*SpotMarket)(nil)
 
 type SpotMarketConfig struct {
-	Client    *spgate.Client
-	MarketBuf int
+	Client          *spgate.Client
+	MarketBuf       int
+	DecisionDivisor int
 }
 
 func NewSpotMarket(ctx context.Context, cfg SpotMarketConfig) (*SpotMarket, error) {
@@ -36,14 +39,28 @@ func NewSpotMarket(ctx context.Context, cfg SpotMarketConfig) (*SpotMarket, erro
 	if marketBuf <= 0 {
 		marketBuf = 1000
 	}
+	divisor := cfg.DecisionDivisor
+	if divisor <= 0 {
+		divisor = 10
+	}
 
 	router := NewSpotRouter(cfg.Client, WithBufferSize(marketBuf))
+	executor := NewSpotExecutor(cfg.Client)
+	decider := NewSpotDecider(cfg.Client, router, divisor)
 
 	return &SpotMarket{
-		client:  cfg.Client,
-		router:  router,
-		decider: newSpotDecider(),
+		client:   cfg.Client,
+		router:   router,
+		decider:  decider,
+		executor: executor,
 	}, nil
+}
+
+func (s *SpotMarket) BindRisk(execution SpotRiskOMS, equity SpotRiskEquity) {
+	if s == nil {
+		return
+	}
+	s.risk = NewSpotRisk(execution, equity)
 }
 
 func (s *SpotMarket) Kind() models.Market { return models.MarketSpot }
@@ -64,12 +81,17 @@ func (s *SpotMarket) Start(ctx context.Context) error {
 		defer s.routerWg.Done()
 		s.router.Start()
 	}()
-	return nil
+	return s.executor.Start(ctx)
 }
 
 func (s *SpotMarket) Stop() error {
 	if s == nil {
 		return nil
+	}
+	if s.executor != nil {
+		if err := s.executor.Stop(); err != nil {
+			return err
+		}
 	}
 	if s.router != nil {
 		if err := s.router.Stop(); err != nil {
@@ -80,7 +102,9 @@ func (s *SpotMarket) Stop() error {
 	return nil
 }
 
-func (s *SpotMarket) Router() *SpotRouter { return s.router }
+func (s *SpotMarket) Router()    *SpotRouter { return s.router }
+func (s *SpotMarket) Executor()  *SpotExecutor { return s.executor }
+func (s *SpotMarket) Client()    *spgate.Client { return s.client }
 
 func (s *SpotMarket) Subscribe(ctx context.Context, req market.SubscribeRequest) error {
 	return s.router.Subscribe(ctx, req)
@@ -103,23 +127,35 @@ func (s *SpotMarket) Decide(ctx context.Context, strategy string, sig *models.Si
 }
 
 func (s *SpotMarket) Place(ctx context.Context, o *models.Order) (string, error) {
-	return "", fmt.Errorf("spot executor not implemented")
+	if s.executor == nil {
+		return "", fmt.Errorf("spot executor not configured")
+	}
+	return s.executor.Place(ctx, o)
 }
 
 func (s *SpotMarket) Cancel(ctx context.Context, o *models.Order) error {
-	return fmt.Errorf("spot executor not implemented")
+	if s.executor == nil {
+		return fmt.Errorf("spot executor not configured")
+	}
+	return s.executor.Cancel(ctx, o)
 }
 
 func (s *SpotMarket) Sync(ctx context.Context, o *models.Order) (*models.OrderEvent, error) {
-	return nil, fmt.Errorf("spot executor not implemented")
+	if s.executor == nil {
+		return nil, fmt.Errorf("spot executor not configured")
+	}
+	return s.executor.Sync(ctx, o)
 }
 
 func (s *SpotMarket) OrderEvents() <-chan *models.OrderEvent {
-	return nil
+	return s.executor.OrderEvents()
 }
 
 func (s *SpotMarket) BuildRiskContext(ctx context.Context, strategy string, sig *models.Signal, o *models.Order) (*ports.RiskContext, error) {
-	return nil, fmt.Errorf("spot risk not implemented")
+	if s.risk == nil {
+		return nil, fmt.Errorf("spot risk not configured")
+	}
+	return s.risk.BuildRiskContext(ctx, strategy, sig, o)
 }
 
 func (s *SpotMarket) Balance(ctx context.Context, currency string) (*models.BalanceView, error) {
