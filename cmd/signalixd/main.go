@@ -13,11 +13,14 @@ import (
 	"github.com/kainhuck/signalix/internal/app/engine"
 	"github.com/kainhuck/signalix/internal/app/market"
 	mktperp "github.com/kainhuck/signalix/internal/app/market/perp"
+	mktspot "github.com/kainhuck/signalix/internal/app/market/spot"
 	apprisk "github.com/kainhuck/signalix/internal/app/risk"
 	"github.com/kainhuck/signalix/internal/config"
 	"github.com/kainhuck/signalix/internal/models"
 	"github.com/kainhuck/signalix/pkg/exchange/perp"
 	perpgate "github.com/kainhuck/signalix/pkg/exchange/perp/gateio"
+	"github.com/kainhuck/signalix/pkg/exchange/spot"
+	spotgate "github.com/kainhuck/signalix/pkg/exchange/spot/gateio"
 	"github.com/kainhuck/signalix/pkg/logger"
 )
 
@@ -54,14 +57,38 @@ func main() {
 		gateOpts = append(gateOpts, perpgate.WithProxy(ex.Proxy))
 	}
 
-	c := exad.NewClient(ex.APIKey, ex.APISecret, gateOpts...)
+	c := exad.NewPerpClient(ex.APIKey, ex.APISecret, gateOpts...)
 	parts := perp.ConnectParts{
 		REST:      ex.Connect.REST,
 		PublicWS:  ex.Connect.PublicWS,
 		PrivateWS: ex.Connect.PrivateWS,
 	}
 	if err := c.Connect(context.Background(), parts); err != nil {
-		logger.Error("connect failed", "error", err)
+		logger.Error("perp connect failed", "error", err)
+		return
+	}
+
+	spotGateOpts := []spotgate.Option{
+		spotgate.WithPaper(ex.Paper),
+		spotgate.WithLogger(logger.With("exchange", "gateio-spot")),
+		spotgate.WithChannelBuffers(ex.PublicWSBuffer, ex.PrivateWSBuffer),
+		spotgate.WithRateLimit(ex.RateLimit),
+	}
+	if ex.RESTBasePath != "" {
+		spotGateOpts = append(spotGateOpts, spotgate.WithRESTBasePath(ex.RESTBasePath))
+	}
+	if ex.Proxy != "" {
+		spotGateOpts = append(spotGateOpts, spotgate.WithProxy(ex.Proxy))
+	}
+
+	spotEx := exad.NewSpotClient(ex.APIKey, ex.APISecret, spotGateOpts...)
+	spotParts := spot.ConnectParts{
+		REST:      ex.Connect.REST,
+		PublicWS:  ex.Connect.PublicWS,
+		PrivateWS: ex.Connect.PrivateWS,
+	}
+	if err := spotEx.Connect(context.Background(), spotParts); err != nil {
+		logger.Error("spot connect failed", "error", err)
 		return
 	}
 
@@ -80,6 +107,7 @@ func main() {
 	build := engine.BuildParamsFromConfig(cfg)
 	markets := make(map[models.Market]market.Market)
 	var perpMarket *mktperp.PerpMarket
+	var spotMarket *mktspot.SpotMarket
 	equityTracker := apprisk.NewEquityTracker()
 	for _, m := range enabled {
 		switch m {
@@ -99,6 +127,18 @@ func main() {
 			build.AccountProjection = pm.Projection()
 			build.MetaLookup = pm.Registry()
 			markets[m] = pm
+		case models.MarketSpot:
+			sm, err := mktspot.NewSpotMarket(context.Background(), mktspot.SpotMarketConfig{
+				Exchange:        spotEx,
+				MarketBuf:       cfg.Channels.Market,
+				DecisionDivisor: cfg.Decision.DefaultSizeDivisor,
+			})
+			if err != nil {
+				logger.Error("spot market init failed", "error", err)
+				return
+			}
+			spotMarket = sm
+			markets[m] = sm
 		default:
 			logger.Error("unsupported market", "market", m)
 			return
@@ -126,6 +166,9 @@ func main() {
 				mktperp.WrapProjectionRefreshHook(eng.PersistAccountSnapshot),
 			)
 		}
+	}
+	if spotMarket != nil {
+		spotMarket.BindRisk(eng.ExecutionEngine(), equityTracker)
 	}
 	if err := eng.Start(); err != nil {
 		logger.Error("failed to start engine", "error", err)

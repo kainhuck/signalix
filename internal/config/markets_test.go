@@ -16,9 +16,12 @@ func TestEnabledMarkets_default(t *testing.T) {
 	}
 }
 
-func TestEnabledMarkets_rejectsSpot(t *testing.T) {
-	_, err := (&Config{Markets: MarketsConfig{Enabled: []string{"spot"}}}).EnabledMarkets()
-	if err == nil {
-		t.Fatal("expected error for spot")
+func TestEnabledMarkets_allowsSpot(t *testing.T) {
+	m, err := (&Config{Markets: MarketsConfig{Enabled: []string{"spot"}}}).EnabledMarkets()
+	if err != nil {
+		t.Fatal("spot should be allowed:", err)
+	}
+	if len(m) != 1 || m[0] != models.MarketSpot {
+		t.Fatalf("expected [spot], got %v", m)
 	}
 }
