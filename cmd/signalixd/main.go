@@ -13,11 +13,15 @@ import (
 	"github.com/kainhuck/signalix/internal/app/engine"
 	"github.com/kainhuck/signalix/internal/app/market"
 	mktperp "github.com/kainhuck/signalix/internal/app/market/perp"
+	mktspot "github.com/kainhuck/signalix/internal/app/market/spot"
 	apprisk "github.com/kainhuck/signalix/internal/app/risk"
 	"github.com/kainhuck/signalix/internal/config"
 	"github.com/kainhuck/signalix/internal/models"
+	"github.com/kainhuck/signalix/internal/ports"
 	"github.com/kainhuck/signalix/pkg/exchange/perp"
 	perpgate "github.com/kainhuck/signalix/pkg/exchange/perp/gateio"
+	spotex "github.com/kainhuck/signalix/pkg/exchange/spot"
+	spotgate "github.com/kainhuck/signalix/pkg/exchange/spot/gateio"
 	"github.com/kainhuck/signalix/pkg/logger"
 )
 
@@ -38,33 +42,6 @@ func main() {
 		os.Exit(1)
 	}
 
-	ex := cfg.Exchange
-	gateOpts := []perpgate.Option{
-		perpgate.WithPaper(ex.Paper),
-		perpgate.WithSettle(ex.Settle),
-		perpgate.WithUserID(ex.UserID),
-		perpgate.WithLogger(logger.With("exchange", "gateio")),
-		perpgate.WithChannelBuffers(ex.PublicWSBuffer, ex.PrivateWSBuffer),
-		perpgate.WithRateLimit(ex.RateLimit),
-	}
-	if ex.RESTBasePath != "" {
-		gateOpts = append(gateOpts, perpgate.WithRESTBasePath(ex.RESTBasePath))
-	}
-	if ex.Proxy != "" {
-		gateOpts = append(gateOpts, perpgate.WithProxy(ex.Proxy))
-	}
-
-	c := exad.NewClient(ex.APIKey, ex.APISecret, gateOpts...)
-	parts := perp.ConnectParts{
-		REST:      ex.Connect.REST,
-		PublicWS:  ex.Connect.PublicWS,
-		PrivateWS: ex.Connect.PrivateWS,
-	}
-	if err := c.Connect(context.Background(), parts); err != nil {
-		logger.Error("connect failed", "error", err)
-		return
-	}
-
 	st, err := sqlite.Open(cfg.DatabasePath, cfg.Database.MaxOpenConns)
 	if err != nil {
 		logger.Error("sqlite open failed", "path", cfg.DatabasePath, "error", err)
@@ -80,10 +57,16 @@ func main() {
 	build := engine.BuildParamsFromConfig(cfg)
 	markets := make(map[models.Market]market.Market)
 	var perpMarket *mktperp.PerpMarket
+	var spotMarket *mktspot.SpotMarket
 	equityTracker := apprisk.NewEquityTracker()
 	for _, m := range enabled {
 		switch m {
 		case models.MarketPerp:
+			c, err := connectPerp(context.Background(), cfg.Exchange)
+			if err != nil {
+				logger.Error("perp connect failed", "error", err)
+				return
+			}
 			pm, err := mktperp.NewPerpMarket(context.Background(), mktperp.PerpMarketConfig{
 				Exchange:          c,
 				MarketBuf:         cfg.Channels.Market,
@@ -99,6 +82,22 @@ func main() {
 			build.AccountProjection = pm.Projection()
 			build.MetaLookup = pm.Registry()
 			markets[m] = pm
+		case models.MarketSpot:
+			c, err := connectSpot(context.Background(), cfg.Exchange)
+			if err != nil {
+				logger.Error("spot connect failed", "error", err)
+				return
+			}
+			sm, err := mktspot.NewSpotMarket(context.Background(), mktspot.SpotMarketConfig{
+				Exchange:            c,
+				DecisionSizeDivisor: cfg.Decision.DefaultSizeDivisor,
+			}, mktspot.WithMarketBuffer(cfg.Channels.Market))
+			if err != nil {
+				logger.Error("spot market init failed", "error", err)
+				return
+			}
+			spotMarket = sm
+			markets[m] = sm
 		default:
 			logger.Error("unsupported market", "market", m)
 			return
@@ -127,6 +126,14 @@ func main() {
 			)
 		}
 	}
+	if spotMarket != nil {
+		spotMarket.BindRisk(mktspot.SpotRiskConfig{
+			Projection: spotMarket.Projection(),
+			Router:     spotMarket.Router(),
+			Execution:  eng.ExecutionEngine(),
+			Equity:     equityTracker,
+		})
+	}
 	if err := eng.Start(); err != nil {
 		logger.Error("failed to start engine", "error", err)
 		return
@@ -151,4 +158,62 @@ func main() {
 	logger.Info("signalixd running without gRPC; send SIGINT/SIGTERM to exit",
 		"work_dir", cfg.WorkDir)
 	<-sigCtx.Done()
+}
+
+func buildPerpGateOptions(ex config.ExchangeConfig) []perpgate.Option {
+	opts := []perpgate.Option{
+		perpgate.WithPaper(ex.Paper),
+		perpgate.WithSettle(ex.Settle),
+		perpgate.WithUserID(ex.UserID),
+		perpgate.WithLogger(logger.With("exchange", "gateio", "market", "perp")),
+		perpgate.WithChannelBuffers(ex.PublicWSBuffer, ex.PrivateWSBuffer),
+		perpgate.WithRateLimit(ex.RateLimit),
+	}
+	if ex.RESTBasePath != "" {
+		opts = append(opts, perpgate.WithRESTBasePath(ex.RESTBasePath))
+	}
+	if ex.Proxy != "" {
+		opts = append(opts, perpgate.WithProxy(ex.Proxy))
+	}
+	return opts
+}
+
+func buildSpotGateOptions(ex config.ExchangeConfig) []spotgate.Option {
+	opts := []spotgate.Option{
+		spotgate.WithPaper(ex.Paper),
+		spotgate.WithLogger(logger.With("exchange", "gateio", "market", "spot")),
+		spotgate.WithChannelBuffers(ex.PublicWSBuffer, ex.PrivateWSBuffer),
+		spotgate.WithRateLimit(ex.RateLimit),
+	}
+	if ex.RESTBasePath != "" {
+		opts = append(opts, spotgate.WithRESTBasePath(ex.RESTBasePath))
+	}
+	if ex.Proxy != "" {
+		opts = append(opts, spotgate.WithProxy(ex.Proxy))
+	}
+	return opts
+}
+
+func connectPerp(ctx context.Context, ex config.ExchangeConfig) (ports.PerpExchange, error) {
+	c := exad.NewPerpClient(ex.APIKey, ex.APISecret, buildPerpGateOptions(ex)...)
+	if err := c.Connect(ctx, perp.ConnectParts{
+		REST:      ex.Connect.REST,
+		PublicWS:  ex.Connect.PublicWS,
+		PrivateWS: ex.Connect.PrivateWS,
+	}); err != nil {
+		return nil, err
+	}
+	return c, nil
+}
+
+func connectSpot(ctx context.Context, ex config.ExchangeConfig) (ports.SpotExchange, error) {
+	c := exad.NewSpotClient(ex.APIKey, ex.APISecret, buildSpotGateOptions(ex)...)
+	if err := c.Connect(ctx, spotex.ConnectParts{
+		REST:      ex.Connect.REST,
+		PublicWS:  ex.Connect.PublicWS,
+		PrivateWS: ex.Connect.PrivateWS,
+	}); err != nil {
+		return nil, err
+	}
+	return c, nil
 }

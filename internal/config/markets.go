@@ -24,9 +24,6 @@ func (c *Config) EnabledMarkets() ([]models.Market, error) {
 		if err != nil {
 			return nil, fmt.Errorf("markets.enabled: %w", err)
 		}
-		if m == models.MarketSpot {
-			return nil, fmt.Errorf("market %q not supported in this build", m)
-		}
 		if !m.Valid() {
 			return nil, fmt.Errorf("markets.enabled: invalid market %q", raw)
 		}

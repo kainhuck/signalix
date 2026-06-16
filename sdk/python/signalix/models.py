@@ -12,9 +12,13 @@ from datetime import datetime
 from signalix import strategy
 
 
+def _symbol(data: Dict[str, Any]) -> str:
+    return data.get("contract") or data.get("symbol", "")
+
+
 @dataclass
 class Ticker:
-    """ticker数据（与 Go perp.TickerSnapshot 对齐）"""
+    """ticker数据（contract 为兼容字段，symbol 为统一别名）"""
     contract: str
     last: str
     mark_price: str
@@ -29,11 +33,15 @@ class Ticker:
     high_24h: str
     timestamp_millis: int
 
+    @property
+    def symbol(self) -> str:
+        return self.contract
+
     @classmethod
     def from_dict(cls, data: Dict[str, Any]) -> "Ticker":
         """从字典创建"""
         return cls(
-            contract=data["contract"],
+            contract=_symbol(data),
             last=data["last"],
             mark_price=data["mark_price"],
             index_price=data["index_price"],
@@ -55,6 +63,10 @@ class TickData:
     trace_id: str
     ticker: "Ticker"
 
+    @property
+    def symbol(self) -> str:
+        return self.contract
+
     @classmethod
     def from_dict(cls, data: Dict[str, Any]) -> "TickData":
         """从字典创建（与 IPC tick：trace_id + ticker 对齐）"""
@@ -68,7 +80,7 @@ class TickData:
 
 @dataclass
 class KlineBar:
-    """收盘 K 线（与 Go models.Kline 对齐）"""
+    """收盘 K 线（contract 为兼容字段，symbol 为统一别名）"""
     contract: str
     interval: str
     open: str
@@ -80,10 +92,14 @@ class KlineBar:
     timestamp_sec: int
     window_closed: bool
 
+    @property
+    def symbol(self) -> str:
+        return self.contract
+
     @classmethod
     def from_dict(cls, data: Dict[str, Any]) -> "KlineBar":
         return cls(
-            contract=data["contract"],
+            contract=_symbol(data),
             interval=data["interval"],
             open=data["open"],
             high=data["high"],
@@ -103,6 +119,10 @@ class KlineData:
     trace_id: str
     bar: KlineBar
 
+    @property
+    def symbol(self) -> str:
+        return self.contract
+
     @classmethod
     def from_dict(cls, data: Dict[str, Any]) -> "KlineData":
         bar = KlineBar.from_dict(data["kline"])
@@ -119,10 +139,14 @@ class KlineSeries:
     contract: str
     bars: list[KlineBar]
 
+    @property
+    def symbol(self) -> str:
+        return self.contract
+
     @classmethod
     def from_dict(cls, data: Dict[str, Any]) -> "KlineSeries":
         return cls(
-            contract=data["contract"],
+            contract=_symbol(data),
             bars=[KlineBar.from_dict(b) for b in data.get("bars", [])],
         )
 
@@ -149,7 +173,7 @@ class BalanceData:
 
 @dataclass
 class PositionData:
-    """持仓快照（get_position RPC）"""
+    """持仓快照（contract 为兼容字段，symbol 为统一别名）"""
     contract: str
     side: str
     size: str
@@ -159,10 +183,14 @@ class PositionData:
     leverage: int
     updated_at: int
 
+    @property
+    def symbol(self) -> str:
+        return self.contract
+
     @classmethod
     def from_dict(cls, data: Dict[str, Any]) -> "PositionData":
         return cls(
-            contract=data.get("contract", ""),
+            contract=_symbol(data),
             side=data.get("side", ""),
             size=data.get("size", ""),
             entry_price=data.get("entry_price", ""),

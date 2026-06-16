@@ -2,6 +2,8 @@ package engine
 
 import (
 	"context"
+	"fmt"
+	"strings"
 	"time"
 
 	"github.com/kainhuck/signalix/internal/models"
@@ -78,7 +80,12 @@ func (e *Engine) HealthReport(ctx context.Context, skipExchangePing bool) Health
 	projPass := false
 	projMsg := ""
 	if e.accountProjection == nil {
-		projMsg = "not configured"
+		if e.marketFor(models.MarketSpot) != nil {
+			projPass = true
+			projMsg = "perp projection not configured; spot market registered"
+		} else {
+			projMsg = "not configured"
+		}
 	} else if e.accountProjection.IsReady() {
 		projPass = true
 	} else {
@@ -113,14 +120,23 @@ func (e *Engine) HealthReport(ctx context.Context, skipExchangePing bool) Health
 }
 
 func (e *Engine) checkExchange(ctx context.Context) (pass bool, message string) {
-	m := e.marketFor(models.MarketPerp)
-	if m == nil {
+	if e == nil || len(e.markets) == 0 {
 		return false, "not configured"
 	}
+	var failures []string
 	pingCtx, cancel := context.WithTimeout(ctx, healthExchangePingTimeout)
 	defer cancel()
-	if err := m.Ping(pingCtx); err != nil {
-		return false, err.Error()
+	for mk, m := range e.markets {
+		if m == nil {
+			failures = append(failures, fmt.Sprintf("%s: not configured", mk))
+			continue
+		}
+		if err := m.Ping(pingCtx); err != nil {
+			failures = append(failures, fmt.Sprintf("%s: %s", mk, err.Error()))
+		}
+	}
+	if len(failures) > 0 {
+		return false, strings.Join(failures, "; ")
 	}
 	return true, ""
 }

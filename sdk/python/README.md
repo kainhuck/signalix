@@ -1,6 +1,6 @@
 # Signalix Python SDK
 
-用于编写 Signalix 永续策略的 Python SDK。策略由 Go 引擎以子进程方式启动，通过 **stdin/stdout 行 JSON** 与引擎通信。
+用于编写 Signalix perp / spot 策略的 Python SDK。策略由 Go 引擎以子进程方式启动，通过 **stdin/stdout 行 JSON** 与引擎通信。
 
 ## 安装
 
@@ -15,7 +15,7 @@ pip install -e .
 
 ```text
 strategies/my_strategy/
-├── config.yaml    # 引擎读取：合约、周期、预热等
+├── config.yaml    # 引擎读取：市场、symbol、周期、预热等
 └── strategy.py    # 你的 Strategy 子类
 ```
 
@@ -25,7 +25,8 @@ strategies/my_strategy/
 |------|------|
 | `name` | 策略名（与目录名一致） |
 | `enabled` | 是否随引擎启动 |
-| `symbols` | 合约列表，如 `BTC/USDT` |
+| `market` | 可选；`perp` 或 `spot`，省略时默认 `perp` |
+| `symbols` | 合约/交易对列表，如 `BTC/USDT` |
 | `interval` | K 线周期（`1m`、`5m` 等），引擎用于 WS 订阅与 REST 预热 |
 | `history_bars` | REST 预热根数，`0` 表示不预热 |
 | `subscribe_ticker` | 默认省略即 `false`：引擎仍订阅 ticker 供下单定价，**不**向策略推送 `tick`；盘口策略设为 `true` 以启用 `on_tick` |
@@ -36,6 +37,7 @@ strategies/my_strategy/
 ```yaml
 name: my_ma
 enabled: true
+market: perp
 symbols:
   - BTC/USDT
 interval: "5m"
@@ -130,6 +132,7 @@ if __name__ == "__main__":
 ```
 
 `kline` / `tick` 与 Go 侧对齐：`data.trace_id` + `data.kline` 或 `data.ticker`（价格为 **string**，与交易所一致）。
+为兼容旧策略，IPC 字段仍叫 `contract`；SDK 同时提供只读 `.symbol` alias。新策略可优先使用 `.symbol`，旧策略继续使用 `.contract`。
 
 ## Strategy 基类
 
@@ -174,14 +177,15 @@ bars = ctx.get_klines("ETH/USDT", limit=50)  # interval 省略则用策略 confi
 
 ### TickData / Ticker
 
-`subscribe_ticker: true` 时通过 `on_tick` 推送；亦可用 `ctx.get_ticker(symbol)` 主动拉取同一结构。字段与 Gate `futures.tickers` 对齐（`last`、`mark_price` 等为 string）。
+`subscribe_ticker: true` 时通过 `on_tick` 推送；亦可用 `ctx.get_ticker(symbol)` 主动拉取同一结构。字段与 Gate ticker 视图对齐（`last`、`mark_price` 等为 string）；spot 下无 mark/index/funding 时，引擎会用兼容字段填充或留空。
 
 ### KlineData / KlineBar
 
 每条 **收盘** K 线触发一次 `on_kline`：
 
 ```python
-kline.contract      # 合约
+kline.contract      # 兼容字段
+kline.symbol        # 推荐字段；与 contract 相同
 kline.trace_id      # 追踪 ID
 kline.bar.interval  # 周期
 kline.bar.close     # 收盘价（string）
@@ -195,7 +199,8 @@ REST 预热一次性推送：
 ```python
 history.interval     # 如 "5m"
 history.series       # list[KlineSeries]
-series.contract
+series.contract      # 兼容字段
+series.symbol        # 推荐字段；与 contract 相同
 series.bars          # list[KlineBar]，时间升序
 ```
 
@@ -219,6 +224,8 @@ Signal(symbol="BTC/USDT", timestamp=1716200000, direction=Direction.FLAT, streng
 # 不传 value / sizing_mode 时，引擎用 config.toml 的 default_size_divisor 估算开仓量
 Signal(symbol="BTC/USDT", timestamp=1716200000, direction=Direction.LONG, strength=0.8)
 ```
+
+spot 策略下，`Direction.LONG` 表示买入并持有 base asset；`Direction.SHORT` 与 `Direction.FLAT` 都会卖出现有 base 持仓，不会开裸空。
 
 ## 示例
 

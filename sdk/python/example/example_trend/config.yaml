@@ -1,6 +1,6 @@
 name: example_trend
 enabled: true
-# market: perp   # optional; default perp
+# market: perp   # optional; perp or spot; default perp
 symbols:
   - BTC/USDT
   - ETH/USDT

@@ -102,10 +102,6 @@ func (sl *StrategyLoader) DiscoverStrategies() (map[string]*Strategy, error) {
 		if err != nil {
 			return nil, fmt.Errorf("failed to load strategy %s: %w", entry.Name(), err)
 		}
-		if mk == models.MarketSpot {
-			return nil, fmt.Errorf("failed to load strategy %s: market %q not supported in this build", entry.Name(), mk)
-		}
-
 		strategies[config.Name] = &Strategy{
 			StrategyConfig: config,
 			Market:         mk,
@@ -175,12 +171,8 @@ func (sl *StrategyLoader) validateConfig(config StrategyConfig) error {
 	}
 
 	if strings.TrimSpace(config.Market) != "" {
-		mk, err := models.ParseMarket(config.Market)
-		if err != nil {
+		if _, err := models.ParseMarket(config.Market); err != nil {
 			return err
-		}
-		if mk == models.MarketSpot {
-			return fmt.Errorf("market %q not supported in this build", mk)
 		}
 	}
 

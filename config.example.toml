@@ -7,7 +7,7 @@
 #
 # 策略 config.yaml 字段说明（各策略子目录，与全局 config.toml 分离）：
 #   symbols: ["BTC/USDT"]     # 合约/交易对字符串列表
-#   market: perp              # 可选；省略时默认 perp（EMN-4 多 market 路由）
+#   market: perp              # 可选；perp 或 spot，省略时默认 perp
 #
 # 首次使用：
 #   mkdir -p ~/.signalix/data ~/.signalix/strategies
@@ -52,7 +52,8 @@ max_backoff = "60s"
 backoff_multiplier = 2
 
 # ------------------------------------------------------------------------------
-# 启用市场（缺省 ["perp"]；当前 build 仅支持 perp，spot 会启动失败）
+# 启用市场（缺省 ["perp"]；支持 ["perp"]、["spot"]、["perp", "spot"]）
+# 当前 [exchange] 凭证会用于所有启用市场；同时启用 perp/spot 时会建立两个 Gate client。
 # ------------------------------------------------------------------------------
 [markets]
 enabled = ["perp"]
@@ -64,11 +65,11 @@ enabled = ["perp"]
 name = "gateio"
 api_key = ""
 api_secret = ""
-# 是否使用 Gate 合约测试网（原 main 中 WithPaper(true)）
+# 是否使用 Gate 测试网（perp/spot 均使用该开关）
 paper = true
-# 私有 WS futures.orders 所需数字用户 ID（原 main 硬编码）
+# 私有 WS futures.orders 所需数字用户 ID（仅 perp 使用）
 user_id = ""
-# 结算币种，默认 usdt
+# 结算币种，默认 usdt（仅 perp 使用）
 settle = "usdt"
 # 覆盖 REST 根路径（留空则 paper=true 时用官方测试网默认地址）
 # rest_base_path = "https://api-testnet.gateapi.io/api/v4"

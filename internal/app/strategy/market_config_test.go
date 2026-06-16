@@ -40,7 +40,7 @@ interval: 1m
 	}
 }
 
-func TestDiscoverStrategies_rejectsSpotMarket(t *testing.T) {
+func TestDiscoverStrategies_allowsSpotMarket(t *testing.T) {
 	t.Parallel()
 	dir := t.TempDir()
 	stratDir := filepath.Join(dir, "spotty")
@@ -62,9 +62,12 @@ symbols:
 	}
 
 	sl := NewStrategyLoader(t.Context(), dir)
-	_, err := sl.DiscoverStrategies()
-	if err == nil {
-		t.Fatal("expected error for spot market strategy")
+	strategies, err := sl.DiscoverStrategies()
+	if err != nil {
+		t.Fatal(err)
+	}
+	if strategies["spotty"].Market != models.MarketSpot {
+		t.Fatalf("market = %q", strategies["spotty"].Market)
 	}
 }
 
