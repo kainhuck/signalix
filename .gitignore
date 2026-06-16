@@ -66,5 +66,5 @@ signalix.db
 test/
 .cursorrules
 .opencode.json
-
+.opencode/
 .codegraph/
