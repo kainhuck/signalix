@@ -22,7 +22,7 @@ var ErrProjectionNotReady = errors.New("account projection not ready")
 
 // AccountProjection 账户余额与持仓的内存投影：定时 REST 全量校准 + OMS 同步 OnUserEvent。
 type AccountProjection struct {
-	exchange        ports.Exchange
+	exchange        ports.PerpExchange
 	mu              sync.RWMutex
 	balance         *perp.BalanceView
 	positions       map[perp.Contract]*perp.PositionSnapshot
@@ -37,7 +37,7 @@ type AccountProjection struct {
 }
 
 // NewAccountProjection 创建账户投影；exchange 用于 Balance/Positions。
-func NewAccountProjection(exchange ports.Exchange, opts ...Option) *AccountProjection {
+func NewAccountProjection(exchange ports.PerpExchange, opts ...Option) *AccountProjection {
 	p := &AccountProjection{
 		exchange:        exchange,
 		positions:       make(map[perp.Contract]*perp.PositionSnapshot),

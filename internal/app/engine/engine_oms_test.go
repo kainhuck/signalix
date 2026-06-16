@@ -7,7 +7,7 @@ import (
 	"github.com/kainhuck/signalix/internal/ports"
 )
 
-func testOMSExecutors(ex ports.Exchange) (map[models.Market]market.MarketExecutor, *mktperp.PerpExecutor, error) {
+func testOMSExecutors(ex ports.PerpExchange) (map[models.Market]market.MarketExecutor, *mktperp.PerpExecutor, error) {
 	pe, err := mktperp.NewPerpExecutor(mktperp.PerpExecutorConfig{Exchange: ex})
 	if err != nil {
 		return nil, nil, err

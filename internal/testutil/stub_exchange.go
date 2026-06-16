@@ -10,7 +10,7 @@ import (
 	"github.com/kainhuck/signalix/pkg/exchange/perp"
 )
 
-// StubExchange 测试用交易所替身，实现 ports.Exchange（perp.Live）。
+// StubExchange 测试用永续交易所替身，实现 ports.PerpExchange（perp.Live）。
 type StubExchange struct {
 	Mu sync.Mutex
 
@@ -27,7 +27,7 @@ type StubExchange struct {
 	GetOrderHook func(ctx context.Context, contract perp.Contract, orderID string) (*perp.OrderSnapshot, error)
 }
 
-var _ ports.Exchange = (*StubExchange)(nil)
+var _ ports.PerpExchange = (*StubExchange)(nil)
 
 // NewStubExchange 返回默认余额与无持仓的替身。
 func NewStubExchange() *StubExchange {

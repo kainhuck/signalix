@@ -7,6 +7,6 @@ import (
 	"github.com/kainhuck/signalix/pkg/exchange/perp/gateio"
 )
 
-func TestGateIOClientImplementsExchange(t *testing.T) {
-	var _ ports.Exchange = (*gateio.Client)(nil)
+func TestGateIOClientImplementsPerpExchange(t *testing.T) {
+	var _ ports.PerpExchange = (*gateio.Client)(nil)
 }

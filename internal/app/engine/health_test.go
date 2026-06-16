@@ -17,7 +17,7 @@ func (p *pingFailExchange) Ping(context.Context) error {
 	return errors.New("ping fail")
 }
 
-func newEngineForHealthTest(t *testing.T, ex ports.Exchange, running, startProjection bool) *Engine {
+func newEngineForHealthTest(t *testing.T, ex ports.PerpExchange, running, startProjection bool) *Engine {
 	t.Helper()
 	e := newTestEngine(t, t.TempDir(), ex)
 	if startProjection {

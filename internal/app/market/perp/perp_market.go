@@ -17,7 +17,7 @@ import (
 
 // PerpMarketConfig 构建 perp 市场所需的依赖。
 type PerpMarketConfig struct {
-	Exchange          ports.Exchange
+	Exchange          ports.PerpExchange
 	MarketBuf         int
 	DecisionDivisor   int
 	ProjectionRefresh time.Duration
@@ -26,7 +26,7 @@ type PerpMarketConfig struct {
 
 // PerpMarket 聚合 perp 的 Feed / Decider / Executor / Risk / Account。
 type PerpMarket struct {
-	exchange ports.Exchange
+	exchange ports.PerpExchange
 	router   *MarketRouter
 	decider  market.MarketDecider
 	executor *PerpExecutor
@@ -168,7 +168,7 @@ func (p *PerpMarket) Projection() *projection.AccountProjection {
 	return p.proj
 }
 func (p *PerpMarket) Registry() *instrument.Registry { return p.reg }
-func (p *PerpMarket) Exchange() ports.Exchange       { return p.exchange }
+func (p *PerpMarket) Exchange() ports.PerpExchange   { return p.exchange }
 func (p *PerpMarket) Router() *MarketRouter          { return p.router }
 
 // --- market.MarketFeed ---

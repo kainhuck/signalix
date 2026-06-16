@@ -18,13 +18,13 @@ const perpOrderEventBuf = 64
 
 // PerpExecutorConfig perp market.MarketExecutor 依赖。
 type PerpExecutorConfig struct {
-	Exchange ports.Exchange
+	Exchange ports.PerpExchange
 	Proj     *projection.AccountProjection
 }
 
 // PerpExecutor 实现 perp 的 market.MarketExecutor（含用户流泵与 projection 更新）。
 type PerpExecutor struct {
-	exchange    ports.Exchange
+	exchange    ports.PerpExchange
 	codec       exchangeperp.ClientOrderIDCodec
 	proj        *projection.AccountProjection
 	orderEvents chan *models.OrderEvent
