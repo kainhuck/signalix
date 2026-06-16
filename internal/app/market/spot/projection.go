@@ -18,10 +18,6 @@ type AccountProjection struct {
 	mu       sync.RWMutex
 	balances map[string]*spotex.BalanceView
 	ready    bool
-
-	ctx    context.Context
-	cancel context.CancelFunc
-	wg     sync.WaitGroup
 }
 
 func NewAccountProjection(exchange ports.SpotExchange, pairMeta map[spotex.Pair]*spotex.PairMeta) *AccountProjection {
@@ -46,33 +42,12 @@ func (p *AccountProjection) Start(ctx context.Context) error {
 	}
 	p.ready = true
 	p.mu.Unlock()
-
-	p.ctx, p.cancel = context.WithCancel(ctx)
-	p.wg.Add(1)
-	go p.runUserEvents()
 	return nil
 }
 
 func (p *AccountProjection) Stop() {
-	if p == nil {
-		return
-	}
-	if p.cancel != nil {
-		p.cancel()
-	}
-	p.wg.Wait()
-}
-
-func (p *AccountProjection) runUserEvents() {
-	defer p.wg.Done()
-	for {
-		select {
-		case ev := <-p.exchange.UserEvents():
-			p.OnUserEvent(ev)
-		case <-p.ctx.Done():
-			return
-		}
-	}
+	// User stream is consumed by SpotExecutor so order and balance events are not split
+	// between competing readers.
 }
 
 func (p *AccountProjection) OnUserEvent(ev *spotex.UserEvent) {
@@ -126,6 +101,44 @@ func (p *AccountProjection) ListPositions() []*models.PositionView {
 		}
 		seenBase[base] = true
 		out = append(out, positionViewFromSpot(pair, bal))
+	}
+	return out
+}
+
+func (p *AccountProjection) IsReady() bool {
+	if p == nil {
+		return false
+	}
+	p.mu.RLock()
+	defer p.mu.RUnlock()
+	return p.ready
+}
+
+func (p *AccountProjection) PairMeta(pair spotex.Pair) (*spotex.PairMeta, bool) {
+	if p == nil {
+		return nil, false
+	}
+	meta, ok := p.pairMeta[pair.Canonical()]
+	if !ok || meta == nil {
+		return nil, false
+	}
+	cp := *meta
+	return &cp, true
+}
+
+func (p *AccountProjection) Balances() map[string]*spotex.BalanceView {
+	if p == nil {
+		return nil
+	}
+	p.mu.RLock()
+	defer p.mu.RUnlock()
+	out := make(map[string]*spotex.BalanceView, len(p.balances))
+	for ccy, bal := range p.balances {
+		if bal == nil {
+			continue
+		}
+		cp := *bal
+		out[ccy] = &cp
 	}
 	return out
 }

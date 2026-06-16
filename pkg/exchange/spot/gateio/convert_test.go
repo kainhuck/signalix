@@ -24,6 +24,7 @@ func TestOrderViewFromSpot_limitBuy(t *testing.T) {
 		Left:         "0.005",
 		FilledAmount: "0.005",
 		Status:       "open",
+		Text:         "t-local-1",
 		CreateTimeMs: 1_700_000_000_000,
 	}
 	got := orderViewFromSpot(o)
@@ -35,6 +36,9 @@ func TestOrderViewFromSpot_limitBuy(t *testing.T) {
 	}
 	if got.FilledSize != "0.005" {
 		t.Fatalf("filled: %s", got.FilledSize)
+	}
+	if got.ClientID != "t-local-1" {
+		t.Fatalf("client id: %s", got.ClientID)
 	}
 }
 

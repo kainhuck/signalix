@@ -154,6 +154,7 @@ func orderViewFromSpot(o gateapi.Order) *spot.OrderSnapshot {
 	return &spot.OrderSnapshot{
 		OrderID:         strings.TrimSpace(o.Id),
 		ExchangeOrderID: strings.TrimSpace(o.Id),
+		ClientID:        strings.TrimSpace(o.Text),
 		Pair:            spot.CanonicalPair(o.CurrencyPair),
 		Side:            mapSide(o.Side),
 		Type:            orderTypeFromGate(o),

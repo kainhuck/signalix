@@ -132,6 +132,7 @@ type ListCandlesticksQuery struct {
 type OrderSnapshot struct {
 	OrderID         string
 	ExchangeOrderID string
+	ClientID        string
 	Pair            Pair
 	Side            Side
 	Type            OrderType

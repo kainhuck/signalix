@@ -11,14 +11,14 @@ import (
 	spotex "github.com/kainhuck/signalix/pkg/exchange/spot"
 )
 
-// SpotMarket 聚合 spot 的 Feed / Account，以及安全失败的 Decider / Executor / Risk 占位实现。
+// SpotMarket 聚合 spot 的 Feed / Decider / Executor / Risk / Account。
 type SpotMarket struct {
 	exchange ports.SpotExchange
 	router   *MarketRouter
 	proj     *AccountProjection
 
 	decider  market.MarketDecider
-	executor market.MarketExecutor
+	executor *SpotExecutor
 	risk     market.MarketRisk
 
 	marketBuf       int
@@ -30,7 +30,8 @@ var _ market.Market = (*SpotMarket)(nil)
 
 // SpotMarketConfig 构建 spot 市场所需依赖。
 type SpotMarketConfig struct {
-	Exchange ports.SpotExchange
+	Exchange            ports.SpotExchange
+	DecisionSizeDivisor int
 }
 
 // NewSpotMarket 构造 spot 市场骨架。
@@ -57,9 +58,18 @@ func NewSpotMarket(ctx context.Context, cfg SpotMarketConfig, opts ...Option) (*
 		WithRouterKlineHistoryMax(sm.klineHistoryMax),
 	)
 	sm.proj = NewAccountProjection(cfg.Exchange, pairMeta)
-	sm.decider = safeDecider{}
-	sm.executor = newSafeExecutor()
-	sm.risk = safeRisk{}
+	sm.decider = NewSpotDecider(SpotDeciderConfig{
+		Projection:         sm.proj,
+		Router:             sm.router,
+		PairMeta:           pairMeta,
+		DefaultSizeDivisor: cfg.DecisionSizeDivisor,
+	})
+	executor, err := NewSpotExecutor(SpotExecutorConfig{Exchange: cfg.Exchange, Projection: sm.proj})
+	if err != nil {
+		return nil, err
+	}
+	sm.executor = executor
+	sm.risk = NewSpotRisk(SpotRiskConfig{Projection: sm.proj, Router: sm.router})
 	return sm, nil
 }
 
@@ -100,12 +110,22 @@ func (s *SpotMarket) Start(ctx context.Context) error {
 			s.router.Start()
 		}()
 	}
+	if s.executor != nil {
+		if err := s.executor.Start(ctx); err != nil {
+			return err
+		}
+	}
 	return nil
 }
 
 func (s *SpotMarket) Stop() error {
 	if s == nil {
 		return nil
+	}
+	if s.executor != nil {
+		if err := s.executor.Stop(); err != nil {
+			return err
+		}
 	}
 	if s.proj != nil {
 		s.proj.Stop()
@@ -170,5 +190,23 @@ func (s *SpotMarket) OrderEvents() <-chan *models.OrderEvent {
 }
 
 func (s *SpotMarket) BuildRiskContext(ctx context.Context, strategy string, sig *models.Signal, o *models.Order) (*ports.RiskContext, error) {
+	if s.risk == nil {
+		return nil, fmt.Errorf("spot risk not configured")
+	}
 	return s.risk.BuildRiskContext(ctx, strategy, sig, o)
 }
+
+func (s *SpotMarket) BindRisk(cfg SpotRiskConfig) {
+	if s == nil {
+		return
+	}
+	cfg.Projection = s.proj
+	cfg.Router = s.router
+	s.risk = NewSpotRisk(cfg)
+}
+
+func (s *SpotMarket) Executor() market.MarketExecutor { return s.executor }
+func (s *SpotMarket) Risk() market.MarketRisk         { return s.risk }
+func (s *SpotMarket) Projection() *AccountProjection  { return s.proj }
+func (s *SpotMarket) Exchange() ports.SpotExchange    { return s.exchange }
+func (s *SpotMarket) Router() *MarketRouter           { return s.router }
