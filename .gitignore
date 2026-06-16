@@ -68,3 +68,5 @@ test/
 .code-review-graph/
 .cursorrules
 .opencode.json
+
+.codegraph/
