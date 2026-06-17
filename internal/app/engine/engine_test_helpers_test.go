@@ -6,9 +6,11 @@ import (
 
 	"github.com/kainhuck/signalix/internal/app/market"
 	mktperp "github.com/kainhuck/signalix/internal/app/market/perp"
+	mktspot "github.com/kainhuck/signalix/internal/app/market/spot"
 	apprisk "github.com/kainhuck/signalix/internal/app/risk"
 	"github.com/kainhuck/signalix/internal/models"
 	"github.com/kainhuck/signalix/internal/ports"
+	"github.com/kainhuck/signalix/internal/testutil"
 )
 
 func testPerpMarkets(t *testing.T, ex ports.PerpExchange) map[models.Market]market.Market {
@@ -18,6 +20,30 @@ func testPerpMarkets(t *testing.T, ex ports.PerpExchange) map[models.Market]mark
 		t.Fatal(err)
 	}
 	return map[models.Market]market.Market{models.MarketPerp: pm}
+}
+
+func testSpotMarket(t *testing.T, ex ports.SpotExchange) *mktspot.SpotMarket {
+	t.Helper()
+	sm, err := mktspot.NewSpotMarket(context.Background(), mktspot.SpotMarketConfig{Exchange: ex})
+	if err != nil {
+		t.Fatal(err)
+	}
+	if err := sm.Projection().Start(context.Background()); err != nil {
+		t.Fatal(err)
+	}
+	return sm
+}
+
+func testSpotMarkets(t *testing.T, ex ports.SpotExchange) map[models.Market]market.Market {
+	t.Helper()
+	return map[models.Market]market.Market{models.MarketSpot: testSpotMarket(t, ex)}
+}
+
+func testPerpSpotMarkets(t *testing.T, perpEx ports.PerpExchange, spotEx ports.SpotExchange) map[models.Market]market.Market {
+	t.Helper()
+	markets := testPerpMarkets(t, perpEx)
+	markets[models.MarketSpot] = testSpotMarket(t, spotEx)
+	return markets
 }
 
 func testPerpSetup(t *testing.T, ex ports.PerpExchange) (map[models.Market]market.Market, BuildParams, *mktperp.PerpMarket) {
@@ -40,6 +66,11 @@ func newTestEngine(t *testing.T, dir string, ex ports.PerpExchange, opts ...Engi
 	eng := NewEngine(dir, markets, build, opts...)
 	bindTestPerpRisk(eng, pm)
 	return eng
+}
+
+func newSpotOnlyTestEngine(t *testing.T) *Engine {
+	t.Helper()
+	return NewEngine(t.TempDir(), testSpotMarkets(t, testutil.NewStubSpotExchange()), BuildParams{})
 }
 
 func bindTestPerpRisk(eng *Engine, pm *mktperp.PerpMarket) {

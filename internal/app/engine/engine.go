@@ -1108,12 +1108,20 @@ func (e *Engine) GetOrderSnapshot(orderID string) (*models.Order, bool) {
 
 // ListOpenOrdersSnapshot 列出非终态订单，最多 limit 条（<=0 时用 500）。
 func (e *Engine) ListOpenOrdersSnapshot(limit int) []*models.Order {
+	return e.ListOpenOrdersSnapshotForMarket(limit, "")
+}
+
+// ListOpenOrdersSnapshotForMarket 列出指定市场非终态订单；market 为空时不过滤。
+func (e *Engine) ListOpenOrdersSnapshotForMarket(limit int, marketFilter models.Market) []*models.Order {
 	if limit <= 0 {
 		limit = 500
 	}
 	var out []*models.Order
 	for _, o := range e.executionEngine.GetAllOrders() {
 		if o == nil {
+			continue
+		}
+		if marketFilter.Valid() && orderMarket(o) != marketFilter {
 			continue
 		}
 		switch o.Status {
@@ -1127,6 +1135,13 @@ func (e *Engine) ListOpenOrdersSnapshot(limit int) []*models.Order {
 		}
 	}
 	return out
+}
+
+func orderMarket(o *models.Order) models.Market {
+	if o == nil || !o.Market.Valid() {
+		return models.MarketPerp
+	}
+	return o.Market
 }
 
 // CancelOrderViaOMS 撤单（经 OMS 队列）。

@@ -49,16 +49,21 @@ func newOrderGetCmd() *cobra.Command {
 
 func newOrderListCmd() *cobra.Command {
 	var limit int32
+	var market string
 
 	cmd := &cobra.Command{
 		Use:   "list",
 		Short: "List open orders",
 		RunE: func(cmd *cobra.Command, args []string) error {
+			market, err := normalizeMarketFlag(market)
+			if err != nil {
+				return err
+			}
 			return withClient(cmd.Context(), func(ctx context.Context, client enginev1.EngineClient) error {
 				rpc, cancel := rpcCtx(ctx)
 				defer cancel()
 
-				reply, err := client.ListOpenOrders(rpc, &enginev1.ListOpenOrdersRequest{Limit: limit})
+				reply, err := client.ListOpenOrders(rpc, &enginev1.ListOpenOrdersRequest{Limit: limit, Market: market})
 				if err != nil {
 					return formatRPCError(err)
 				}
@@ -73,6 +78,7 @@ func newOrderListCmd() *cobra.Command {
 	}
 
 	cmd.Flags().Int32Var(&limit, "limit", 0, "Max orders to return (0 = server default 500)")
+	addMarketFlag(cmd, &market)
 
 	return cmd
 }

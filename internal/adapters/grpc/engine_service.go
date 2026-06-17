@@ -174,15 +174,20 @@ func (s *EngineService) CreateStrategy(ctx context.Context, req *enginev1.Create
 	}, nil
 }
 
-func (s *EngineService) GetBalance(ctx context.Context, _ *enginev1.GetBalanceRequest) (*enginev1.GetBalanceReply, error) {
+func (s *EngineService) GetBalance(ctx context.Context, req *enginev1.GetBalanceRequest) (*enginev1.GetBalanceReply, error) {
 	if err := requireRunning(s.eng); err != nil {
 		return nil, err
 	}
-	bal, err := s.eng.BalanceSnapshot()
+	m, err := parseMarketRequest(req.GetMarket())
+	if err != nil {
+		return nil, err
+	}
+	currency := strings.TrimSpace(req.GetCurrency())
+	bal, err := s.eng.BalanceSnapshotForMarket(m, currency)
 	if err != nil {
 		return nil, mapProjectionErr(err)
 	}
-	return &enginev1.GetBalanceReply{Balance: balanceToProto(bal)}, nil
+	return &enginev1.GetBalanceReply{Balance: balanceToProtoForMarket(bal, m)}, nil
 }
 
 func (s *EngineService) GetPosition(ctx context.Context, req *enginev1.GetPositionRequest) (*enginev1.GetPositionReply, error) {
@@ -193,7 +198,11 @@ func (s *EngineService) GetPosition(ctx context.Context, req *enginev1.GetPositi
 	if symbol == "" {
 		return nil, status.Error(codes.InvalidArgument, "empty symbol")
 	}
-	pos, err := s.eng.PositionSnapshot(symbol)
+	m, err := parseMarketRequest(req.GetMarket())
+	if err != nil {
+		return nil, err
+	}
+	pos, err := s.eng.PositionSnapshotForMarket(m, symbol)
 	if err != nil {
 		return nil, mapProjectionErr(err)
 	}
@@ -203,11 +212,15 @@ func (s *EngineService) GetPosition(ctx context.Context, req *enginev1.GetPositi
 	return &enginev1.GetPositionReply{Position: positionToProto(pos)}, nil
 }
 
-func (s *EngineService) ListPositions(ctx context.Context, _ *enginev1.ListPositionsRequest) (*enginev1.ListPositionsReply, error) {
+func (s *EngineService) ListPositions(ctx context.Context, req *enginev1.ListPositionsRequest) (*enginev1.ListPositionsReply, error) {
 	if err := requireRunning(s.eng); err != nil {
 		return nil, err
 	}
-	list, err := s.eng.AllPositionsSnapshot()
+	m, err := parseMarketRequest(req.GetMarket())
+	if err != nil {
+		return nil, err
+	}
+	list, err := s.eng.AllPositionsSnapshotForMarket(m)
 	if err != nil {
 		return nil, mapProjectionErr(err)
 	}
@@ -226,11 +239,15 @@ func (s *EngineService) GetTicker(ctx context.Context, req *enginev1.GetTickerRe
 	if symbol == "" {
 		return nil, status.Error(codes.InvalidArgument, "empty symbol")
 	}
-	snap, err := s.eng.TickerSnapshot(symbol)
+	m, err := parseMarketRequest(req.GetMarket())
+	if err != nil {
+		return nil, err
+	}
+	snap, err := s.eng.TickerSnapshotForMarket(m, symbol)
 	if err != nil {
 		return nil, mapMarketErr(err)
 	}
-	return &enginev1.GetTickerReply{Ticker: tickerToProto(snap)}, nil
+	return &enginev1.GetTickerReply{Ticker: tickerToProtoForMarket(snap, m)}, nil
 }
 
 func (s *EngineService) GetKlines(ctx context.Context, req *enginev1.GetKlinesRequest) (*enginev1.GetKlinesReply, error) {
@@ -245,22 +262,30 @@ func (s *EngineService) GetKlines(ctx context.Context, req *enginev1.GetKlinesRe
 	if interval == "" {
 		return nil, status.Error(codes.InvalidArgument, "empty interval")
 	}
-	klines, err := s.eng.ClosedKlines(symbol, interval, int(req.GetLimit()))
+	m, err := parseMarketRequest(req.GetMarket())
+	if err != nil {
+		return nil, err
+	}
+	klines, err := s.eng.ClosedKlinesForMarket(m, symbol, interval, int(req.GetLimit()))
 	if err != nil {
 		return nil, mapMarketErr(err)
 	}
 	out := make([]*enginev1.Kline, 0, len(klines))
 	for _, k := range klines {
-		out = append(out, klineToProto(k))
+		out = append(out, klineToProtoForMarket(k, m))
 	}
 	return &enginev1.GetKlinesReply{Klines: out}, nil
 }
 
-func (s *EngineService) ListTickers(ctx context.Context, _ *enginev1.ListTickersRequest) (*enginev1.ListTickersReply, error) {
+func (s *EngineService) ListTickers(ctx context.Context, req *enginev1.ListTickersRequest) (*enginev1.ListTickersReply, error) {
 	if err := requireRunning(s.eng); err != nil {
 		return nil, err
 	}
-	all, err := s.eng.ListCachedTickers()
+	m, err := parseMarketRequest(req.GetMarket())
+	if err != nil {
+		return nil, err
+	}
+	all, err := s.eng.ListCachedTickersForMarket(m)
 	if err != nil {
 		return nil, mapMarketErr(err)
 	}
@@ -271,7 +296,7 @@ func (s *EngineService) ListTickers(ctx context.Context, _ *enginev1.ListTickers
 	sort.Strings(symbols)
 	out := make([]*enginev1.Ticker, 0, len(symbols))
 	for _, sym := range symbols {
-		out = append(out, tickerToProto(all[sym]))
+		out = append(out, tickerToProtoForMarket(all[sym], m))
 	}
 	return &enginev1.ListTickersReply{Tickers: out}, nil
 }
@@ -296,7 +321,15 @@ func (s *EngineService) ListOpenOrders(ctx context.Context, req *enginev1.ListOp
 		return nil, err
 	}
 	limit := int(req.GetLimit())
-	orders := s.eng.ListOpenOrdersSnapshot(limit)
+	var marketFilter models.Market
+	if strings.TrimSpace(req.GetMarket()) != "" {
+		m, err := parseMarketRequest(req.GetMarket())
+		if err != nil {
+			return nil, err
+		}
+		marketFilter = m
+	}
+	orders := s.eng.ListOpenOrdersSnapshotForMarket(limit, marketFilter)
 	out := make([]*enginev1.Order, 0, len(orders))
 	for _, o := range orders {
 		out = append(out, orderToProto(o))
@@ -421,6 +454,7 @@ func orderToProto(o *models.Order) *enginev1.Order {
 		StrategyName:    o.StrategyName,
 		CreatedAtUnixMs: o.CreatedAt.UnixMilli(),
 		UpdatedAtUnixMs: o.UpdatedAt.UnixMilli(),
+		Market:          protoMarket(o.Market),
 	}
 	if o.Price != nil {
 		po.Price = *o.Price

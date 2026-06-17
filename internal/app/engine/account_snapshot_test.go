@@ -3,10 +3,13 @@ package engine
 import (
 	"errors"
 	"testing"
+	"time"
 
 	"github.com/kainhuck/signalix/internal/app/projection"
+	"github.com/kainhuck/signalix/internal/models"
 	"github.com/kainhuck/signalix/internal/testutil"
 	"github.com/kainhuck/signalix/pkg/exchange/perp"
+	spotex "github.com/kainhuck/signalix/pkg/exchange/spot"
 )
 
 func TestBalanceSnapshot_projectionNotConfigured(t *testing.T) {
@@ -92,5 +95,46 @@ func TestAllPositionsSnapshot_empty(t *testing.T) {
 	}
 	if len(list) != 0 {
 		t.Fatalf("expected empty list, got %d", len(list))
+	}
+}
+
+func TestBalanceSnapshotForMarket_spot(t *testing.T) {
+	t.Parallel()
+	ex := testutil.NewStubSpotExchange()
+	ex.BalancesList = append(ex.BalancesList, &spotex.BalanceView{
+		Currency:  "BTC",
+		Total:     "0.25",
+		Available: "0.2",
+		Frozen:    "0.05",
+		UpdatedAt: time.Unix(10, 0),
+	})
+	e := &Engine{markets: testSpotMarkets(t, ex)}
+
+	bal, err := e.BalanceSnapshotForMarket(models.MarketSpot, "btc")
+	if err != nil {
+		t.Fatal(err)
+	}
+	if bal.Currency != "BTC" || bal.Total != "0.25" || bal.Available != "0.2" {
+		t.Fatalf("balance = %+v", bal)
+	}
+}
+
+func TestAllPositionsSnapshotForMarket_spot(t *testing.T) {
+	t.Parallel()
+	ex := testutil.NewStubSpotExchange()
+	ex.BalancesList = append(ex.BalancesList, &spotex.BalanceView{
+		Currency:  "BTC",
+		Total:     "0.25",
+		Available: "0.2",
+		UpdatedAt: time.Unix(10, 0),
+	})
+	e := &Engine{markets: testSpotMarkets(t, ex)}
+
+	list, err := e.AllPositionsSnapshotForMarket(models.MarketSpot)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if len(list) != 1 || list[0].Market != models.MarketSpot || list[0].Symbol != "BTC/USDT" || list[0].Size != "0.25" {
+		t.Fatalf("list = %+v", list)
 	}
 }

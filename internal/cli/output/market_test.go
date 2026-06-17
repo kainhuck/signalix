@@ -17,6 +17,7 @@ func TestPrintTicker_table(t *testing.T) {
 	}
 	reply := &enginev1.GetTickerReply{
 		Ticker: &enginev1.Ticker{
+			Market:          "spot",
 			Symbol:          "BTC/USDT",
 			Last:            "50000",
 			MarkPrice:       "50001",
@@ -28,7 +29,7 @@ func TestPrintTicker_table(t *testing.T) {
 		t.Fatal(err)
 	}
 	out := buf.String()
-	if !strings.Contains(out, "BTC/USDT") || !strings.Contains(out, "50000") {
+	if !strings.Contains(out, "spot") || !strings.Contains(out, "BTC/USDT") || !strings.Contains(out, "50000") {
 		t.Fatalf("unexpected: %s", out)
 	}
 }
@@ -42,7 +43,7 @@ func TestPrintKlines_table_empty(t *testing.T) {
 	if err := pr.PrintKlines(&enginev1.GetKlinesReply{}); err != nil {
 		t.Fatal(err)
 	}
-	if !strings.Contains(buf.String(), "TIMESTAMP") {
+	if !strings.Contains(buf.String(), "MARKET") || !strings.Contains(buf.String(), "TIMESTAMP") {
 		t.Fatalf("expected header: %s", buf.String())
 	}
 }
@@ -55,13 +56,13 @@ func TestPrintKlines_json(t *testing.T) {
 	}
 	reply := &enginev1.GetKlinesReply{
 		Klines: []*enginev1.Kline{
-			{Symbol: "BTC/USDT", Interval: "5m", Close: "100", TimestampUnixSec: 1_700_000_000},
+			{Market: "spot", Symbol: "BTC/USDT", Interval: "5m", Close: "100", TimestampUnixSec: 1_700_000_000},
 		},
 	}
 	if err := pr.PrintKlines(reply); err != nil {
 		t.Fatal(err)
 	}
-	if !strings.Contains(buf.String(), `"close"`) {
+	if !strings.Contains(buf.String(), `"market"`) || !strings.Contains(buf.String(), `"close"`) {
 		t.Fatalf("unexpected json: %s", buf.String())
 	}
 }
@@ -74,8 +75,8 @@ func TestPrintTickerList_table(t *testing.T) {
 	}
 	reply := &enginev1.ListTickersReply{
 		Tickers: []*enginev1.Ticker{
-			{Symbol: "ETH/USDT", Last: "3000"},
-			{Symbol: "BTC/USDT", Last: "50000"},
+			{Market: "spot", Symbol: "ETH/USDT", Last: "3000"},
+			{Market: "perp", Symbol: "BTC/USDT", Last: "50000"},
 		},
 	}
 	if err := pr.PrintTickerList(reply); err != nil {
@@ -83,6 +84,9 @@ func TestPrintTickerList_table(t *testing.T) {
 	}
 	if strings.Index(buf.String(), "BTC/USDT") > strings.Index(buf.String(), "ETH/USDT") {
 		t.Fatalf("expected BTC before ETH: %s", buf.String())
+	}
+	if !strings.Contains(buf.String(), "spot") || !strings.Contains(buf.String(), "perp") {
+		t.Fatalf("expected market column: %s", buf.String())
 	}
 }
 

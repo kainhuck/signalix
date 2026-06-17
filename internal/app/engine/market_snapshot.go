@@ -13,7 +13,12 @@ var ErrTickerNotInCache = market.ErrTickerNotInCache
 
 // TickerSnapshot 返回单合约 ticker 缓存快照。
 func (e *Engine) TickerSnapshot(symbol string) (*models.Ticker, error) {
-	acct, err := e.perpAccount()
+	return e.TickerSnapshotForMarket(models.MarketPerp, symbol)
+}
+
+// TickerSnapshotForMarket 返回指定市场的 ticker 缓存快照。
+func (e *Engine) TickerSnapshotForMarket(m models.Market, symbol string) (*models.Ticker, error) {
+	acct, err := e.marketAccount(m)
 	if err != nil {
 		return nil, err
 	}
@@ -26,7 +31,12 @@ func (e *Engine) TickerSnapshot(symbol string) (*models.Ticker, error) {
 
 // ListCachedTickers 返回 ticker 缓存全量副本。
 func (e *Engine) ListCachedTickers() (map[string]*models.Ticker, error) {
-	acct, err := e.perpAccount()
+	return e.ListCachedTickersForMarket(models.MarketPerp)
+}
+
+// ListCachedTickersForMarket 返回指定市场的 ticker 缓存全量副本。
+func (e *Engine) ListCachedTickersForMarket(m models.Market) (map[string]*models.Ticker, error) {
+	acct, err := e.marketAccount(m)
 	if err != nil {
 		return nil, err
 	}
@@ -35,7 +45,12 @@ func (e *Engine) ListCachedTickers() (map[string]*models.Ticker, error) {
 
 // ClosedKlines 返回最近 limit 根收盘 K 线（时间升序）。
 func (e *Engine) ClosedKlines(symbol string, interval string, limit int) ([]*models.Kline, error) {
-	acct, err := e.perpAccount()
+	return e.ClosedKlinesForMarket(models.MarketPerp, symbol, interval, limit)
+}
+
+// ClosedKlinesForMarket 返回指定市场最近 limit 根收盘 K 线（时间升序）。
+func (e *Engine) ClosedKlinesForMarket(m models.Market, symbol string, interval string, limit int) ([]*models.Kline, error) {
+	acct, err := e.marketAccount(m)
 	if err != nil {
 		return nil, err
 	}

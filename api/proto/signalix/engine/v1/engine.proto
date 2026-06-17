@@ -189,6 +189,7 @@ message Balance {
   string available = 3;
   string frozen = 4;
   int64 updated_at_unix_ms = 5;
+  string market = 6;
 }
 
 message Position {
@@ -200,9 +201,13 @@ message Position {
   string unrealized_pnl = 6;
   int32 leverage = 7;
   int64 updated_at_unix_ms = 8;
+  string market = 9;
 }
 
-message GetBalanceRequest {}
+message GetBalanceRequest {
+  string market = 1;
+  string currency = 2;
+}
 
 message GetBalanceReply {
   Balance balance = 1;
@@ -210,13 +215,16 @@ message GetBalanceReply {
 
 message GetPositionRequest {
   string symbol = 1;
+  string market = 2;
 }
 
 message GetPositionReply {
   Position position = 1;
 }
 
-message ListPositionsRequest {}
+message ListPositionsRequest {
+  string market = 1;
+}
 
 message ListPositionsReply {
   repeated Position positions = 1;
@@ -236,6 +244,7 @@ message Ticker {
   string low_24h = 11;
   string high_24h = 12;
   int64 timestamp_unix_ms = 13;
+  string market = 14;
 }
 
 message Kline {
@@ -249,10 +258,12 @@ message Kline {
   string volume_base = 8;
   int64 timestamp_unix_sec = 9;
   bool window_closed = 10;
+  string market = 11;
 }
 
 message GetTickerRequest {
   string symbol = 1;
+  string market = 2;
 }
 
 message GetTickerReply {
@@ -263,13 +274,16 @@ message GetKlinesRequest {
   string symbol = 1;
   string interval = 2;
   int32 limit = 3;
+  string market = 4;
 }
 
 message GetKlinesReply {
   repeated Kline klines = 1;
 }
 
-message ListTickersRequest {}
+message ListTickersRequest {
+  string market = 1;
+}
 
 message ListTickersReply {
   repeated Ticker tickers = 1;
@@ -285,6 +299,7 @@ message GetOrderReply {
 
 message ListOpenOrdersRequest {
   int32 limit = 1; // <=0 时使用默认 500
+  string market = 2;
 }
 
 message ListOpenOrdersReply {
@@ -399,4 +414,5 @@ message Order {
   string strategy_name = 11;
   int64 created_at_unix_ms = 12;
   int64 updated_at_unix_ms = 13;
+  string market = 14;
 }

@@ -4,9 +4,11 @@ import (
 	"errors"
 	"testing"
 
+	mktspot "github.com/kainhuck/signalix/internal/app/market/spot"
 	"github.com/kainhuck/signalix/internal/models"
 	"github.com/kainhuck/signalix/internal/testutil"
 	"github.com/kainhuck/signalix/pkg/exchange/perp"
+	spotex "github.com/kainhuck/signalix/pkg/exchange/spot"
 )
 
 func TestTickerSnapshot_marketNotRegistered(t *testing.T) {
@@ -103,5 +105,55 @@ func TestListCachedTickers(t *testing.T) {
 	}
 	if len(all) != 1 || all["BTC/USDT"].Last != "1" {
 		t.Fatalf("all = %+v", all)
+	}
+}
+
+func TestTickerSnapshotForMarket_spot(t *testing.T) {
+	t.Parallel()
+	ex := testutil.NewStubSpotExchange()
+	markets := testSpotMarkets(t, ex)
+	sm := markets[models.MarketSpot].(*mktspot.SpotMarket)
+	e := &Engine{markets: markets}
+
+	tick, err := spotex.NewPublicEvent(spotex.PublicTicker, &spotex.TickerSnapshot{
+		Pair:            "BTC/USDT",
+		Last:            "66000",
+		TimestampMillis: 2000,
+	})
+	if err != nil {
+		t.Fatal(err)
+	}
+	sm.Router().OnPublicEvent(tick)
+
+	snap, err := e.TickerSnapshotForMarket(models.MarketSpot, "btcusdt")
+	if err != nil {
+		t.Fatal(err)
+	}
+	if snap.Contract != "BTC/USDT" || snap.Last != "66000" {
+		t.Fatalf("snap = %+v", snap)
+	}
+}
+
+func TestClosedKlinesForMarket_spot(t *testing.T) {
+	t.Parallel()
+	ex := testutil.NewStubSpotExchange()
+	markets := testSpotMarkets(t, ex)
+	sm := markets[models.MarketSpot].(*mktspot.SpotMarket)
+	e := &Engine{markets: markets}
+
+	ev, err := spotex.NewPublicEvent(spotex.PublicCandlestick, &spotex.CandlestickSnapshot{
+		Pair: "BTC/USDT", Interval: "1m", Open: "1", High: "2", Low: "1", Close: "1.5", Volume: "10", TimestampSec: 10, WindowClosed: true,
+	})
+	if err != nil {
+		t.Fatal(err)
+	}
+	sm.Router().OnPublicEvent(ev)
+
+	kl, err := e.ClosedKlinesForMarket(models.MarketSpot, "BTC/USDT", "1m", 10)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if len(kl) != 1 || kl[0].Close != "1.5" {
+		t.Fatalf("kl = %+v", kl)
 	}
 }

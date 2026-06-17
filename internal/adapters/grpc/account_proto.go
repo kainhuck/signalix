@@ -15,6 +15,9 @@ func mapProjectionErr(err error) error {
 	if err == nil {
 		return nil
 	}
+	if isMarketNotRegisteredErr(err) {
+		return status.Error(codes.FailedPrecondition, err.Error())
+	}
 	if errors.Is(err, projection.ErrProjectionNotReady) {
 		return status.Error(codes.FailedPrecondition, "account projection not ready")
 	}
@@ -25,6 +28,10 @@ func mapProjectionErr(err error) error {
 }
 
 func balanceToProto(b *models.BalanceView) *enginev1.Balance {
+	return balanceToProtoForMarket(b, models.MarketPerp)
+}
+
+func balanceToProtoForMarket(b *models.BalanceView, m models.Market) *enginev1.Balance {
 	if b == nil {
 		return nil
 	}
@@ -34,6 +41,7 @@ func balanceToProto(b *models.BalanceView) *enginev1.Balance {
 		Available:       b.Available,
 		Frozen:          b.Frozen,
 		UpdatedAtUnixMs: b.UpdatedAt.UnixMilli(),
+		Market:          protoMarket(m),
 	}
 }
 
@@ -56,6 +64,7 @@ func positionToProto(p *models.PositionView) *enginev1.Position {
 		UnrealizedPnl:   p.UnrealizedPnl,
 		Leverage:        lev,
 		UpdatedAtUnixMs: p.UpdatedAt.UnixMilli(),
+		Market:          protoMarket(p.Market),
 	}
 }
 

@@ -15,6 +15,9 @@ func mapMarketErr(err error) error {
 	if err == nil {
 		return nil
 	}
+	if isMarketNotRegisteredErr(err) {
+		return status.Error(codes.FailedPrecondition, err.Error())
+	}
 	if errors.Is(err, market.ErrMarketRouterNotConfigured) {
 		return status.Error(codes.FailedPrecondition, "market router not configured")
 	}
@@ -29,6 +32,10 @@ func mapMarketErr(err error) error {
 }
 
 func tickerToProto(t *models.Ticker) *enginev1.Ticker {
+	return tickerToProtoForMarket(t, models.MarketPerp)
+}
+
+func tickerToProtoForMarket(t *models.Ticker, m models.Market) *enginev1.Ticker {
 	if t == nil {
 		return nil
 	}
@@ -46,10 +53,15 @@ func tickerToProto(t *models.Ticker) *enginev1.Ticker {
 		Low_24H:         t.Low24h,
 		High_24H:        t.High24h,
 		TimestampUnixMs: t.TimestampMillis,
+		Market:          protoMarket(m),
 	}
 }
 
 func klineToProto(k *models.Kline) *enginev1.Kline {
+	return klineToProtoForMarket(k, models.MarketPerp)
+}
+
+func klineToProtoForMarket(k *models.Kline, m models.Market) *enginev1.Kline {
 	if k == nil {
 		return nil
 	}
@@ -64,5 +76,6 @@ func klineToProto(k *models.Kline) *enginev1.Kline {
 		VolumeBase:       k.VolumeBase,
 		TimestampUnixSec: k.TimestampSec,
 		WindowClosed:     k.WindowClosed,
+		Market:           protoMarket(m),
 	}
 }

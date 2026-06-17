@@ -270,6 +270,7 @@ func (p *Printer) PrintBalance(reply *enginev1.GetBalanceReply) error {
 			return p.printKeyValue([][2]string{{"balance", "(none)"}})
 		}
 		return p.printKeyValue([][2]string{
+			{"market", b.GetMarket()},
 			{"currency", b.GetCurrency()},
 			{"total", b.GetTotal()},
 			{"available", b.GetAvailable()},
@@ -291,6 +292,7 @@ func (p *Printer) PrintPosition(reply *enginev1.GetPositionReply) error {
 			return p.printKeyValue([][2]string{{"position", "(none)"}})
 		}
 		return p.printKeyValue([][2]string{
+			{"market", pos.GetMarket()},
 			{"symbol", pos.GetSymbol()},
 			{"side", pos.GetSide()},
 			{"size", pos.GetSize()},
@@ -315,10 +317,11 @@ func (p *Printer) PrintPositionList(reply *enginev1.ListPositionsReply) error {
 			return positions[i].GetSymbol() < positions[j].GetSymbol()
 		})
 		tbl := tablewriter.NewWriter(p.w)
-		tbl.SetHeader([]string{"symbol", "side", "size", "entry_price", "mark_price", "unrealized_pnl", "leverage"})
+		tbl.SetHeader([]string{"market", "symbol", "side", "size", "entry_price", "mark_price", "unrealized_pnl", "leverage"})
 		tbl.SetBorder(true)
 		for _, pos := range positions {
 			tbl.Append([]string{
+				pos.GetMarket(),
 				pos.GetSymbol(),
 				pos.GetSide(),
 				pos.GetSize(),
@@ -360,11 +363,12 @@ func (p *Printer) PrintOrderList(reply *enginev1.ListOpenOrdersReply) error {
 			return orders[i].GetUpdatedAtUnixMs() > orders[j].GetUpdatedAtUnixMs()
 		})
 		tbl := tablewriter.NewWriter(p.w)
-		tbl.SetHeader([]string{"id", "symbol", "side", "status", "size", "filled_size", "strategy_name", "updated_at"})
+		tbl.SetHeader([]string{"id", "market", "symbol", "side", "status", "size", "filled_size", "strategy_name", "updated_at"})
 		tbl.SetBorder(true)
 		for _, o := range orders {
 			tbl.Append([]string{
 				o.GetId(),
+				o.GetMarket(),
 				o.GetSymbol(),
 				o.GetSide(),
 				o.GetStatus(),
@@ -418,7 +422,7 @@ func (p *Printer) PrintOrderEventHeader() error {
 		return nil
 	}
 	_, err := fmt.Fprintln(p.w, strings.Join([]string{
-		"id", "symbol", "side", "status", "size", "filled_size", "updated_at",
+		"id", "market", "symbol", "side", "status", "size", "filled_size", "updated_at",
 	}, "\t"))
 	return err
 }
@@ -432,6 +436,7 @@ func (p *Printer) PrintOrderEvent(order *enginev1.Order) error {
 	}
 	_, err := fmt.Fprintln(p.w, strings.Join([]string{
 		order.GetId(),
+		order.GetMarket(),
 		order.GetSymbol(),
 		order.GetSide(),
 		order.GetStatus(),
@@ -462,6 +467,7 @@ func (p *Printer) PrintTicker(reply *enginev1.GetTickerReply) error {
 			return fmt.Errorf("empty ticker")
 		}
 		return p.printKeyValue([][2]string{
+			{"market", t.GetMarket()},
 			{"symbol", t.GetSymbol()},
 			{"last", t.GetLast()},
 			{"mark_price", t.GetMarkPrice()},
@@ -485,10 +491,11 @@ func (p *Printer) PrintKlines(reply *enginev1.GetKlinesReply) error {
 		return p.printStructured(reply)
 	case Table:
 		tbl := tablewriter.NewWriter(p.w)
-		tbl.SetHeader([]string{"timestamp", "open", "high", "low", "close", "volume", "closed"})
+		tbl.SetHeader([]string{"market", "timestamp", "open", "high", "low", "close", "volume", "closed"})
 		tbl.SetBorder(true)
 		for _, k := range reply.GetKlines() {
 			tbl.Append([]string{
+				k.GetMarket(),
 				formatUnixSec(k.GetTimestampUnixSec()),
 				k.GetOpen(),
 				k.GetHigh(),
@@ -515,10 +522,11 @@ func (p *Printer) PrintTickerList(reply *enginev1.ListTickersReply) error {
 			return tickers[i].GetSymbol() < tickers[j].GetSymbol()
 		})
 		tbl := tablewriter.NewWriter(p.w)
-		tbl.SetHeader([]string{"symbol", "last", "mark_price", "change_pct_24h", "volume_24h", "timestamp"})
+		tbl.SetHeader([]string{"market", "symbol", "last", "mark_price", "change_pct_24h", "volume_24h", "timestamp"})
 		tbl.SetBorder(true)
 		for _, t := range tickers {
 			tbl.Append([]string{
+				t.GetMarket(),
 				t.GetSymbol(),
 				t.GetLast(),
 				t.GetMarkPrice(),
@@ -587,6 +595,7 @@ func orderKeyValues(o *enginev1.Order) [][2]string {
 	return [][2]string{
 		{"id", o.GetId()},
 		{"exchange_id", o.GetExchangeId()},
+		{"market", o.GetMarket()},
 		{"symbol", o.GetSymbol()},
 		{"side", o.GetSide()},
 		{"order_type", o.GetOrderType()},
